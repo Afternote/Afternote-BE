@@ -20,6 +20,9 @@ public class AfternoteValidationStrategyFactory {
     @PostConstruct
     void init() {
         for (AfternoteCategoryValidationStrategy strategy : strategies) {
+            if (strategyMap.containsKey(strategy.category())) {
+                throw new IllegalStateException("Duplicate validation strategy for category: " + strategy.category());
+            }
             strategyMap.put(strategy.category(), strategy);
         }
     }

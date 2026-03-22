@@ -11,7 +11,11 @@ import com.example.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
  * Afternote 카테고리별 관계 데이터 저장을 담당하는 서비스
@@ -82,10 +86,27 @@ public class AfternoteRelationService {
     }
 
     private List<Receiver> resolveReceivers(List<AfternoteCreateRequest.ReceiverRequest> receiverRequests) {
-        return receiverRequests.stream()
-                .map(receiverReq -> receiverRepository.findById(receiverReq.getReceiverId())
-                        .orElseThrow(() -> new CustomException(ErrorCode.RECEIVER_NOT_FOUND)))
-                .toList();
+        List<Long> receiverIds = receiverRequests.stream()
+            .map(AfternoteCreateRequest.ReceiverRequest::getReceiverId)
+            .toList();
+
+        List<Receiver> foundReceivers = receiverRepository.findByIdIn(receiverIds);
+        Map<Long, Receiver> receiverMap = foundReceivers.stream()
+            .collect(Collectors.toMap(Receiver::getId, Function.identity()));
+
+        if (receiverMap.size() != new HashSet<>(receiverIds).size()) {
+            throw new CustomException(ErrorCode.RECEIVER_NOT_FOUND);
+        }
+
+        return receiverIds.stream()
+            .map(receiverId -> {
+                Receiver receiver = receiverMap.get(receiverId);
+                if (receiver == null) {
+                throw new CustomException(ErrorCode.RECEIVER_NOT_FOUND);
+                }
+                return receiver;
+            })
+            .toList();
     }
 
     private void appendReceivers(Afternote afternote, List<Receiver> receivers) {

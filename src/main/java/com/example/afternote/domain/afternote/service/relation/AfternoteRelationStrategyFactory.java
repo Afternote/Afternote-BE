@@ -20,6 +20,9 @@ public class AfternoteRelationStrategyFactory {
     @PostConstruct
     void init() {
         for (AfternoteCategoryRelationStrategy strategy : strategies) {
+            if (strategyMap.containsKey(strategy.category())) {
+                throw new IllegalStateException("Duplicate relation strategy for category: " + strategy.category());
+            }
             strategyMap.put(strategy.category(), strategy);
         }
     }

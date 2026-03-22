@@ -33,7 +33,7 @@ public class SocialValidationStrategy implements AfternoteCategoryValidationStra
             throw new CustomException(ErrorCode.SOCIAL_ACCOUNT_PASSWORD_REQUIRED);
         }
 
-        validateRequiredReceivers(request);
+        AfternoteValidationCommons.validateRequiredReceivers(request);
     }
 
     @Override
@@ -46,14 +46,4 @@ public class SocialValidationStrategy implements AfternoteCategoryValidationStra
         }
     }
 
-    private void validateRequiredReceivers(AfternoteCreateRequest request) {
-        if (request.getReceivers() == null || request.getReceivers().isEmpty()) {
-            throw new CustomException(ErrorCode.RECEIVERS_REQUIRED);
-        }
-        for (AfternoteCreateRequest.ReceiverRequest receiver : request.getReceivers()) {
-            if (receiver.getReceiverId() == null) {
-                throw new CustomException(ErrorCode.GALLERY_RECEIVER_ID_REQUIRED);
-            }
-        }
-    }
 }

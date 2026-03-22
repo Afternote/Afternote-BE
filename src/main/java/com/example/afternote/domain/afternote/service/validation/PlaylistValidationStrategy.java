@@ -41,7 +41,7 @@ public class PlaylistValidationStrategy implements AfternoteCategoryValidationSt
             }
         }
 
-        validateRequiredReceivers(request);
+        AfternoteValidationCommons.validateRequiredReceivers(request);
     }
 
     @Override
@@ -56,23 +56,6 @@ public class PlaylistValidationStrategy implements AfternoteCategoryValidationSt
             throw new CustomException(ErrorCode.INVALID_FIELD_FOR_PLAYLIST);
         }
 
-        if (request.getReceivers() != null && !request.getReceivers().isEmpty()) {
-            for (AfternoteCreateRequest.ReceiverRequest receiver : request.getReceivers()) {
-                if (receiver.getReceiverId() == null) {
-                    throw new CustomException(ErrorCode.GALLERY_RECEIVER_ID_REQUIRED);
-                }
-            }
-        }
-    }
-
-    private void validateRequiredReceivers(AfternoteCreateRequest request) {
-        if (request.getReceivers() == null || request.getReceivers().isEmpty()) {
-            throw new CustomException(ErrorCode.RECEIVERS_REQUIRED);
-        }
-        for (AfternoteCreateRequest.ReceiverRequest receiver : request.getReceivers()) {
-            if (receiver.getReceiverId() == null) {
-                throw new CustomException(ErrorCode.GALLERY_RECEIVER_ID_REQUIRED);
-            }
-        }
+        AfternoteValidationCommons.validateOptionalReceivers(request);
     }
 }

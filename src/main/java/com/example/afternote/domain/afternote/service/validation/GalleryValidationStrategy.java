@@ -27,7 +27,7 @@ public class GalleryValidationStrategy implements AfternoteCategoryValidationStr
             throw new CustomException(ErrorCode.ACTIONS_REQUIRED);
         }
 
-        validateRequiredReceivers(request);
+        AfternoteValidationCommons.validateRequiredReceivers(request);
     }
 
     @Override
@@ -40,14 +40,4 @@ public class GalleryValidationStrategy implements AfternoteCategoryValidationStr
         }
     }
 
-    private void validateRequiredReceivers(AfternoteCreateRequest request) {
-        if (request.getReceivers() == null || request.getReceivers().isEmpty()) {
-            throw new CustomException(ErrorCode.RECEIVERS_REQUIRED);
-        }
-        for (AfternoteCreateRequest.ReceiverRequest receiver : request.getReceivers()) {
-            if (receiver.getReceiverId() == null) {
-                throw new CustomException(ErrorCode.GALLERY_RECEIVER_ID_REQUIRED);
-            }
-        }
-    }
 }

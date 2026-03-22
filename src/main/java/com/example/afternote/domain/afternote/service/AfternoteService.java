@@ -3,6 +3,7 @@ package com.example.afternote.domain.afternote.service;
 import com.example.afternote.domain.afternote.dto.*;
 import com.example.afternote.domain.afternote.model.*;
 import com.example.afternote.domain.afternote.repository.AfternoteRepository;
+import com.example.afternote.domain.afternote.service.relation.EncryptedKey;
 import com.example.afternote.domain.image.service.S3Service;
 import com.example.afternote.global.exception.CustomException;
 import com.example.afternote.global.exception.ErrorCode;
@@ -78,13 +79,13 @@ public class AfternoteService {
                 AfternoteCreateRequest.CredentialsRequest credentials = null;
                 
                 String accountId = afternote.getSecureContents().stream()
-                        .filter(sc -> "account_id".equals(sc.getKeyName()))
+                        .filter(sc -> EncryptedKey.ACCOUNT_ID.matches(sc.getKeyName()))
                         .findFirst()
                         .map(sc -> chaChaEncryptionUtil.decrypt(sc.getEncryptedValue()))
                         .orElse(null);
                 
                 String accountPassword = afternote.getSecureContents().stream()
-                        .filter(sc -> "account_password".equals(sc.getKeyName()))
+                        .filter(sc -> EncryptedKey.ACCOUNT_PASSWORD.matches(sc.getKeyName()))
                         .findFirst()
                         .map(sc -> chaChaEncryptionUtil.decrypt(sc.getEncryptedValue()))
                         .orElse(null);

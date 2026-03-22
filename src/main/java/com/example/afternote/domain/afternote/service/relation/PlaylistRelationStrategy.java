@@ -13,6 +13,8 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrategy {
 
+    private static final String DEFAULT_PLAYLIST_TITLE = "추모 플레이리스트";
+
     private final AfternotePlaylistRepository playlistRepository;
 
     @Override
@@ -105,7 +107,7 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
     ) {
         return AfternotePlaylist.builder()
                 .afternote(afternote)
-                .title(atmosphere != null ? atmosphere : "추모 플레이리스트")
+                .title(atmosphere != null ? atmosphere : DEFAULT_PLAYLIST_TITLE)
                 .atmosphere(atmosphere)
                 .memorialPhotoUrl(memorialPhotoUrl)
                 .memorialVideo(memorialVideo)

@@ -253,20 +253,9 @@ public class AfternoteService {
         }
         
         afternote.update(title, afternote.getSortOrder(), leaveMessage, actions);
-        
-        // 관계 데이터 업데이트 (제공된 경우만 PATCH 방식으로 업데이트)
-        // 모든 카테고리에서 receivers 업데이트 가능
-        if (request.getReceivers() != null) {
-            relationService.updateReceivers(afternote, request);
-        }
-        
-        // 카테고리별 추가 업데이트
-        if (afternote.getCategoryType() == AfternoteCategoryType.SOCIAL && request.getCredentials() != null) {
-            relationService.updateSocialCredentials(afternote, request);
-        } else if (afternote.getCategoryType() == AfternoteCategoryType.PLAYLIST && request.getPlaylist() != null) {
-            // PATCH 방식: 제공된 필드만 업데이트
-            relationService.updatePlaylist(afternote, request);
-        }
+
+        // 관계 데이터 업데이트 (카테고리 전략 + 공통 receivers 처리)
+        relationService.updateRelationsByCategory(afternote, request, afternote.getCategoryType());
         
         return AfternoteCreateResponse.builder()
                 .afternoteId(afternote.getId())

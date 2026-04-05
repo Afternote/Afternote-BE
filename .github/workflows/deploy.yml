@@ -75,11 +75,11 @@ jobs:
             fi
 
             # 1. 최신 이미지 pull 후 서비스 갱신 (.env 파일은 EC2에서 수동으로 관리)
-            sudo docker-compose pull
-            sudo docker-compose up -d --remove-orphans --pull always
+            sudo docker compose pull
+            sudo docker compose up -d --remove-orphans --pull always
 
             # 2. 서버 기동 로그 확인
-            sudo docker-compose logs afternote-server --tail=30
+            sudo docker compose logs --tail=30 afternote-server 
 
             # 3. 안 쓰는 이미지 정리
             sudo docker image prune -f

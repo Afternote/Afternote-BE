@@ -1,73 +1,56 @@
 services:
   # =========================================
-  # 1. MySQL (로컬 DB)
-  # =========================================
-  afternote-db:
-    image: mysql:8.0
-    container_name: afternote-db
-    platform: linux/amd64 # 맥북 호환성
-    restart: always
-    environment:
-      MYSQL_DATABASE: afternote
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_USER: admin
-      MYSQL_PASSWORD: password
-      TZ: Asia/Seoul
-    ports:
-      - "3306:3306"
-    volumes:
-      - ./db_data:/var/lib/mysql # 데이터 저장소
-    command: # 한글 깨짐 방지 설정
-      - --character-set-server=utf8mb4
-      - --collation-server=utf8mb4_unicode_ci
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  # =========================================
-  # 2. Redis (캐시/세션)
+  # 1. Redis (캐시/세션)
   # =========================================
   afternote-redis:
     image: redis:alpine
     container_name: afternote-redis
+    restart: always
     ports:
       - "6379:6379"
 
   # =========================================
-  # 3. Spring Boot (내 서버)
+  # 2. Spring Boot (AWS RDS 연결)
   # =========================================
   afternote-server:
-    build: . # 현재 폴더의 Dockerfile을 보고 직접 빌드해라!
+    image: ${DOCKER_IMAGE}
     container_name: afternote-server
     depends_on:
-      afternote-db:
-        condition: service_healthy # ⭐ [추가 2] DB가 '건강함' 상태가 될 때까지 대기
       afternote-redis:
         condition: service_started
+    restart: always
     environment:
-      # ⭐ 여기서 'dev'로 설정해야 테이블이 자동 생성됩니다!
-      SPRING_PROFILES_ACTIVE: dev
+      SPRING_PROFILES_ACTIVE: prod
       TZ: Asia/Seoul
-
-      # 도커 내부 통신용 주소 (localhost 대신 서비스명 사용)
     env_file:
-      - .env
+      - .env.production
 
+  # =========================================
+  # 3. Nginx (리버스 프록시)
+  # =========================================
   afternote-nginx:
     image: nginx:alpine
     container_name: afternote-nginx
+    restart: always
     ports:
-      - "80:80" # 외부(80) -> Nginx(80) -> Spring(8080)
+      - "80:80"
+      - "443:443"
     volumes:
-      - ./nginx/nginx.conf:/etc/nginx/nginx.conf # 로컬 개발용 설정
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
     depends_on:
-      - afternote-server # 서버가 켜져야 Nginx도 의미가 있음
+      - afternote-server
 
+  # =========================================
+  # 4. Certbot (인증서 갱신)
+  # =========================================
   afternote-certbot:
     image: certbot/certbot
     container_name: afternote-certbot
+    restart: always
     volumes:
       - ./data/certbot/conf:/etc/letsencrypt
       - ./data/certbot/www:/var/www/certbot
+    entrypoint: /bin/sh -c
+    command: "trap exit TERM; while :; do certbot renew --webroot -w /var/www/certbot --quiet; sleep 12h & wait $${!}; done;"

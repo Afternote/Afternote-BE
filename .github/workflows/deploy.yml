@@ -2,7 +2,7 @@ name: Deploy to EC2 with Docker
 
 on:
   push:
-    branches: ["release"] # main 또는 master 브랜치에 푸시하면 실행
+    branches: ["release"]
 
 permissions:
   contents: read
@@ -53,22 +53,33 @@ jobs:
           script: |
             cd ~/deploy
 
-            # 1. 기존 서버 중지
-            sudo docker-compose down afternote-server || true
+            # 0. 배포 필수 파일/디렉토리 존재 체크
+            if [ ! -f docker-compose.yml ]; then
+              echo "[ERROR] docker-compose.yml not found in ~/deploy"
+              exit 1
+            fi
 
-            # 2. 최신 Docker 이미지 받기
-            sudo docker pull ${{ secrets.DOCKER_USERNAME }}/afternote-server:latest
+            if [ ! -f nginx/nginx.conf ]; then
+              echo "[ERROR] nginx/nginx.conf not found in ~/deploy/nginx"
+              exit 1
+            fi
 
-            # 3. 이미지를 사용하도록 docker-compose.yml 수정
-            sudo sed -i 's|build: .*|image: ${{ secrets.DOCKER_USERNAME }}/afternote-server:latest|g' docker-compose.yml
-            sudo sed -i 's|SPRING_PROFILES_ACTIVE: dev|SPRING_PROFILES_ACTIVE: prod|g' docker-compose.yml
+            if [ ! -d data/certbot/conf ]; then
+              echo "[ERROR] data/certbot/conf directory not found"
+              exit 1
+            fi
 
-            # 4. 서버 시작 (DB가 준비될 때까지 대기)
-            sudo docker-compose up -d afternote-server
+            if [ ! -d data/certbot/www ]; then
+              echo "[ERROR] data/certbot/www directory not found"
+              exit 1
+            fi
 
-            # 5. 서버 로그 확인 (시작 대기)
-            sleep 10
-            sudo docker-compose logs afternote-server --tail=20
+            # 1. 최신 이미지 pull 후 서비스 갱신 (.env 파일은 EC2에서 수동으로 관리)
+            sudo docker compose pull
+            sudo docker compose up -d --remove-orphans
 
-            # 6. 안 쓰는 이미지 정리
+            # 2. 서버 기동 로그 확인
+            sudo docker compose logs afternote-server --tail=30
+
+            # 3. 안 쓰는 이미지 정리
             sudo docker image prune -f

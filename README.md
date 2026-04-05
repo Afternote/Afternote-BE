@@ -69,12 +69,10 @@ AfterNote 프로젝트의 백엔드 서버입니다.
 
 ![img_1.png](img_1.png)
 
-
-
 ### 📋 엔티티 상세 정보
 
-| 테이블                       | 주요 필드                                    | 설명                  |
-| ---------------------------- | -------------------------------------------- | --------------------- |
+| 테이블                   | 주요 필드                                    | 설명                  |
+| ------------------------ | -------------------------------------------- | --------------------- |
 | USERS                    | id, email, password, name, provider          | 사용자 계정 정보      |
 | RECEIVER                 | id, name, phone, email, relationship         | 수신자 정보           |
 | AFTERNOON_NOTE           | id, category, title, leave_message           | 애프터노트 메인       |
@@ -139,32 +137,29 @@ MIND_RECORD 생성
 ├─ EMOTION 감정 키워드 저장
 └─ SONG 참조 (선택사항)
 
-
-
-
 #### 🟡 Domain Layer (비즈니스 로직)
 
-| 모듈 | 설명 | 주요 클래스 |
-|-----|------|-----------|
-| auth/ | 회원가입, 로그인, 소셜 로그인 | AuthController, AuthService, SocialLoginFactory |
-| user/ | 사용자 관리 (프로필, 설정, 탈퇴) | UserController, UserService, UserRepository |
-| afternote/ | 애프터노트 (SOCIAL/GALLERY/PLAYLIST) | AfternoteController, AfternoteService, AfternoteValidator |
-| timeletter/ | 타임레터 (사후 발송 편지) | TimeLetterController, TimeLetterService |
-| receiver/ | 수신자 관리 | ReceiverController, ReceiverService |
-| mindrecord/ | 마인드레코드 & 감정 분석 | MindRecordService, EmotionService, GeminiService |
-| image/ | 이미지/파일 처리 (S3) | ImageController, S3Service |
+| 모듈        | 설명                                 | 주요 클래스                                               |
+| ----------- | ------------------------------------ | --------------------------------------------------------- |
+| auth/       | 회원가입, 로그인, 소셜 로그인        | AuthController, AuthService, SocialLoginFactory           |
+| user/       | 사용자 관리 (프로필, 설정, 탈퇴)     | UserController, UserService, UserRepository               |
+| afternote/  | 애프터노트 (SOCIAL/GALLERY/PLAYLIST) | AfternoteController, AfternoteService, AfternoteValidator |
+| timeletter/ | 타임레터 (사후 발송 편지)            | TimeLetterController, TimeLetterService                   |
+| receiver/   | 수신자 관리                          | ReceiverController, ReceiverService                       |
+| mindrecord/ | 마인드레코드 & 감정 분석             | MindRecordService, EmotionService, GeminiService          |
+| image/      | 이미지/파일 처리 (S3)                | ImageController, S3Service                                |
 
 #### 🔵 Global Layer (공통 기능)
 
-| 모듈 | 설명 |
-|-----|------|
-| jwt/ | JWT 토큰 생성/검증 (JwtTokenProvider, JwtAuthenticationFilter) |
-| util/ | 유틸 클래스 (ChaChaEncryptionUtil: ChaCha20-Poly1305) |
-| service/ | 글로벌 서비스 (GeminiService, EmailService, TokenService) |
-| config/ | Spring 설정 (SecurityConfig, RestTemplateConfig, CacheConfig) |
-| resolver/ | Custom Resolver (@UserId 어노테이션 처리) |
-| exception/ | 예외 처리 (CustomException, ErrorCode: 40+ 에러 코드) |
-| common/ | 공통 응답 포맷 (ApiResponse) |
+| 모듈       | 설명                                                           |
+| ---------- | -------------------------------------------------------------- |
+| jwt/       | JWT 토큰 생성/검증 (JwtTokenProvider, JwtAuthenticationFilter) |
+| util/      | 유틸 클래스 (ChaChaEncryptionUtil: ChaCha20-Poly1305)          |
+| service/   | 글로벌 서비스 (GeminiService, EmailService, TokenService)      |
+| config/    | Spring 설정 (SecurityConfig, RestTemplateConfig, CacheConfig)  |
+| resolver/  | Custom Resolver (@UserId 어노테이션 처리)                      |
+| exception/ | 예외 처리 (CustomException, ErrorCode: 40+ 에러 코드)          |
+| common/    | 공통 응답 포맷 (ApiResponse)                                   |
 
 ---
 
@@ -187,8 +182,8 @@ afternote/service/
 ├── AfternoteService - 비즈니스 로직
 └── AfternoteRelationService - 관계 데이터 처리
 
-
 Repository Pattern (데이터 접근)
+
 - Spring Data JPA를 사용한 자동 쿼리 생성
 - JpaRepository 상속으로 기본 CRUD 제공
 
@@ -196,63 +191,90 @@ Repository Pattern (데이터 접근)
 
 ### 환경 설정
 
-1. `.env.example` 파일을 복사하여 `.env` 파일을 생성합니다.
+#### 1) 로컬 개발 환경 (앱 로컬 실행 + DB/Redis Docker)
+
+1. DB/Redis 로컬 인프라를 먼저 실행합니다.
 
 ```bash
-cp .env.example .env
-````
-
-2. `.env` 파일에서 필요한 환경 변수를 설정합니다:
-
-```env
-# Database
-MYSQL_ROOT_PASSWORD=
-MYSQL_DATABASE=afternote
-MYSQL_USER=
-MYSQL_PASSWORD=
-
-# JWT
-JWT_SECRET_KEY=
-JWT_ACCESS_TOKEN_EXPIRATION=
-JWT_REFRESH_TOKEN_EXPIRATION=
-
-# ChaCha20 Encryption
-CHACHA20_SECRET_KEY=
-
-# AWS S3
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-AWS_S3_BUCKET_NAME=
-
-# Google Gemini API
-GEMINI_API_KEY=
-
-# Kakao OAuth
-KAKAO_CLIENT_ID=
-
-# Email
-MAIL_ADDRESS=
-MAIL_PASSWORD=
+docker compose -f docker-compose.local.yml up -d
 ```
+
+2. IntelliJ Run Configuration의 Environment variables에 아래 값을 넣습니다.
+
+```bash
+SPRING_PROFILES_ACTIVE=local
+DB_HOST=localhost
+DB_PORT=3306
+DB_NAME=afternote-db
+DB_USERNAME=admin
+DB_PASSWORD=password
+REDIS_HOST=localhost
+REDIS_PORT=6379
+JWT_SECRET=...
+CHACHA20_SECRET_KEY=...
+SERVER_PORT=8080
+CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+```
+
+3. IntelliJ에서 애플리케이션을 직접 실행합니다.
+
+- 로컬 프로파일: `local`
+- Swagger UI: `http://localhost:8080/swagger-ui.html`
+
+#### 2) 배포 환경 (Docker + RDS)
+
+1. `.env.production.example` 파일을 복사하여 `.env.production` 파일을 생성합니다.
+
+```bash
+cp .env.production.example .env.production
+```
+
+2. RDS 접속 정보 및 운영 환경 시크릿을 `.env.production`에 설정합니다.
+3. 아래 명령으로 배포 스택을 실행합니다.
+
+```bash
+docker compose --env-file .env.production up -d
+```
+
+> 배포 스택 구성: `nginx + spring + redis + certbot`  
+> DB는 Docker 컨테이너가 아닌 AWS RDS를 사용합니다.
 
 ### 실행 방법
 
-Docker Compose 사용 (권장):
+로컬 인프라(DB/Redis) 실행:
 
 ```bash
-docker-compose up -d
+docker compose -f docker-compose.local.yml up -d
 ```
 
-Gradle 로컬 실행:
+로컬 앱 실행:
 
 ```bash
-./gradlew bootRun
+IntelliJ Run
+```
+
+로컬 인프라 중지:
+
+```bash
+docker compose -f docker-compose.local.yml down
+```
+
+배포 스택 실행:
+
+```bash
+docker compose --env-file .env.production up -d
 ```
 
 테스트 실행:
 
 ```bash
 ./gradlew test
+```
+
+운영 로그 확인:
+
+```bash
+docker compose --env-file .env.production logs -f afternote-server
 ```
 
 ---
@@ -288,11 +310,5 @@ Gradle 로컬 실행:
 
 ## 📖 API 문서
 
-- Swagger UI: http://localhost:8080/swagger-ui.html
+- Swagger UI (local 프로파일): http://localhost:8080/swagger-ui.html
 - 모든 API 엔드포인트는 JWT 인증 또는 OAuth 토큰 필요
-
-## API 문서
-
-서버 실행 후 다음 URL에서 API 문서를 확인할 수 있습니다:
-
-- http://localhost:8080

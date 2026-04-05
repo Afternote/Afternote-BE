@@ -25,9 +25,9 @@ spring:
 
 springdoc:
   swagger-ui:
-    enabled: false
+    enabled: true
   api-docs:
-    enabled: false
+    enabled: true
 
 logging:
   level:

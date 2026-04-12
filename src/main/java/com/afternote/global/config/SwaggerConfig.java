@@ -19,7 +19,7 @@ public class SwaggerConfig {
         return new OpenAPI()
                 .servers(List.of(
                         new Server().url("https://afternote.kro.kr").description("Production Server"),
-                        new Server().url("http://localhost").description("Local Server")
+                        new Server().url("http://localhost:8080").description("Local Server")
                 ))
                 .components(new Components()
                         .addSecuritySchemes("bearer-key",

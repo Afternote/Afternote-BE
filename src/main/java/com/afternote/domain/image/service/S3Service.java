@@ -69,7 +69,7 @@ public class S3Service {
             PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
             String presignedUrl = presignedRequest.url().toString();
             String fileUrl = String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
-
+            log.debug("Generate presigned url for file {}", fileUrl);
             return PresignedUrlResponse.builder()
                     .presignedUrl(presignedUrl)
                     .fileUrl(fileUrl)

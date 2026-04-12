@@ -275,10 +275,15 @@ public class TimeLetterService {
                 .map(req -> TimeLetterMedia.builder()
                         .timeLetter(timeLetter)
                         .mediaType(req.getMediaType())
-                        .mediaUrl(req.getMediaUrl())
+                        .mediaUrl(normalizeKey(req.getMediaUrl()))
                         .build())
                 .collect(Collectors.toList());
 
         return timeLetterMediaRepository.saveAll(mediaList);
+    }
+
+    private String normalizeKey(String rawUrlOrKey) {
+        String key = s3Service.extractStorageKey(rawUrlOrKey);
+        return key != null ? key : rawUrlOrKey;
     }
 }

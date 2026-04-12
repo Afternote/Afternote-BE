@@ -46,10 +46,16 @@ public class UserService {
 
         User user = findUserById(userId);
 
+        String profileImageKey = request.getProfileImageUrl();
+        if (profileImageKey != null && !profileImageKey.isBlank()) {
+            String extracted = s3Service.extractStorageKey(profileImageKey);
+            profileImageKey = extracted != null ? extracted : profileImageKey;
+        }
+
         user.updateProfile(
                 request.getName(),
                 request.getPhone(),
-                request.getProfileImageUrl()
+                profileImageKey
         );
 
         return UserResponse.from(user, s3Service::generateGetPresignedUrl);

@@ -8,6 +8,7 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.function.Function;
 
 @Schema(description = "수신한 애프터노트 상세 응답")
 @Getter
@@ -103,6 +104,11 @@ public class ReceivedAfternoteDetailResponse {
     }
 
     public static ReceivedAfternoteDetailResponse fromPlaylist(Afternote afternote, String senderName) {
+        return fromPlaylist(afternote, senderName, Function.identity());
+        }
+
+        public static ReceivedAfternoteDetailResponse fromPlaylist(Afternote afternote, String senderName,
+                                    Function<String, String> urlResolver) {
         PlaylistInfo playlistInfo = null;
 
         if (afternote.getPlaylist() != null) {
@@ -112,15 +118,15 @@ public class ReceivedAfternoteDetailResponse {
                     .map(item -> SongInfo.builder()
                             .title(item.getSongTitle())
                             .artist(item.getArtist())
-                            .coverUrl(item.getCoverUrl())
+                    .coverUrl(urlResolver.apply(item.getCoverUrl()))
                             .build())
                     .toList();
 
             MemorialVideoInfo video = null;
             if (pl.getMemorialVideo() != null) {
                 video = MemorialVideoInfo.builder()
-                        .videoUrl(pl.getMemorialVideo().getVideoUrl())
-                        .thumbnailUrl(pl.getMemorialVideo().getThumbnailUrl())
+                .videoUrl(urlResolver.apply(pl.getMemorialVideo().getVideoUrl()))
+                .thumbnailUrl(urlResolver.apply(pl.getMemorialVideo().getThumbnailUrl()))
                         .build();
             }
 

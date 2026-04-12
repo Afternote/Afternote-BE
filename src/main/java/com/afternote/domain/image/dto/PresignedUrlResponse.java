@@ -14,6 +14,10 @@ public class PresignedUrlResponse {
             example = "https://afternote-bucket.s3.ap-northeast-2.amazonaws.com/profiles/...")
     private String presignedUrl;
 
+    @Schema(description = "업로드 파일 Key (DB 저장용)",
+            example = "profiles/uuid.jpg")
+    private String fileKey;
+
     @Schema(description = "업로드 완료 후 사용할 파일 URL",
             example = "https://afternote-bucket.s3.ap-northeast-2.amazonaws.com/profiles/uuid.jpg")
     private String fileUrl;

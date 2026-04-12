@@ -81,7 +81,8 @@ public class ReceiverAuthService {
                         authCode,
                         request.getDeathCertificateUrl(),
                         request.getFamilyRelationCertificateUrl()
-                )
+            ),
+            s3Service::resolvePublicUrl
         );
     }
 
@@ -100,7 +101,8 @@ public class ReceiverAuthService {
     public DeliveryVerificationResponse getDeliveryVerificationStatus(String authCode) {
         findReceiverByAuthCode(authCode);
         return DeliveryVerificationResponse.from(
-                deliveryVerificationService.getVerificationStatus(authCode)
+                deliveryVerificationService.getVerificationStatus(authCode),
+                s3Service::resolvePublicUrl
         );
     }
 

@@ -7,6 +7,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -31,6 +32,9 @@ public class S3Service {
 
     @Value("${cloud.aws.s3.region}")
     private String region;
+
+    @Value("${cloud.aws.public-base-url:}")
+    private String publicBaseUrl;
 
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
             "jpg", "jpeg", "png", "gif", "webp", "heic",   // 이미지
@@ -68,10 +72,11 @@ public class S3Service {
         try {
             PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
             String presignedUrl = presignedRequest.url().toString();
-            String fileUrl = String.format("https://%s.s3.%s.amazonaws.com/%s", bucket, region, key);
+            String fileUrl = resolvePublicUrl(key);
             log.debug("Generate presigned url for file {}", fileUrl);
             return PresignedUrlResponse.builder()
                     .presignedUrl(presignedUrl)
+                .fileKey(key)
                     .fileUrl(fileUrl)
                     .contentType(contentType)
                     .build();
@@ -81,41 +86,88 @@ public class S3Service {
         }
     }
 
-    public String generateGetPresignedUrl(String rawUrl) {
-        if (rawUrl == null || rawUrl.isBlank()) {
+    public String generateGetPresignedUrl(String rawUrlOrKey) {
+        if (!StringUtils.hasText(rawUrlOrKey)) {
             return null;
         }
 
-        String key = extractKeyFromUrl(rawUrl);
-        if (key == null) {
-            return rawUrl;
+        String key = extractStorageKey(rawUrlOrKey);
+        if (!StringUtils.hasText(key)) {
+            return rawUrlOrKey;
         }
 
-        try {
-            GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                    .bucket(bucket)
-                    .key(key)
-                    .build();
-
-            GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                    .signatureDuration(GET_PRESIGNED_URL_EXPIRATION)
-                    .getObjectRequest(getObjectRequest)
-                    .build();
-
-            PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
-            return presignedRequest.url().toString();
-        } catch (Exception e) {
-            log.error("GET Presigned URL generation failed for rawUrl: {}", rawUrl, e);
-            throw new CustomException(ErrorCode.PRESIGNED_URL_GENERATION_FAILED);
-        }
+        return resolvePublicUrl(key);
     }
 
-    private String extractKeyFromUrl(String rawUrl) {
-        String prefix = String.format("https://%s.s3.%s.amazonaws.com/", bucket, region);
-        if (rawUrl.startsWith(prefix)) {
-            return rawUrl.substring(prefix.length());
+    public String extractStorageKey(String rawUrlOrKey) {
+        if (!StringUtils.hasText(rawUrlOrKey)) {
+            return null;
         }
+
+        String value = rawUrlOrKey.trim();
+        String s3Prefix = buildS3Prefix();
+        String publicPrefix = buildPublicPrefix();
+
+        if (value.startsWith(s3Prefix)) {
+            return sanitizeKey(value.substring(s3Prefix.length()));
+        }
+
+        if (StringUtils.hasText(publicPrefix) && value.startsWith(publicPrefix)) {
+            return sanitizeKey(value.substring(publicPrefix.length()));
+        }
+
+        if (!value.startsWith("http://") && !value.startsWith("https://")) {
+            return sanitizeKey(value);
+        }
+
         return null;
+    }
+
+    public boolean isManagedObjectKeyInDirectory(String rawUrlOrKey, String directory) {
+        if (!StringUtils.hasText(directory)) {
+            return false;
+        }
+
+        String key = extractStorageKey(rawUrlOrKey);
+        return StringUtils.hasText(key) && key.startsWith(directory + "/");
+    }
+
+    public String resolvePublicUrl(String rawUrlOrKey) {
+        if (!StringUtils.hasText(rawUrlOrKey)) {
+            return null;
+        }
+
+        String key = extractStorageKey(rawUrlOrKey);
+        if (!StringUtils.hasText(key)) {
+            return rawUrlOrKey;
+        }
+
+        return buildPublicPrefix() + key;
+    }
+
+    private String buildS3Prefix() {
+        return String.format("https://%s.s3.%s.amazonaws.com/", bucket, region);
+    }
+
+    private String buildPublicPrefix() {
+        if (!StringUtils.hasText(publicBaseUrl)) {
+            return buildS3Prefix();
+        }
+
+        String normalized = publicBaseUrl.trim().replaceAll("/+$", "");
+        if (!normalized.startsWith("http://") && !normalized.startsWith("https://")) {
+            normalized = "https://" + normalized;
+        }
+        return normalized + "/";
+    }
+
+    private String sanitizeKey(String key) {
+        if (!StringUtils.hasText(key)) {
+            return null;
+        }
+
+        String sanitized = key.trim().replaceFirst("^/+", "");
+        return sanitized.isBlank() ? null : sanitized;
     }
 
     private void validateExtension(String extension) {

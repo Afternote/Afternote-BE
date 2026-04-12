@@ -5,6 +5,7 @@ import com.afternote.domain.receiver.model.VerificationStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
+import java.util.function.Function;
 
 @Schema(description = "사망확인 서류 제출 응답")
 public record DeliveryVerificationResponse(
@@ -22,11 +23,15 @@ public record DeliveryVerificationResponse(
         LocalDateTime createdAt
 ) {
     public static DeliveryVerificationResponse from(DeliveryVerification verification) {
+        return from(verification, Function.identity());
+    }
+
+    public static DeliveryVerificationResponse from(DeliveryVerification verification, Function<String, String> urlResolver) {
         return new DeliveryVerificationResponse(
                 verification.getId(),
                 verification.getStatus(),
-                verification.getDeathCertificateUrl(),
-                verification.getFamilyRelationCertificateUrl(),
+                urlResolver.apply(verification.getDeathCertificateUrl()),
+                urlResolver.apply(verification.getFamilyRelationCertificateUrl()),
                 verification.getAdminNote(),
                 verification.getCreatedAt()
         );

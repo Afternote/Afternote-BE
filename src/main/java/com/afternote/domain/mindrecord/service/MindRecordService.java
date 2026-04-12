@@ -292,9 +292,14 @@ public class MindRecordService {
                 .map(req -> MindRecordImage.builder()
                         .mindRecord(mindRecord)
                         .mediaType(req.getMediaType())
-                        .imageUrl(req.getImageUrl())
+                        .imageUrl(normalizeKey(req.getImageUrl()))
                         .build())
                 .toList();
         mindRecordImageRepository.saveAll(images);
+    }
+
+    private String normalizeKey(String rawUrlOrKey) {
+        String key = s3Service.extractStorageKey(rawUrlOrKey);
+        return key != null ? key : rawUrlOrKey;
     }
 }

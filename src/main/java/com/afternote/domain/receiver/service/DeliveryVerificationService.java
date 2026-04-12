@@ -12,7 +12,6 @@ import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,12 +27,6 @@ public class DeliveryVerificationService {
     private final UserRepository userRepository;
     private final S3Service s3Service;
 
-    @Value("${cloud.aws.s3.bucket}")
-    private String bucket;
-
-    @Value("${cloud.aws.s3.region}")
-    private String region;
-
     @Transactional
     public DeliveryVerification submitVerification(String authCode, String deathCertUrl, String familyRelationCertUrl) {
         Receiver receiver = receiverRepository.findByAuthCode(authCode)
@@ -46,11 +39,13 @@ public class DeliveryVerificationService {
             throw new CustomException(ErrorCode.CONDITION_TYPE_MISMATCH);
         }
 
-        // Validate document URLs
-        String s3Prefix = String.format("https://%s.s3.%s.amazonaws.com/documents/", bucket, region);
-        if (!deathCertUrl.startsWith(s3Prefix) || !familyRelationCertUrl.startsWith(s3Prefix)) {
+        if (!s3Service.isManagedObjectKeyInDirectory(deathCertUrl, "documents")
+                || !s3Service.isManagedObjectKeyInDirectory(familyRelationCertUrl, "documents")) {
             throw new CustomException(ErrorCode.INVALID_DELIVERY_CONDITION);
         }
+
+        String deathCertKey = s3Service.extractStorageKey(deathCertUrl);
+        String familyRelationCertKey = s3Service.extractStorageKey(familyRelationCertUrl);
 
         if (deliveryVerificationRepository.existsByUserIdAndReceiverIdAndStatus(
                 user.getId(), receiver.getId(), VerificationStatus.PENDING)) {
@@ -60,8 +55,8 @@ public class DeliveryVerificationService {
         DeliveryVerification verification = DeliveryVerification.builder()
                 .userId(user.getId())
                 .receiverId(receiver.getId())
-                .deathCertificateUrl(deathCertUrl)
-                .familyRelationCertificateUrl(familyRelationCertUrl)
+            .deathCertificateUrl(deathCertKey)
+            .familyRelationCertificateUrl(familyRelationCertKey)
                 .build();
 
         return deliveryVerificationRepository.save(verification);

@@ -6,6 +6,7 @@ import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import com.afternote.domain.afternote.model.AfternotePlaylist;
 import com.afternote.domain.afternote.model.AfternotePlaylistItem;
 import com.afternote.domain.afternote.repository.AfternotePlaylistRepository;
+import com.afternote.domain.image.service.S3Service;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
@@ -16,6 +17,7 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
     private static final String DEFAULT_PLAYLIST_TITLE = "추모 플레이리스트";
 
     private final AfternotePlaylistRepository playlistRepository;
+    private final S3Service s3Service;
 
     @Override
     public AfternoteCategoryType category() {
@@ -30,7 +32,7 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
         AfternotePlaylist playlist = createPlaylist(
                 afternote,
                 request.getPlaylist().getAtmosphere(),
-                request.getPlaylist().getMemorialPhotoUrl(),
+            normalizeKey(request.getPlaylist().getMemorialPhotoUrl()),
                 memorialVideo);
 
         playlist = playlistRepository.save(playlist);
@@ -54,7 +56,7 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
             AfternotePlaylist newPlaylist = createPlaylist(
                     afternote,
                     request.getPlaylist().getAtmosphere(),
-                    request.getPlaylist().getMemorialPhotoUrl(),
+                    normalizeKey(request.getPlaylist().getMemorialPhotoUrl()),
                     request.getPlaylist().getMemorialVideo() != null
                             ? createMemorialVideo(request.getPlaylist().getMemorialVideo())
                             : null);
@@ -76,7 +78,7 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
                 : null;
         playlist.update(
                 request.getPlaylist().getAtmosphere(),
-                request.getPlaylist().getMemorialPhotoUrl(),
+            normalizeKey(request.getPlaylist().getMemorialPhotoUrl()),
                 memorialVideo);
 
         if (request.getPlaylist().getSongs() != null) {
@@ -94,8 +96,8 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
         if (request == null) return null;
 
         return AfternotePlaylist.MemorialVideo.builder()
-                .videoUrl(request.getVideoUrl())
-                .thumbnailUrl(request.getThumbnailUrl())
+            .videoUrl(normalizeKey(request.getVideoUrl()))
+            .thumbnailUrl(normalizeKey(request.getThumbnailUrl()))
                 .build();
     }
 
@@ -123,8 +125,17 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
                 .playlist(playlist)
                 .songTitle(song.getTitle())
                 .artist(song.getArtist())
-                .coverUrl(song.getCoverUrl())
+                .coverUrl(normalizeKey(song.getCoverUrl()))
                 .sortOrder(sortOrder)
                 .build();
+    }
+
+    private String normalizeKey(String rawUrlOrKey) {
+        if (rawUrlOrKey == null || rawUrlOrKey.isBlank()) {
+            return rawUrlOrKey;
+        }
+
+        String key = s3Service.extractStorageKey(rawUrlOrKey);
+        return key != null ? key : rawUrlOrKey;
     }
 }

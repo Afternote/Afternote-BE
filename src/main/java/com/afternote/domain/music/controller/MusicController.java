@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/music")
+@RequestMapping("/api/v1/music")
 public class MusicController {
 
     private final ItunesService itunesService;

@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "MindRecord API", description = "마음의 기록 조회 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/mind-records")
+@RequestMapping("/api/v1/mind-records")
 public class MindRecordController {
 
     private final MindRecordService mindRecordService;

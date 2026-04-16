@@ -15,7 +15,7 @@ import java.util.List;
 
 @Tag(name = "Received API", description = "수신자 등록 API")
 @RestController
-@RequestMapping("/api/received")
+@RequestMapping("/api/v1/received")
 @RequiredArgsConstructor
 public class ReceivedController {
 

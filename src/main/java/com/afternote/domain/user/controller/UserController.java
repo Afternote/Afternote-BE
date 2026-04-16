@@ -16,7 +16,7 @@ import java.util.List;
 @Tag(name = "User API", description = "회원 관련 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/users")
+@RequestMapping("/api/v1/users")
 public class UserController {
 
     private final UserService userService;

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Receiver Auth API", description = "수신자 인증번호 기반 콘텐츠 조회 API")
 @RestController
-@RequestMapping("/api/receiver-auth")
+@RequestMapping("/api/v1/receiver-auth")
 @RequiredArgsConstructor
 public class ReceiverAuthController {
 

@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "📬 TimeLetter API", description = "타임레터 관리 API")
 @RestController
-@RequestMapping("/time-letters")
+@RequestMapping("/api/v1/time-letters")
 @RequiredArgsConstructor
 public class TimeLetterController {
 

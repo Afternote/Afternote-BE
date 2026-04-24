@@ -4,8 +4,6 @@ import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -16,7 +14,6 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor
-@EntityListeners(AuditingEntityListener.class)
 public class UserProvider {
 
     @Id
@@ -34,8 +31,7 @@ public class UserProvider {
     @Column(name = "provider_id")
     private String providerId;
 
-    @CreatedDate
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Builder

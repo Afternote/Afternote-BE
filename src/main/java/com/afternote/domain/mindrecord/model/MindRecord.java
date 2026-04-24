@@ -1,18 +1,18 @@
 package com.afternote.domain.mindrecord.model;
 
 import com.afternote.domain.user.model.User;
+import com.afternote.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "mind_records")
 @Getter
 @NoArgsConstructor
-public class MindRecord {
+public class MindRecord extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -40,27 +40,8 @@ public class MindRecord {
     @Column(nullable = false)
     private Boolean isDraft;
 
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
     @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
-
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
-
-    // 생성 시각 자동 세팅
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = this.createdAt;
-    }
-
-    // 수정 시각 자동 갱신
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 
     public static MindRecord create(
             User user,

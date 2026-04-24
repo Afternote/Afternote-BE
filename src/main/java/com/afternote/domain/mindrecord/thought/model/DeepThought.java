@@ -1,11 +1,10 @@
 package com.afternote.domain.mindrecord.thought.model;
 
 import com.afternote.domain.user.model.User;
+import com.afternote.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -13,7 +12,7 @@ import java.util.List;
 @Table(name = "deep_thought")
 @Getter
 @NoArgsConstructor
-public class DeepThought {
+public class DeepThought extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -41,12 +40,6 @@ public class DeepThought {
 
     @OneToMany(mappedBy = "deepThought", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DeepThoughtCategory> categories = new ArrayList<>();
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
 
     public static DeepThought create(
             User user,

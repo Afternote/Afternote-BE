@@ -5,8 +5,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -14,7 +12,6 @@ import java.time.LocalDateTime;
 @Table(name = "time_letter_media")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
 public class TimeLetterMedia {
 
     @Id
@@ -35,8 +32,7 @@ public class TimeLetterMedia {
     @Column(name = "media_url", nullable = false, length = 1000)
     private String mediaUrl;
 
-    @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Builder

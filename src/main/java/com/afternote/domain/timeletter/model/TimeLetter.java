@@ -1,14 +1,12 @@
 package com.afternote.domain.timeletter.model;
 
 import com.afternote.domain.user.model.User;
+import com.afternote.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -16,8 +14,7 @@ import java.time.LocalDateTime;
 @Table(name = "time_letters")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
-public class TimeLetter {
+public class TimeLetter extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -44,14 +41,6 @@ public class TimeLetter {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TimeLetterStatus status;
-
-    @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @LastModifiedDate
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
 
     @Builder
     public TimeLetter(User user, String title, String content, LocalDateTime sendAt, TimeLetterStatus status) {

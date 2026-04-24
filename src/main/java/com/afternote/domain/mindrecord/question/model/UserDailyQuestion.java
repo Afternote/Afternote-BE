@@ -1,17 +1,16 @@
 package com.afternote.domain.mindrecord.question.model;
 
 import com.afternote.domain.user.model.User;
+import com.afternote.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "user_daily_question")
 @Getter
 @NoArgsConstructor
-public class UserDailyQuestion {
+public class UserDailyQuestion extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -33,23 +32,6 @@ public class UserDailyQuestion {
 
     @Column(length = 10)
     private String emotion;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
-
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = this.createdAt;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
 
     public static UserDailyQuestion create(
             User user,

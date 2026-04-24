@@ -26,11 +26,6 @@ public class Emotion {
     @Column(length = 30, nullable = false)
     private String keyword;
     
-    @Column(nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime createdAt;
-    
-    @PrePersist
-    protected void onCreate() {
-        createdAt = LocalDateTime.now();
-    }
 }

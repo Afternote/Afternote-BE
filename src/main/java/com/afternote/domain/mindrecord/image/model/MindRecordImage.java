@@ -7,8 +7,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -16,7 +14,6 @@ import java.time.LocalDateTime;
 @Table(name = "mind_record_image")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
 public class MindRecordImage {
 
     @Id
@@ -34,8 +31,7 @@ public class MindRecordImage {
     @Column(name = "image_url", nullable = false, length = 1000)
     private String imageUrl;
 
-    @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
     @Builder

@@ -1,21 +1,16 @@
 package com.afternote.domain.receiver.model;
 
+import com.afternote.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "delivery_verification")
 @Getter
 @NoArgsConstructor(access = lombok.AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
-public class DeliveryVerification {
+public class DeliveryVerification extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -39,14 +34,6 @@ public class DeliveryVerification {
 
     @Column
     private String adminNote;
-
-    @CreatedDate
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @LastModifiedDate
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
 
     @Builder
     public DeliveryVerification(Long userId, Long receiverId, String deathCertificateUrl,

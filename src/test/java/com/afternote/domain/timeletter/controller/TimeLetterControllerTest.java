@@ -64,7 +64,7 @@ class TimeLetterControllerTest {
         given(timeLetterService.getTimeLetters(USER_ID))
                 .willReturn(TimeLetterListResponse.from(List.of(sampleResponse(1L, "title"))));
 
-        mockMvc.perform(get("/time-letters")
+        mockMvc.perform(get("/api/v1/time-letters")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
@@ -79,7 +79,7 @@ class TimeLetterControllerTest {
         given(timeLetterService.getTimeLetter(USER_ID, 10L))
                 .willReturn(sampleResponse(10L, "one"));
 
-        mockMvc.perform(get("/time-letters/{timeLetterId}", 10L)
+        mockMvc.perform(get("/api/v1/time-letters/{timeLetterId}", 10L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
@@ -102,7 +102,7 @@ class TimeLetterControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/time-letters")
+        mockMvc.perform(post("/api/v1/time-letters")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
@@ -122,7 +122,7 @@ class TimeLetterControllerTest {
                                                                 }
                                                                 """;
 
-                                mockMvc.perform(post("/time-letters")
+                                mockMvc.perform(post("/api/v1/time-letters")
                                                                                                 .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                                                                                                 .contentType(MediaType.APPLICATION_JSON)
                                                                                                 .content(requestBody))
@@ -135,7 +135,7 @@ class TimeLetterControllerTest {
         given(timeLetterService.getTemporaryTimeLetters(USER_ID))
                 .willReturn(TimeLetterListResponse.from(List.of(sampleResponse(30L, "draft"))));
 
-        mockMvc.perform(get("/time-letters/temporary")
+        mockMvc.perform(get("/api/v1/time-letters/temporary")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200));
@@ -148,7 +148,7 @@ class TimeLetterControllerTest {
     void deleteTimeLetters_Success() throws Exception {
         String requestBody = objectMapper.writeValueAsString(java.util.Map.of("timeLetterIds", List.of(1L, 2L)));
 
-        mockMvc.perform(post("/time-letters/delete")
+        mockMvc.perform(post("/api/v1/time-letters/delete")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
@@ -161,7 +161,7 @@ class TimeLetterControllerTest {
     @Test
     @DisplayName("임시저장 전체 삭제 API 성공")
     void deleteAllTemporary_Success() throws Exception {
-        mockMvc.perform(delete("/time-letters/temporary")
+        mockMvc.perform(delete("/api/v1/time-letters/temporary")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200));
@@ -182,7 +182,7 @@ class TimeLetterControllerTest {
                 }
                 """;
 
-        mockMvc.perform(patch("/time-letters/{timeLetterId}", 10L)
+        mockMvc.perform(patch("/api/v1/time-letters/{timeLetterId}", 10L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))

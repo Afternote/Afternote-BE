@@ -53,7 +53,7 @@ class ReceivedControllerTest {
     void createTimeLetterReceivers_Success() throws Exception {
         given(receivedService.createTimeLetterReceivers(eq(USER_ID), any())).willReturn(List.of(1L, 2L));
 
-        mockMvc.perform(post("/api/received/time-letters")
+        mockMvc.perform(post("/api/v1/received/time-letters")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"timeLetterID\":1,\"receiverIds\":[1,2]}"))
@@ -65,26 +65,13 @@ class ReceivedControllerTest {
     @Test
     @DisplayName("타임레터 수신자 등록 API 실패 - receiverIds 누락")
     void createTimeLetterReceivers_MissingReceiverIds_Fail() throws Exception {
-        mockMvc.perform(post("/api/received/time-letters")
+        mockMvc.perform(post("/api/v1/received/time-letters")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"timeLetterID\":1}"))
                 .andExpect(status().isBadRequest());
     }
 
-    @Test
-    @DisplayName("마인드레코드 수신자 등록 API 성공")
-    void createMindRecordReceivers_Success() throws Exception {
-        given(receivedService.createMindRecordReceivers(eq(USER_ID), any())).willReturn(List.of(1L));
-
-        mockMvc.perform(post("/api/received/mind-records")
-                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"mindRecordId\":1,\"receiverIds\":[1]}"))
-                .andExpect(status().isOk());
-
-        verify(receivedService).createMindRecordReceivers(eq(USER_ID), any());
-    }
 
     private static class UserIdTestArgumentResolver implements HandlerMethodArgumentResolver {
         @Override

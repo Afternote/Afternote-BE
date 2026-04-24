@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "deep_thought")
@@ -15,6 +17,7 @@ public class DeepThought {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @Column(name = "deep_thought_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -24,21 +27,20 @@ public class DeepThought {
     @Column(nullable = false, length = 100)
     private String title;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(nullable = false, length = 500)
     private String content;
 
     @Column(name = "is_draft", nullable = false)
     private Boolean isDraft;
 
-    @Column(name = "image_url", length = 1000)
+    @Column(name = "image_url", length = 100)
     private String imageUrl;
 
-    // 깊은 생각 카테고리
-    @Column(length = 50, nullable = false)
-    private String category;
-
-    @Column(length = 10)
+    @Column(length = 10, nullable = false)
     private String emotion;
+
+    @OneToMany(mappedBy = "deepThought", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<DeepThoughtCategory> categories = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -46,24 +48,12 @@ public class DeepThought {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    @PrePersist
-    protected void onCreate() {
-        this.createdAt = LocalDateTime.now();
-        this.updatedAt = this.createdAt;
-    }
-
-    @PreUpdate
-    protected void onUpdate() {
-        this.updatedAt = LocalDateTime.now();
-    }
-
     public static DeepThought create(
             User user,
             String title,
             String content,
             Boolean isDraft,
             String imageUrl,
-            String category,
             String emotion
     ) {
         DeepThought record = new DeepThought();
@@ -72,7 +62,6 @@ public class DeepThought {
         record.content = content;
         record.isDraft = isDraft;
         record.imageUrl = imageUrl;
-        record.category = category;
         record.emotion = emotion;
         return record;
     }

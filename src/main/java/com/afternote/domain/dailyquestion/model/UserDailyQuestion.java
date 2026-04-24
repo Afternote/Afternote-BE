@@ -30,22 +30,17 @@ public class UserDailyQuestion extends BaseEntity {
     @Column(name = "image_url", length = 1000)
     private String imageUrl;
 
-    @Column(length = 10)
-    private String emotion;
-
     public static UserDailyQuestion create(
             User user,
             DailyQuestion dailyQuestion,
             String content,
-            String imageUrl,
-            String emotion
+            String imageUrl
     ) {
         UserDailyQuestion userDailyQuestion = new UserDailyQuestion();
         userDailyQuestion.user = user;
         userDailyQuestion.dailyQuestion = dailyQuestion;
         userDailyQuestion.content = content;
         userDailyQuestion.imageUrl = imageUrl;
-        userDailyQuestion.emotion = emotion;
         return userDailyQuestion;
     }
 }

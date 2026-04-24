@@ -36,9 +36,6 @@ public class DeepThought extends BaseEntity {
     @Column(name = "image_url", length = 100)
     private String imageUrl;
 
-    @Column(length = 10, nullable = false)
-    private String emotion;
-
     @OneToMany(mappedBy = "deepThought", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DeepThoughtCategory> categories = new ArrayList<>();
 
@@ -47,8 +44,7 @@ public class DeepThought extends BaseEntity {
             String title,
             String content,
             Boolean isDraft,
-            String imageUrl,
-            String emotion
+            String imageUrl
     ) {
         DeepThought record = new DeepThought();
         record.user = user;
@@ -56,7 +52,6 @@ public class DeepThought extends BaseEntity {
         record.content = content;
         record.isDraft = isDraft;
         record.imageUrl = imageUrl;
-        record.emotion = emotion;
         return record;
     }
 }

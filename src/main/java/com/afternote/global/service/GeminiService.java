@@ -43,7 +43,7 @@ public class GeminiService {
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
 
         String keywordsString = emotionRepository.findByUserIdAndCreatedAtAfter(userId,sevenDaysAgo).stream()
-                .map(Emotion::getKeyword)
+            .map(Emotion::getEmotionCategory)
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining(" "));
 

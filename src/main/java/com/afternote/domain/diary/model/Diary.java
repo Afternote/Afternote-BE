@@ -32,17 +32,36 @@ public class Diary extends BaseEntity {
     @Column(name = "image_url", length = 1000)
     private String imageUrl;
 
-    @Column(length = 10)
-    private String emotion;
+    @Enumerated(EnumType.STRING)
+    @Column(name = "today_mood", length = 20)
+    private TodayMood todayMood;
 
-    public static Diary create(User user, String title, String content, Boolean isDraft, String imageUrl, String emotion) {
+    public static Diary create(User user, String title, String content, Boolean isDraft, String imageUrl, TodayMood todayMood) {
         Diary diary = new Diary();
         diary.user = user;
         diary.title = title;
         diary.content = content;
         diary.isDraft = isDraft;
         diary.imageUrl = imageUrl;
-        diary.emotion = emotion;
+        diary.todayMood = todayMood;
         return diary;
+    }
+
+    public void update(String title, String content, Boolean isDraft, String imageUrl, TodayMood todayMood) {
+        if (title != null) {
+            this.title = title;
+        }
+        if (content != null) {
+            this.content = content;
+        }
+        if (isDraft != null) {
+            this.isDraft = isDraft;
+        }
+        if (imageUrl != null) {
+            this.imageUrl = imageUrl;
+        }
+        if (todayMood != null) {
+            this.todayMood = todayMood;
+        }
     }
 }

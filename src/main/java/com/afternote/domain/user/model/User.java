@@ -53,16 +53,16 @@ public class User extends BaseEntity {
     private java.util.List<com.afternote.domain.timeletter.model.TimeLetter> timeLetters = new java.util.ArrayList<>(); // 작성한 타임레터 목록
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<com.afternote.domain.mindrecord.diary.model.Diary> diaries = new java.util.ArrayList<>();
+    private java.util.List<com.afternote.domain.diary.model.Diary> diaries = new java.util.ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<com.afternote.domain.mindrecord.thought.model.DeepThought> deepThoughts = new java.util.ArrayList<>();
+    private java.util.List<com.afternote.domain.deepthought.model.DeepThought> deepThoughts = new java.util.ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private java.util.List<com.afternote.domain.afternote.model.Afternote> afternotes = new java.util.ArrayList<>(); // 작성한 애프터노트 목록
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<com.afternote.domain.mindrecord.question.model.UserDailyQuestion> userDailyQuestions = new java.util.ArrayList<>(); // 매일의 질문 목록
+    private java.util.List<com.afternote.domain.dailyquestion.model.UserDailyQuestion> userDailyQuestions = new java.util.ArrayList<>(); // 매일의 질문 목록
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

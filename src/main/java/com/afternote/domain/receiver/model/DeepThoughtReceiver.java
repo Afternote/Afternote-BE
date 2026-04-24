@@ -1,6 +1,6 @@
 package com.afternote.domain.receiver.model;
 
-import com.afternote.domain.mindrecord.thought.model.DeepThought;
+import com.afternote.domain.deepthought.model.DeepThought;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;

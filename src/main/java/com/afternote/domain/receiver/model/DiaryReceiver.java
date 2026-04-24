@@ -1,6 +1,6 @@
 package com.afternote.domain.receiver.model;
 
-import com.afternote.domain.mindrecord.diary.model.Diary;
+import com.afternote.domain.diary.model.Diary;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;

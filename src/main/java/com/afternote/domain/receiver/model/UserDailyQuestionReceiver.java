@@ -1,6 +1,6 @@
 package com.afternote.domain.receiver.model;
 
-import com.afternote.domain.mindrecord.question.model.UserDailyQuestion;
+import com.afternote.domain.dailyquestion.model.UserDailyQuestion;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;

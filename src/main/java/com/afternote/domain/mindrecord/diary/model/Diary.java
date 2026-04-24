@@ -1,11 +1,11 @@
 package com.afternote.domain.mindrecord.diary.model;
 
-import com.afternote.domain.mindrecord.model.MindRecord;
-import com.afternote.global.exception.CustomException;
-import com.afternote.global.exception.ErrorCode;
+import com.afternote.domain.user.model.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "diary")
@@ -17,15 +17,51 @@ public class Diary {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 공통 기록
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mind_record_id", nullable = false, unique = true)
-    private MindRecord mindRecord;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    public static Diary create(MindRecord mindRecord) {
-        Diary record = new Diary();
-        record.mindRecord = mindRecord;
-        return record;
+    @Column(nullable = false, length = 100)
+    private String title;
+
+    @Column(columnDefinition = "TEXT", nullable = false)
+    private String content;
+
+    @Column(name = "is_draft", nullable = false)
+    private Boolean isDraft;
+
+    @Column(name = "image_url", length = 1000)
+    private String imageUrl;
+
+    @Column(length = 10)
+    private String emotion;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = this.createdAt;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public static Diary create(User user, String title, String content, Boolean isDraft, String imageUrl, String emotion) {
+        Diary diary = new Diary();
+        diary.user = user;
+        diary.title = title;
+        diary.content = content;
+        diary.isDraft = isDraft;
+        diary.imageUrl = imageUrl;
+        diary.emotion = emotion;
+        return diary;
     }
 
 }

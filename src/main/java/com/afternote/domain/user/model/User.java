@@ -56,10 +56,10 @@ public class User {
     private java.util.List<com.afternote.domain.timeletter.model.TimeLetter> timeLetters = new java.util.ArrayList<>(); // 작성한 타임레터 목록
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<com.afternote.domain.mindrecord.model.MindRecord> mindRecords = new java.util.ArrayList<>(); // 작성한 마음의 기록 목록
+    private java.util.List<com.afternote.domain.mindrecord.diary.model.Diary> diaries = new java.util.ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<com.afternote.domain.mindrecord.question.model.DailyQuestionAnswer> dailyQuestionAnswers = new java.util.ArrayList<>(); // 작성한 일일 질문 답변 목록
+    private java.util.List<com.afternote.domain.mindrecord.thought.model.DeepThought> deepThoughts = new java.util.ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private java.util.List<com.afternote.domain.afternote.model.Afternote> afternotes = new java.util.ArrayList<>(); // 작성한 애프터노트 목록

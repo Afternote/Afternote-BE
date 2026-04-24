@@ -5,10 +5,10 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_daily_question", uniqueConstraints = {@UniqueConstraint(columnNames = {"user_id", "question_date"})})
+@Table(name = "user_daily_question")
 @Getter
 @NoArgsConstructor
 public class UserDailyQuestion {
@@ -25,26 +25,45 @@ public class UserDailyQuestion {
     @JoinColumn(name = "question_id", nullable = false)
     private DailyQuestion dailyQuestion;
 
-    @Column(name = "question_date", nullable = false)
-    private LocalDate questionDate;
+    @Column(columnDefinition = "TEXT", nullable = false)
+    private String content;
 
-    @Column(nullable = false)
-    private Boolean isAnswered = false;
+    @Column(name = "image_url", length = 1000)
+    private String imageUrl;
+
+    @Column(length = 10)
+    private String emotion;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
+    @PrePersist
+    protected void onCreate() {
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = this.createdAt;
+    }
+
+    @PreUpdate
+    protected void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
+    }
 
     public static UserDailyQuestion create(
             User user,
             DailyQuestion dailyQuestion,
-            LocalDate questionDate
+            String content,
+            String imageUrl,
+            String emotion
     ) {
         UserDailyQuestion userDailyQuestion = new UserDailyQuestion();
         userDailyQuestion.user = user;
         userDailyQuestion.dailyQuestion = dailyQuestion;
-        userDailyQuestion.questionDate = questionDate;
-        userDailyQuestion.isAnswered = false;
+        userDailyQuestion.content = content;
+        userDailyQuestion.imageUrl = imageUrl;
+        userDailyQuestion.emotion = emotion;
         return userDailyQuestion;
-    }
-
-    public void markAnswered() {
-        this.isAnswered = true;
     }
 }

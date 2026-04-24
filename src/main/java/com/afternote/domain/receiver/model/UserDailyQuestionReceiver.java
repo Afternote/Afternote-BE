@@ -1,6 +1,6 @@
 package com.afternote.domain.receiver.model;
 
-import com.afternote.domain.mindrecord.question.model.DailyQuestionAnswer;
+import com.afternote.domain.mindrecord.question.model.UserDailyQuestion;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -11,20 +11,20 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "daily_question_answer_receiver", uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"daily_question_answer_id", "receiver_id"})
+@Table(name = "user_daily_question_receiver", uniqueConstraints = {
+        @UniqueConstraint(columnNames = {"user_daily_question_id", "receiver_id"})
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class DailyQuestionAnswerReceiver {
+public class UserDailyQuestionReceiver {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "daily_question_answer_id", nullable = false)
-    private DailyQuestionAnswer dailyQuestionAnswer;
+    @JoinColumn(name = "user_daily_question_id", nullable = false)
+    private UserDailyQuestion userDailyQuestion;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receiver_id", nullable = false)
@@ -35,8 +35,8 @@ public class DailyQuestionAnswerReceiver {
     private LocalDateTime createdAt;
 
     @Builder
-    public DailyQuestionAnswerReceiver(DailyQuestionAnswer dailyQuestionAnswer, Receiver receiver) {
-        this.dailyQuestionAnswer = dailyQuestionAnswer;
+    public UserDailyQuestionReceiver(UserDailyQuestion userDailyQuestion, Receiver receiver) {
+        this.userDailyQuestion = userDailyQuestion;
         this.receiver = receiver;
     }
 }

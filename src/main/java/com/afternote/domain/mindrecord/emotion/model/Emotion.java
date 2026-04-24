@@ -1,6 +1,5 @@
 package com.afternote.domain.mindrecord.emotion.model;
 
-import com.afternote.domain.mindrecord.model.MindRecord;
 import com.afternote.domain.user.model.User;
 import jakarta.persistence.*;
 import lombok.Getter;
@@ -23,10 +22,6 @@ public class Emotion {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
-    
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "mind_record_id", nullable = false)
-    private MindRecord mindRecord;
     
     @Column(length = 30, nullable = false)
     private String keyword;

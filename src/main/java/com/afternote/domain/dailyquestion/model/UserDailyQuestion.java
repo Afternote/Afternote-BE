@@ -33,7 +33,7 @@ public class UserDailyQuestion extends BaseEntity {
     @Column(name = "is_answered", nullable = false)
     private boolean isAnswered;
 
-    @Column(columnDefinition = "TEXT")
+    @Column(columnDefinition = "TEXT", nullable = false)
     private String content;
 
     @Column(name = "image_url", length = 1000)

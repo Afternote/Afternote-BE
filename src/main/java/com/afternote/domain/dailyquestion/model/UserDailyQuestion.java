@@ -3,8 +3,11 @@ package com.afternote.domain.dailyquestion.model;
 import com.afternote.domain.user.model.User;
 import com.afternote.global.common.BaseEntity;
 import jakarta.persistence.*;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDate;
 
 @Entity
 @Table(name = "user_daily_question")
@@ -24,23 +27,44 @@ public class UserDailyQuestion extends BaseEntity {
     @JoinColumn(name = "question_id", nullable = false)
     private DailyQuestion dailyQuestion;
 
-    @Column(columnDefinition = "TEXT", nullable = false)
+    @Column(name = "question_date", nullable = false)
+    private LocalDate questionDate;
+
+    @Column(name = "is_answered", nullable = false)
+    private boolean isAnswered;
+
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     @Column(name = "image_url", length = 1000)
     private String imageUrl;
 
-    public static UserDailyQuestion create(
+    @Column(name = "is_draft", nullable = false)
+    private boolean isDraft;
+
+    @Builder
+    private UserDailyQuestion(
             User user,
             DailyQuestion dailyQuestion,
+            LocalDate questionDate,
+            boolean isAnswered,
             String content,
-            String imageUrl
+            String imageUrl,
+            boolean isDraft
     ) {
-        UserDailyQuestion userDailyQuestion = new UserDailyQuestion();
-        userDailyQuestion.user = user;
-        userDailyQuestion.dailyQuestion = dailyQuestion;
-        userDailyQuestion.content = content;
-        userDailyQuestion.imageUrl = imageUrl;
-        return userDailyQuestion;
+        this.user = user;
+        this.dailyQuestion = dailyQuestion;
+        this.questionDate = questionDate;
+        this.isAnswered = isAnswered;
+        this.content = content;
+        this.imageUrl = imageUrl;
+        this.isDraft = isDraft;
+    }
+
+    public void updateAnswer(String content, String imageUrl, boolean isDraft) {
+        this.content = content;
+        this.imageUrl = imageUrl;
+        this.isDraft = isDraft;
+        this.isAnswered = !isDraft;
     }
 }

@@ -23,7 +23,9 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.Locale;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -124,8 +126,8 @@ class DiaryControllerTest {
                 .imageUrl("https://example.com/a.jpg")
                 .emotion("happy")
             .todayMood(TodayMood.HAPPY)
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN)))
+                .updatedAt(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN)))
                 .build();
     }
 

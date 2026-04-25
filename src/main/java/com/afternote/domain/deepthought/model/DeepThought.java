@@ -17,7 +17,6 @@ public class DeepThought extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "deep_thought_id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)

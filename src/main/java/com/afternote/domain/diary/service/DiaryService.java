@@ -5,7 +5,6 @@ import com.afternote.domain.diary.dto.DiaryListResponse;
 import com.afternote.domain.diary.dto.DiaryResponse;
 import com.afternote.domain.diary.dto.DiaryUpdateRequest;
 import com.afternote.domain.diary.model.Diary;
-import com.afternote.domain.diary.model.TodayMood;
 import com.afternote.domain.diary.repository.DiaryRepository;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;

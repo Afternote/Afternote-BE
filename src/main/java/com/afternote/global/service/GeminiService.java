@@ -1,17 +1,7 @@
 package com.afternote.global.service;
 
-import com.afternote.domain.mindrecord.diary.model.Diary;
-import com.afternote.domain.mindrecord.diary.repository.DiaryRepository;
 import com.afternote.domain.mindrecord.emotion.model.Emotion;
 import com.afternote.domain.mindrecord.emotion.repository.EmotionRepository;
-import com.afternote.domain.mindrecord.event.MindRecordCreatedEvent;
-import com.afternote.domain.mindrecord.model.MindRecord;
-import com.afternote.domain.mindrecord.model.MindRecordType;
-import com.afternote.domain.mindrecord.question.model.DailyQuestionAnswer;
-import com.afternote.domain.mindrecord.question.repository.DailyQuestionAnswerRepository;
-import com.afternote.domain.mindrecord.repository.MindRecordRepository;
-import com.afternote.domain.mindrecord.thought.model.DeepThought;
-import com.afternote.domain.mindrecord.thought.repository.DeepThoughtRepository;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
@@ -19,13 +9,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.event.TransactionPhase;
 import com.afternote.domain.mindrecord.emotion.service.EmotionCacheService;
-import org.springframework.transaction.event.TransactionalEventListener;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -38,75 +24,10 @@ import java.util.stream.Collectors;
 public class GeminiService {
 
     private final ChatModel chatModel;
-    private final MindRecordRepository mindRecordRepository;
-    private final DiaryRepository diaryRepository;
-    private final DeepThoughtRepository deepThoughtRepository;
-    private final DailyQuestionAnswerRepository dailyQuestionAnswerRepository;
     private final EmotionRepository emotionRepository;
     private final UserRepository userRepository;
     private final EmotionCacheService emotionCacheService;
 
-    /**
-     * MindRecord의 내용을 분석하여 감정 키워드를 추출합니다.
-     * API 실패 시 기본 감정값을 반환합니다.
-     * @param mindRecord 감정을 분석할 MindRecord
-     * @return 감정 키워드 (예: "행복", "우울", "불안" 등)
-     */
-    @Async
-    @Transactional(propagation = Propagation.REQUIRES_NEW)
-    @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
-    public void handleMindRecordCreated(MindRecordCreatedEvent event) {
-        MindRecord mindRecord = mindRecordRepository.findById(event.getMindRecordId())
-                .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
-        analyzeEmotion(mindRecord);
-    }
-
-    private void analyzeEmotion(MindRecord mindRecord) {
-        try {
-            // MindRecord 타입에 따라 content 추출
-            String content = extractContentFromMindRecord(mindRecord);
-
-            // 감정 분석 프롬프트
-            String instruction = String.format(
-                    "다음 텍스트를 분석하여, 작성자의 마음이나 상황을 가장 잘 나타내는 '핵심 키워드' 3개를 선정해주세요.\n" +
-                            "단순한 감정뿐만 아니라, 글의 제재나 주제가 되는 단어도 포함됩니다.\n\n" +
-                            "[키워드 예시]\n" +
-                            "- 감정: 행복, 그리움, 외로움, 감사, 열정, 불안\n" +
-                            "- 대상/주제: 가족, 친구, 여행, 도전, 휴식, 성공, 꿈\n\n" +
-                            "텍스트: %s\n\n" +
-                            "답변 형식: 다른 미사여구 없이, 오직 키워드 3개를 띄어쓰기로 구분하여 한 줄로 나열해주세요.\n" +
-                            "(예시: 친구 여행 도전)",
-                content
-            );
-            String answer = chatModel.call(new Prompt(instruction)).getResult().getOutput().getText().trim();
-            log.debug("제미니 성공!!!: {}",answer);
-            saveEmotion(mindRecord, answer);
-        } catch (Exception e) {
-            log.error("Gemini API 호출 실패, 기본값 반환: {}", e.getMessage());
-        }
-    }
-
-    /**
-     * MindRecord 타입에 따라 실제 content를 추출합니다.
-     */
-    private String extractContentFromMindRecord(MindRecord mindRecord) {
-        return mindRecord.getContent();
-    }
-
-
-    private void saveEmotion(MindRecord mindRecord, String keyword) {
-        Long userId = mindRecord.getUser().getId();
-        Long mindRecordId = mindRecord.getId();
-        Emotion emotion = emotionRepository.findByUserIdAndMindRecordId(userId, mindRecordId)
-                .orElseGet(() -> {
-                    Emotion newEmotion = new Emotion();
-                    newEmotion.setUser(mindRecord.getUser());
-                    newEmotion.setMindRecord(mindRecord);
-                    return newEmotion;
-                });
-        emotion.setKeyword(keyword);
-        emotionRepository.save(emotion);
-    }
     @Transactional
     public String summaryEmotion(Long userId){
         userRepository.findById(userId)
@@ -122,7 +43,7 @@ public class GeminiService {
         LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
 
         String keywordsString = emotionRepository.findByUserIdAndCreatedAtAfter(userId,sevenDaysAgo).stream()
-                .map(Emotion::getKeyword)
+            .map(Emotion::getEmotionCategory)
                 .filter(Objects::nonNull)
                 .collect(Collectors.joining(" "));
 

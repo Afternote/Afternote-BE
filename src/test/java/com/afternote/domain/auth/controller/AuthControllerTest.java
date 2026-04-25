@@ -67,7 +67,7 @@ class AuthControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/auth/sign-up")
+        mockMvc.perform(post("/api/v1/auth/sign-up")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -90,7 +90,7 @@ class AuthControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/api/v1/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -110,7 +110,7 @@ class AuthControllerTest {
                                                                 }
                                                                 """;
 
-                                mockMvc.perform(post("/auth/login")
+                                mockMvc.perform(post("/api/v1/auth/login")
                                                                                                 .contentType(MediaType.APPLICATION_JSON)
                                                                                                 .content(requestBody))
                                                                 .andExpect(status().isBadRequest());
@@ -128,7 +128,7 @@ class AuthControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/auth/reissue")
+        mockMvc.perform(post("/api/v1/auth/reissue")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -147,7 +147,7 @@ class AuthControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/auth/password/change")
+        mockMvc.perform(post("/api/v1/auth/password/change")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
@@ -166,7 +166,7 @@ class AuthControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/auth/logout")
+        mockMvc.perform(post("/api/v1/auth/logout")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
@@ -185,7 +185,7 @@ class AuthControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/auth/email/send")
+        mockMvc.perform(post("/api/v1/auth/email/send")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -204,7 +204,7 @@ class AuthControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/auth/email/verify")
+        mockMvc.perform(post("/api/v1/auth/email/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
@@ -230,7 +230,7 @@ class AuthControllerTest {
                 }
                 """;
 
-        mockMvc.perform(post("/auth/social/login")
+        mockMvc.perform(post("/api/v1/auth/social/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())

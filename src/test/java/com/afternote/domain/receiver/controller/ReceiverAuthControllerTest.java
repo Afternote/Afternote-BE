@@ -42,7 +42,7 @@ class ReceiverAuthControllerTest {
     void verifyAuthCode_Success() throws Exception {
         given(receiverAuthService.verifyAuthCode(AUTH_CODE)).willReturn(null);
 
-        mockMvc.perform(post("/api/receiver-auth/verify")
+        mockMvc.perform(post("/api/v1/receiver-auth/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"authCode\":\"" + AUTH_CODE + "\"}"))
                 .andExpect(status().isOk());
@@ -53,7 +53,7 @@ class ReceiverAuthControllerTest {
     @Test
     @DisplayName("인증번호 검증 API 실패 - UUID 형식 오류")
     void verifyAuthCode_InvalidFormat_Fail() throws Exception {
-        mockMvc.perform(post("/api/receiver-auth/verify")
+        mockMvc.perform(post("/api/v1/receiver-auth/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"authCode\":\"not-uuid\"}"))
                 .andExpect(status().isBadRequest());
@@ -64,7 +64,7 @@ class ReceiverAuthControllerTest {
     void getTimeLetters_Success() throws Exception {
         given(receiverAuthService.getTimeLettersByAuthCode(AUTH_CODE)).willReturn(null);
 
-        mockMvc.perform(get("/api/receiver-auth/time-letters").header("X-Auth-Code", AUTH_CODE))
+        mockMvc.perform(get("/api/v1/receiver-auth/time-letters").header("X-Auth-Code", AUTH_CODE))
                 .andExpect(status().isOk());
 
         verify(receiverAuthService).getTimeLettersByAuthCode(AUTH_CODE);
@@ -75,21 +75,10 @@ class ReceiverAuthControllerTest {
     void getAfternotes_Success() throws Exception {
         given(receiverAuthService.getAfternotesByAuthCode(AUTH_CODE)).willReturn(null);
 
-        mockMvc.perform(get("/api/receiver-auth/after-notes").header("X-Auth-Code", AUTH_CODE))
+        mockMvc.perform(get("/api/v1/receiver-auth/after-notes").header("X-Auth-Code", AUTH_CODE))
                 .andExpect(status().isOk());
 
         verify(receiverAuthService).getAfternotesByAuthCode(AUTH_CODE);
-    }
-
-    @Test
-    @DisplayName("마인드레코드 목록 조회 API 성공")
-    void getMindRecords_Success() throws Exception {
-        given(receiverAuthService.getMindRecordsByAuthCode(AUTH_CODE)).willReturn(null);
-
-        mockMvc.perform(get("/api/receiver-auth/mind-records").header("X-Auth-Code", AUTH_CODE))
-                .andExpect(status().isOk());
-
-        verify(receiverAuthService).getMindRecordsByAuthCode(AUTH_CODE);
     }
 
     @Test
@@ -97,29 +86,19 @@ class ReceiverAuthControllerTest {
     void getTimeLetter_Success() throws Exception {
         given(receiverAuthService.getTimeLetterByAuthCode(AUTH_CODE, 1L)).willReturn(null);
 
-        mockMvc.perform(get("/api/receiver-auth/time-letters/{id}", 1L).header("X-Auth-Code", AUTH_CODE))
+        mockMvc.perform(get("/api/v1/receiver-auth/time-letters/{id}", 1L).header("X-Auth-Code", AUTH_CODE))
                 .andExpect(status().isOk());
 
         verify(receiverAuthService).getTimeLetterByAuthCode(AUTH_CODE, 1L);
     }
 
-    @Test
-    @DisplayName("마인드레코드 상세 조회 API 성공")
-    void getMindRecord_Success() throws Exception {
-        given(receiverAuthService.getMindRecordByAuthCode(AUTH_CODE, 2L)).willReturn(null);
-
-        mockMvc.perform(get("/api/receiver-auth/mind-records/{id}", 2L).header("X-Auth-Code", AUTH_CODE))
-                .andExpect(status().isOk());
-
-        verify(receiverAuthService).getMindRecordByAuthCode(AUTH_CODE, 2L);
-    }
 
     @Test
     @DisplayName("애프터노트 상세 조회 API 성공")
     void getAfternote_Success() throws Exception {
         given(receiverAuthService.getAfternoteByAuthCode(AUTH_CODE, 3L)).willReturn(null);
 
-        mockMvc.perform(get("/api/receiver-auth/after-notes/{id}", 3L).header("X-Auth-Code", AUTH_CODE))
+        mockMvc.perform(get("/api/v1/receiver-auth/after-notes/{id}", 3L).header("X-Auth-Code", AUTH_CODE))
                 .andExpect(status().isOk());
 
         verify(receiverAuthService).getAfternoteByAuthCode(AUTH_CODE, 3L);
@@ -130,7 +109,7 @@ class ReceiverAuthControllerTest {
     void getMessage_Success() throws Exception {
         given(receiverAuthService.getMessageByAuthCode(AUTH_CODE)).willReturn(null);
 
-        mockMvc.perform(get("/api/receiver-auth/message").header("X-Auth-Code", AUTH_CODE))
+        mockMvc.perform(get("/api/v1/receiver-auth/message").header("X-Auth-Code", AUTH_CODE))
                 .andExpect(status().isOk());
 
         verify(receiverAuthService).getMessageByAuthCode(AUTH_CODE);
@@ -141,7 +120,7 @@ class ReceiverAuthControllerTest {
     void getPresignedUrl_Success() throws Exception {
         given(receiverAuthService.generatePresignedUrl(AUTH_CODE, "pdf")).willReturn(null);
 
-        mockMvc.perform(post("/api/receiver-auth/presigned-url")
+        mockMvc.perform(post("/api/v1/receiver-auth/presigned-url")
                         .header("X-Auth-Code", AUTH_CODE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"extension\":\"pdf\"}"))
@@ -155,7 +134,7 @@ class ReceiverAuthControllerTest {
     void submitDeliveryVerification_Success() throws Exception {
         given(receiverAuthService.submitDeliveryVerification(org.mockito.ArgumentMatchers.eq(AUTH_CODE), any())).willReturn(null);
 
-        mockMvc.perform(post("/api/receiver-auth/delivery-verification")
+        mockMvc.perform(post("/api/v1/receiver-auth/delivery-verification")
                         .header("X-Auth-Code", AUTH_CODE)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"deathCertificateUrl\":\"https://a\",\"familyRelationCertificateUrl\":\"https://b\"}"))
@@ -169,7 +148,7 @@ class ReceiverAuthControllerTest {
     void getDeliveryVerificationStatus_Success() throws Exception {
         given(receiverAuthService.getDeliveryVerificationStatus(AUTH_CODE)).willReturn(null);
 
-        mockMvc.perform(get("/api/receiver-auth/delivery-verification/status").header("X-Auth-Code", AUTH_CODE))
+        mockMvc.perform(get("/api/v1/receiver-auth/delivery-verification/status").header("X-Auth-Code", AUTH_CODE))
                 .andExpect(status().isOk());
 
         verify(receiverAuthService).getDeliveryVerificationStatus(AUTH_CODE);

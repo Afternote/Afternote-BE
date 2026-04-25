@@ -59,7 +59,7 @@ class AfternoteControllerTest {
     void getAfternotes_Success() throws Exception {
         given(afternoteService.getAfternotes(USER_ID, AfternoteCategoryType.SOCIAL, 0, 10)).willReturn(null);
 
-        mockMvc.perform(get("/api/afternotes")
+        mockMvc.perform(get("/api/v1/afternotes")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .param("category", "SOCIAL")
                         .param("page", "0")
@@ -72,7 +72,7 @@ class AfternoteControllerTest {
     @Test
     @DisplayName("애프터노트 목록 조회 API 실패 - 잘못된 category")
     void getAfternotes_InvalidCategory_Fail() throws Exception {
-        mockMvc.perform(get("/api/afternotes")
+        mockMvc.perform(get("/api/v1/afternotes")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .param("category", "INVALID"))
                 .andExpect(status().isBadRequest());
@@ -83,7 +83,7 @@ class AfternoteControllerTest {
     void getDetailAfternote_Success() throws Exception {
         given(afternoteService.getDetailAfternote(USER_ID, 3L)).willReturn(null);
 
-        mockMvc.perform(get("/api/afternotes/{afternoteId}", 3L)
+        mockMvc.perform(get("/api/v1/afternotes/{afternoteId}", 3L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk());
 
@@ -93,7 +93,7 @@ class AfternoteControllerTest {
     @Test
     @DisplayName("애프터노트 상세 조회 API 실패 - 잘못된 afternoteId 타입")
     void getDetailAfternote_InvalidIdType_Fail() throws Exception {
-        mockMvc.perform(get("/api/afternotes/not-number")
+        mockMvc.perform(get("/api/v1/afternotes/not-number")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isBadRequest());
     }
@@ -103,7 +103,7 @@ class AfternoteControllerTest {
     void createAfternote_Success() throws Exception {
         given(afternoteService.createAfternote(eq(USER_ID), any())).willReturn(null);
 
-        mockMvc.perform(post("/api/afternotes")
+        mockMvc.perform(post("/api/v1/afternotes")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"category\":\"SOCIAL\",\"title\":\"title\"}"))
@@ -115,7 +115,7 @@ class AfternoteControllerTest {
     @Test
     @DisplayName("애프터노트 생성 API 실패 - title 누락")
     void createAfternote_MissingTitle_Fail() throws Exception {
-        mockMvc.perform(post("/api/afternotes")
+        mockMvc.perform(post("/api/v1/afternotes")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"category\":\"SOCIAL\"}"))
@@ -125,7 +125,7 @@ class AfternoteControllerTest {
     @Test
     @DisplayName("애프터노트 생성 API 실패 - category 누락")
     void createAfternote_MissingCategory_Fail() throws Exception {
-        mockMvc.perform(post("/api/afternotes")
+        mockMvc.perform(post("/api/v1/afternotes")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"title\"}"))
@@ -135,7 +135,7 @@ class AfternoteControllerTest {
     @Test
     @DisplayName("애프터노트 생성 API 실패 - title blank")
     void createAfternote_BlankTitle_Fail() throws Exception {
-        mockMvc.perform(post("/api/afternotes")
+        mockMvc.perform(post("/api/v1/afternotes")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"category\":\"SOCIAL\",\"title\":\"   \"}"))
@@ -147,7 +147,7 @@ class AfternoteControllerTest {
     void updateAfternote_Success() throws Exception {
         given(afternoteService.updateAfternote(eq(USER_ID), eq(3L), any())).willReturn(null);
 
-        mockMvc.perform(patch("/api/afternotes/{afternoteId}", 3L)
+        mockMvc.perform(patch("/api/v1/afternotes/{afternoteId}", 3L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"category\":\"SOCIAL\",\"title\":\"title\"}"))
@@ -159,7 +159,7 @@ class AfternoteControllerTest {
     @Test
     @DisplayName("애프터노트 수정 API 실패 - title 누락")
     void updateAfternote_MissingTitle_Fail() throws Exception {
-        mockMvc.perform(patch("/api/afternotes/{afternoteId}", 3L)
+        mockMvc.perform(patch("/api/v1/afternotes/{afternoteId}", 3L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"category\":\"SOCIAL\"}"))
@@ -169,7 +169,7 @@ class AfternoteControllerTest {
     @Test
     @DisplayName("애프터노트 수정 API 실패 - 잘못된 afternoteId 타입")
     void updateAfternote_InvalidIdType_Fail() throws Exception {
-        mockMvc.perform(patch("/api/afternotes/not-number")
+        mockMvc.perform(patch("/api/v1/afternotes/not-number")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"category\":\"SOCIAL\",\"title\":\"title\"}"))
@@ -179,7 +179,7 @@ class AfternoteControllerTest {
     @Test
     @DisplayName("애프터노트 삭제 API 성공")
     void deleteAfternote_Success() throws Exception {
-        mockMvc.perform(delete("/api/afternotes/{afternoteId}", 3L)
+        mockMvc.perform(delete("/api/v1/afternotes/{afternoteId}", 3L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk());
 
@@ -189,7 +189,7 @@ class AfternoteControllerTest {
     @Test
     @DisplayName("애프터노트 삭제 API 실패 - 잘못된 afternoteId 타입")
     void deleteAfternote_InvalidIdType_Fail() throws Exception {
-        mockMvc.perform(delete("/api/afternotes/not-number")
+        mockMvc.perform(delete("/api/v1/afternotes/not-number")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isBadRequest());
     }
@@ -200,7 +200,7 @@ class AfternoteControllerTest {
         given(afternoteService.getDetailAfternote(USER_ID, 999L))
             .willThrow(new CustomException(ErrorCode.AFTERNOTE_NOT_FOUND));
 
-        mockMvc.perform(get("/api/afternotes/{afternoteId}", 999L)
+        mockMvc.perform(get("/api/v1/afternotes/{afternoteId}", 999L)
                 .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
             .andExpect(status().isNotFound());
         }
@@ -211,7 +211,7 @@ class AfternoteControllerTest {
         given(afternoteService.getDetailAfternote(USER_ID, 7L))
             .willThrow(new CustomException(ErrorCode.AFTERNOTE_ACCESS_DENIED));
 
-        mockMvc.perform(get("/api/afternotes/{afternoteId}", 7L)
+        mockMvc.perform(get("/api/v1/afternotes/{afternoteId}", 7L)
                 .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
             .andExpect(status().isForbidden());
         }
@@ -222,7 +222,7 @@ class AfternoteControllerTest {
         org.mockito.Mockito.doThrow(new CustomException(ErrorCode.UNAUTHORIZED))
             .when(afternoteService).deleteAfternote(USER_ID, 3L);
 
-        mockMvc.perform(delete("/api/afternotes/{afternoteId}", 3L)
+        mockMvc.perform(delete("/api/v1/afternotes/{afternoteId}", 3L)
                 .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
             .andExpect(status().isUnauthorized());
         }

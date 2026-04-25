@@ -48,23 +48,11 @@ public class ReceiverAuthService {
         return receivedService.getAfternotes(receiver.getId());
     }
 
-    public ReceivedMindRecordListResponse getMindRecordsByAuthCode(String authCode) {
-        Receiver receiver = findReceiverByAuthCode(authCode);
-        validateDeliveryCondition(receiver);
-        return receivedService.getMindRecords(receiver.getId());
-    }
-
     @Transactional
     public ReceivedTimeLetterResponse getTimeLetterByAuthCode(String authCode, Long timeLetterReceiverId) {
         Receiver receiver = findReceiverByAuthCode(authCode);
         validateDeliveryCondition(receiver);
         return receivedService.getTimeLetter(receiver.getId(), timeLetterReceiverId);
-    }
-
-    public ReceivedMindRecordDetailResponse getMindRecordByAuthCode(String authCode, Long mindRecordId) {
-        Receiver receiver = findReceiverByAuthCode(authCode);
-        validateDeliveryCondition(receiver);
-        return receivedService.getMindRecord(receiver.getId(), mindRecordId);
     }
 
     public ReceivedAfternoteDetailResponse getAfternoteByAuthCode(String authCode, Long afternoteId) {

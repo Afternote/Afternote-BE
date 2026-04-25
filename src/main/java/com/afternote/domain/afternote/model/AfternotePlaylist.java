@@ -1,11 +1,9 @@
 package com.afternote.domain.afternote.model;
 
+import com.afternote.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -15,7 +13,7 @@ import java.util.List;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class AfternotePlaylist {
+public class AfternotePlaylist extends BaseEntity {
     
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,14 +34,6 @@ public class AfternotePlaylist {
     
     @Embedded
     private MemorialVideo memorialVideo;
-    
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false, columnDefinition = "DATETIME")
-    private LocalDateTime createdAt;
-    
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false, columnDefinition = "DATETIME")
-    private LocalDateTime updatedAt;
     
     @OneToMany(mappedBy = "playlist", cascade = CascadeType.ALL, orphanRemoval = true)
     @Builder.Default

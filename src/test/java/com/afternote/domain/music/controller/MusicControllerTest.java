@@ -45,7 +45,7 @@ class MusicControllerTest {
         ));
         given(itunesService.searchMusic("iu")).willReturn(response);
 
-        mockMvc.perform(get("/music/search").param("keyword", "iu"))
+        mockMvc.perform(get("/api/v1/music/search").param("keyword", "iu"))
                 .andExpect(status().isOk())
             .andExpect(jsonPath("$.tracks[0].title").value("song"))
             .andExpect(jsonPath("$.tracks[0].artist").value("artist"));
@@ -56,7 +56,7 @@ class MusicControllerTest {
     @Test
     @DisplayName("노래 검색 API 실패 - keyword 누락")
     void searchMusic_MissingKeyword_Fail() throws Exception {
-        mockMvc.perform(get("/music/search"))
+        mockMvc.perform(get("/api/v1/music/search"))
                 .andExpect(status().isBadRequest());
     }
 }

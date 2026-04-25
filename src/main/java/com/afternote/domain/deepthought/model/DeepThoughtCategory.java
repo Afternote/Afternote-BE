@@ -1,11 +1,17 @@
 package com.afternote.domain.deepthought.model;
 
+import com.afternote.domain.user.model.User;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "deep_thought_category")
+@Table(
+        name = "deep_thought_category",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"user_id", "title"})
+        }
+)
 @Getter
 @NoArgsConstructor
 public class DeepThoughtCategory {
@@ -19,13 +25,17 @@ public class DeepThoughtCategory {
     private String title;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "deep_thought_id", nullable = false)
-    private DeepThought deepThought;
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    public static DeepThoughtCategory create(DeepThought deepThought, String title) {
+    public static DeepThoughtCategory create(User user, String title) {
         DeepThoughtCategory category = new DeepThoughtCategory();
-        category.deepThought = deepThought;
+        category.user = user;
         category.title = title;
         return category;
+    }
+
+    public void updateTitle(String title) {
+        this.title = title;
     }
 }

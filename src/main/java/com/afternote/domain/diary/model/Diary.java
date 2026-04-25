@@ -33,7 +33,7 @@ public class Diary extends BaseEntity {
     private String imageUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "today_mood", length = 20)
+    @Column(name = "today_mood", length = 20, nullable = false)
     private TodayMood todayMood;
 
     public static Diary create(User user, String title, String content, Boolean isDraft, String imageUrl, TodayMood todayMood) {

@@ -95,20 +95,8 @@ public enum ErrorCode {
     // ======================================                                                                                                                                                               
     INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, 1400, "요청 값이 올바르지 않습니다."),                                                                                                                       
 
-    // ======================================                                                                                                                                                               
-    // 6. 마음의 기록(MindRecord) 관련 오류 (code: 1500 ~ 1599)                                                                                                                                                   
-    // ======================================                                                                                                                                                               
-    MIND_RECORD_NOT_FOUND(HttpStatus.NOT_FOUND, 1500, "마음의 기록을 찾을 수 없습니다."),                                                                                                                    
-    MIND_RECORD_FORBIDDEN(HttpStatus.FORBIDDEN, 1501, "해당 마음의 기록에 대한 권한이 없습니다."),                                                                                                           
-    DAILY_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, 1502, "데일리 질문을 찾을 수 없습니다."),                                                                                                                 
-    DEEP_THOUGHT_CATEGORY_REQUIRED(HttpStatus.BAD_REQUEST, 1503, "깊은 생각 카테고리는 필수입니다."),                                                                                                        
-    MIND_RECORD_CONTENT_REQUIRED(HttpStatus.BAD_REQUEST, 1504, "마음의 기록 내용은 필수입니다."),                                                                                                            
-    DAILY_QUESTION_REQUIRED(HttpStatus.BAD_REQUEST, 1505, "데일리 질문 ID는 필수입니다."),
-    MIND_RECORD_TITLE_REQUIRED(HttpStatus.BAD_REQUEST, 1506, "마음의 기록 제목은 필수입니다."),
-    RECEIVER_FORBIDDEN(HttpStatus.FORBIDDEN, 1508, "해당 수신인에 대한 접근 권한이 없습니다."),
-
     // ======================================
-    // 7. 애프터노트 관련 오류 (code: 1600 ~ 1699)                                                                                                                                                            
+    // 6. 애프터노트 관련 오류 (code: 1600 ~ 1699)                                                                                                                                                            
     // ======================================                                                                                                                                                               
     AFTERNOTE_NOT_FOUND(HttpStatus.NOT_FOUND, 1600, "애프터노트를 찾을 수 없습니다."),                                                                                                                       
     AFTERNOTE_ACCESS_DENIED(HttpStatus.FORBIDDEN, 1601, "해당 애프터노트에 대한 권한이 없습니다."),                                                                                                          
@@ -135,7 +123,7 @@ public enum ErrorCode {
     THUMBNAIL_URL_CANNOT_BE_EMPTY(HttpStatus.BAD_REQUEST, 1622, "썸네일 URL은 공백일 수 없습니다."),                                                                                                         
 
     // ======================================                                                                                                                                                               
-    // 8. 암호화 관련 오류 (code: 1700 ~ 1799)                                                                                                                                                                    
+    // 7. 암호화 관련 오류 (code: 1700 ~ 1799)                                                                                                                                                                    
     // ======================================                                                                                                                                                               
     ENCRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1700, "암호화 처리 중 오류가 발생했습니다."),                                                                                                        
     DECRYPTION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1701, "복호화 처리 중 오류가 발생했습니다."),
@@ -144,14 +132,14 @@ public enum ErrorCode {
     SOCIAL_LOGIN_USER(HttpStatus.BAD_REQUEST, 1702, "소셜 로그인으로 가입한 계정입니다. 소셜 로그인을 이용해주세요."),
 
     // ======================================
-    // 9. S3/이미지 관련 오류 (code: 1800 ~ 1899)
+    // 8. S3/이미지 관련 오류 (code: 1800 ~ 1899)
     // ======================================
     PRESIGNED_URL_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1800, "Presigned URL 생성에 실패했습니다."),
     INVALID_FILE_EXTENSION(HttpStatus.BAD_REQUEST, 1801, "허용되지 않는 파일 확장자입니다. (jpg, jpeg, png, gif, webp, heic, mp4, mov, mp3, m4a, wav, pdf 허용)"),
     INVALID_DIRECTORY(HttpStatus.BAD_REQUEST, 1802, "허용되지 않는 디렉토리입니다."),
 
     // ======================================
-    // 10. 수신자 인증/외부 API 관련 오류 (code: 1900 ~ 1999)
+    // 9. 수신자 인증/외부 API 관련 오류 (code: 1900 ~ 1999)
     // ======================================
     INVALID_AUTH_CODE(HttpStatus.NOT_FOUND, 1900, "유효하지 않은 인증번호입니다."),
 
@@ -159,7 +147,7 @@ public enum ErrorCode {
     GEMINI_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1901, "LLM API 가 실패하였습니다. 원인은 토큰 만료, 시간 초과 등이 있습니다."),
 
     // ======================================
-    // 11. 전달 조건/인증 관련 오류 (code: 2000 ~ 2099)
+    // 10. 전달 조건/인증 관련 오류 (code: 2000 ~ 2099)
     // ======================================
     VERIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, 2002, "인증 요청을 찾을 수 없습니다."),
     VERIFICATION_ALREADY_PROCESSED(HttpStatus.BAD_REQUEST, 2004, "이미 처리된 인증 요청입니다."),
@@ -167,7 +155,27 @@ public enum ErrorCode {
     CONDITION_TYPE_MISMATCH(HttpStatus.BAD_REQUEST, 2006, "설정된 전달 조건과 요청이 일치하지 않습니다."),
     INVALID_DELIVERY_CONDITION(HttpStatus.BAD_REQUEST, 2007, "전달 조건 요청이 올바르지 않습니다."),
     VERIFICATION_ALREADY_SUBMITTED(HttpStatus.CONFLICT, 2008, "이미 대기 중인 인증 요청이 존재합니다."),
-    DELIVERY_CONDITION_NOT_MET(HttpStatus.FORBIDDEN, 2009, "아직 전달 조건이 충족되지 않았습니다.");
+    DELIVERY_CONDITION_NOT_MET(HttpStatus.FORBIDDEN, 2009, "아직 전달 조건이 충족되지 않았습니다."),
+
+    // ======================================
+    // 11. 다이어리 관련 오류 (code: 2100 ~ 2199)
+    // ======================================
+    DIARY_NOT_FOUND(HttpStatus.NOT_FOUND, 2100, "다이어리를 찾을 수 없습니다."),
+
+    // ======================================
+    // 12. 깊은 생각 관련 오류 (code: 2200 ~ 2299)
+    // ======================================
+    DEEP_THOUGHT_NOT_FOUND(HttpStatus.NOT_FOUND, 2200, "깊은 생각을 찾을 수 없습니다."),
+    DEEP_THOUGHT_CATEGORY_REQUIRED(HttpStatus.BAD_REQUEST, 2201, "깊은 생각 카테고리는 필수입니다."),
+    DEEP_THOUGHT_CATEGORY_NOT_FOUND(HttpStatus.NOT_FOUND, 2202, "존재하지 않는 깊은 생각 카테고리입니다."),
+    DEEP_THOUGHT_CATEGORY_DUPLICATE(HttpStatus.CONFLICT, 2203, "이미 존재하는 깊은 생각 카테고리입니다."),
+
+    // ======================================
+    // 13. 데일리 질문 관련 오류 (code: 2300 ~ 2399)
+    // ======================================
+    DAILY_QUESTION_NOT_FOUND(HttpStatus.NOT_FOUND, 2300, "데일리 질문을 찾을 수 없습니다."),
+    DAILY_QUESTION_ALREADY_ANSWERED(HttpStatus.CONFLICT, 2301, "이미 답변이 완료된 데일리 질문입니다."),
+    DAILY_QUESTION_DATE_MISMATCH(HttpStatus.BAD_REQUEST, 2302, "오늘의 데일리 질문만 답변할 수 있습니다.");
 
 
     private final HttpStatus httpStatus;

@@ -68,6 +68,7 @@ public class DailyQuestionService {
 
         return DailyQuestionTodayResponse.builder()
                 .questionId(userDailyQuestion.getId())
+                .day(userDailyQuestion.getDailyQuestion().getId())
                 .content(userDailyQuestion.getDailyQuestion().getContent())
                 .isAnswered(userDailyQuestion.isAnswered())
                 .build();
@@ -75,11 +76,20 @@ public class DailyQuestionService {
 
     @Transactional
     public DailyQuestionAnswerResponse createAnswer(Long userId, DailyQuestionAnswerRequest request) {
+        LocalDate today = LocalDate.now();
         UserDailyQuestion userDailyQuestion = userDailyQuestionRepository.findById(request.getQuestionId())
                 .orElseThrow(() -> new CustomException(ErrorCode.DAILY_QUESTION_NOT_FOUND));
 
         if (!userDailyQuestion.getUser().getId().equals(userId)) {
             throw new CustomException(ErrorCode.NOT_ENOUGH_PERMISSION);
+        }
+
+        if (!today.equals(userDailyQuestion.getQuestionDate())) {
+            throw new CustomException(ErrorCode.DAILY_QUESTION_DATE_MISMATCH);
+        }
+
+        if (userDailyQuestion.isAnswered()) {
+            throw new CustomException(ErrorCode.DAILY_QUESTION_ALREADY_ANSWERED);
         }
 
         userDailyQuestion.updateAnswer(

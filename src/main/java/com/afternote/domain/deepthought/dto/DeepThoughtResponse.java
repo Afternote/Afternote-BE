@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 
 @Getter
 @Builder
@@ -52,7 +53,13 @@ public class DeepThoughtResponse {
                 .isDraft(deepThought.getIsDraft())
                 .imageUrl(deepThought.getImageUrl())
                 .category(deepThought.getCategory())
-                .tags(deepThought.getTags().stream().map(tag -> tag.getTitle()).toList())
+                .tags(deepThought.getTags().stream()
+                        .map(tag -> tag.getTitle())
+                        .filter(Objects::nonNull)
+                        .map(String::trim)
+                        .filter(tag -> !tag.isBlank())
+                        .map(tag -> tag.startsWith("#") ? tag : "#" + tag)
+                        .toList())
                 .createdAt(formatDate(deepThought.getCreatedAt()))
                 .updatedAt(formatDate(deepThought.getUpdatedAt()))
                 .build();

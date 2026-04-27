@@ -36,7 +36,7 @@ public class DeepThoughtCategoryService {
     public DeepThoughtCategoryResponse addCategory(Long userId, DeepThoughtCategoryCreateRequest request) {
         String normalizedTitle = request.getTitle().trim();
         if (deepThoughtCategoryRepository.existsByUserIdAndTitle(userId, normalizedTitle)) {
-            throw new CustomException(ErrorCode.CATEGORY_REQUIRED);
+            throw new CustomException(ErrorCode.DEEP_THOUGHT_CATEGORY_DUPLICATE);
         }
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -50,7 +50,13 @@ public class DeepThoughtCategoryService {
         DeepThoughtCategory category = deepThoughtCategoryRepository.findByIdAndUserId(categoryId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CATEGORY_REQUIRED));
 
-        category.updateTitle(request.getTitle().trim());
+        String normalizedTitle = request.getTitle().trim();
+        if (!category.getTitle().equals(normalizedTitle)
+                && deepThoughtCategoryRepository.existsByUserIdAndTitle(userId, normalizedTitle)) {
+            throw new CustomException(ErrorCode.DEEP_THOUGHT_CATEGORY_DUPLICATE);
+        }
+
+        category.updateTitle(normalizedTitle);
         return DeepThoughtCategoryResponse.from(category);
     }
 

@@ -61,7 +61,7 @@ public class DiaryService {
     @Transactional
     public DiaryResponse updateDiary(Long userId, Long diaryId, DiaryUpdateRequest request) {
         Diary diary = diaryRepository.findByIdAndUserId(diaryId, userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.DIARY_NOT_FOUND));
 
         diary.update(
                 request.getTitle(),
@@ -77,7 +77,7 @@ public class DiaryService {
     @Transactional
     public void deleteDiary(Long userId, Long diaryId) {
         Diary diary = diaryRepository.findByIdAndUserId(diaryId, userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.DIARY_NOT_FOUND));
         diaryRepository.delete(diary);
     }
 

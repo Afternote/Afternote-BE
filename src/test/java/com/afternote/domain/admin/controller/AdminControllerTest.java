@@ -54,7 +54,7 @@ class AdminControllerTest {
     void getPendingVerifications_Success() throws Exception {
         given(adminService.getPendingVerifications(USER_ID)).willReturn(List.of());
 
-        mockMvc.perform(get("/api/admin/verifications").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
+        mockMvc.perform(get("/api/v1/admin/verifications").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk());
 
         verify(adminService).getPendingVerifications(USER_ID);
@@ -65,7 +65,7 @@ class AdminControllerTest {
     void getVerificationDetail_Success() throws Exception {
         given(adminService.getVerificationDetail(USER_ID, 5L)).willReturn(null);
 
-        mockMvc.perform(get("/api/admin/verifications/{id}", 5L)
+        mockMvc.perform(get("/api/v1/admin/verifications/{id}", 5L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk());
 
@@ -75,7 +75,7 @@ class AdminControllerTest {
     @Test
     @DisplayName("인증 상세 조회 API 실패 - 잘못된 id 타입")
     void getVerificationDetail_InvalidIdType_Fail() throws Exception {
-        mockMvc.perform(get("/api/admin/verifications/not-number")
+        mockMvc.perform(get("/api/v1/admin/verifications/not-number")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isBadRequest());
     }
@@ -85,7 +85,7 @@ class AdminControllerTest {
     void approveVerification_Success() throws Exception {
         given(adminService.approveVerification(eq(USER_ID), eq(5L), any())).willReturn(null);
 
-        mockMvc.perform(post("/api/admin/verifications/{id}/approve", 5L)
+        mockMvc.perform(post("/api/v1/admin/verifications/{id}/approve", 5L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"adminNote\":\"ok\"}"))
@@ -99,7 +99,7 @@ class AdminControllerTest {
     void rejectVerification_Success() throws Exception {
         given(adminService.rejectVerification(eq(USER_ID), eq(5L), any())).willReturn(null);
 
-        mockMvc.perform(post("/api/admin/verifications/{id}/reject", 5L)
+        mockMvc.perform(post("/api/v1/admin/verifications/{id}/reject", 5L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"adminNote\":\"reject\"}"))

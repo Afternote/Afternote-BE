@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @Tag(name = "Afternote API", description = "afternote 관련 API")
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/afternotes")
+@RequestMapping("/api/v1/afternotes")
 public class AfternoteController {
 
     private final AfternoteService afternoteService;

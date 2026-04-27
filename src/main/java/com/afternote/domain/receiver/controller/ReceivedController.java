@@ -15,7 +15,7 @@ import java.util.List;
 
 @Tag(name = "Received API", description = "수신자 등록 API")
 @RestController
-@RequestMapping("/api/received")
+@RequestMapping("/api/v1/received")
 @RequiredArgsConstructor
 public class ReceivedController {
 
@@ -31,17 +31,5 @@ public class ReceivedController {
             @Valid @RequestBody CreateTimeLetterReceiverRequest request
     ) {
         return ApiResponse.success(receivedService.createTimeLetterReceivers(userId, request));
-    }
-
-    @Operation(
-            summary = "마인드레코드 수신자 등록",
-            description = "마인드레코드에 수신자를 등록합니다. 여러 수신자를 한 번에 등록할 수 있습니다."
-    )
-    @PostMapping("/mind-records")
-    public ApiResponse<List<Long>> createMindRecordReceivers(
-            @Parameter(hidden = true) @UserId Long userId,
-            @Valid @RequestBody CreateMindRecordReceiverRequest request
-    ) {
-        return ApiResponse.success(receivedService.createMindRecordReceivers(userId, request));
     }
 }

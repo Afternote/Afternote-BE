@@ -6,8 +6,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
@@ -15,7 +13,6 @@ import java.time.LocalDateTime;
 @Table(name = "user_receiver") // 테이블명: user_receiver (일반적인 관례) 혹은 userreceiver
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@EntityListeners(AuditingEntityListener.class)
 public class UserReceiver {
 
     @Id
@@ -23,8 +20,7 @@ public class UserReceiver {
     private Long id;
 
     // 생성시점: DATETIME, NOT NULL
-    @CreatedDate
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
     // 유저ID: BIGINT, NOT NULL -> User 객체와 매핑

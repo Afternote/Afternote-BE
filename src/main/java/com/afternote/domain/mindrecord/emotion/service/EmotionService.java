@@ -41,7 +41,7 @@ public class EmotionService {
 
         // 1) 모든 감정의 개수를 먼저 집계 (Map)
         Map<String, Long> emotionCounts = emotions.stream()
-                .flatMap(emotion -> Arrays.stream(emotion.getKeyword().split("\\s+")))
+                .flatMap(emotion -> Arrays.stream(emotion.getEmotionCategory().split("\\s+")))
                 .map(String::trim)
                 .filter(e -> !e.isEmpty())
                 .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));

@@ -57,7 +57,7 @@ class UserControllerTest {
     void getMyProfile_Success() throws Exception {
         given(userService.getMyProfile(USER_ID)).willReturn(null);
 
-        mockMvc.perform(get("/users/me").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
+        mockMvc.perform(get("/api/v1/users/me").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200));
 
@@ -69,7 +69,7 @@ class UserControllerTest {
     void updateMyProfile_Success() throws Exception {
         given(userService.updateMyProfile(eq(USER_ID), any())).willReturn(null);
 
-        mockMvc.perform(patch("/users/me")
+        mockMvc.perform(patch("/api/v1/users/me")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"tester\"}"))
@@ -83,7 +83,7 @@ class UserControllerTest {
     void getMyPushSettings_Success() throws Exception {
         given(userService.getMyPushSettings(USER_ID)).willReturn(null);
 
-        mockMvc.perform(get("/users/push-settings").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
+        mockMvc.perform(get("/api/v1/users/push-settings").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk());
 
         verify(userService).getMyPushSettings(USER_ID);
@@ -94,7 +94,7 @@ class UserControllerTest {
     void getConnectedAccounts_Success() throws Exception {
         given(userService.getConnectedAccounts(USER_ID)).willReturn(null);
 
-        mockMvc.perform(get("/users/connected-accounts").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
+        mockMvc.perform(get("/api/v1/users/connected-accounts").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk());
 
         verify(userService).getConnectedAccounts(USER_ID);
@@ -105,7 +105,7 @@ class UserControllerTest {
     void updateMyPushSettings_Success() throws Exception {
         given(userService.updateMyPushSettings(eq(USER_ID), any())).willReturn(null);
 
-        mockMvc.perform(patch("/users/push-settings")
+        mockMvc.perform(patch("/api/v1/users/push-settings")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"timeLetter\":true,\"mindRecord\":false,\"afterNote\":true}"))
@@ -119,7 +119,7 @@ class UserControllerTest {
     void getReceivers_Success() throws Exception {
         given(userService.getReceivers(USER_ID)).willReturn(List.of());
 
-        mockMvc.perform(get("/users/receivers").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
+        mockMvc.perform(get("/api/v1/users/receivers").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk());
 
         verify(userService).getReceivers(USER_ID);
@@ -130,7 +130,7 @@ class UserControllerTest {
     void createReceiver_Success() throws Exception {
         given(userService.createReceiver(eq(USER_ID), any())).willReturn(null);
 
-        mockMvc.perform(post("/users/receivers")
+        mockMvc.perform(post("/api/v1/users/receivers")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"kim\",\"relation\":\"DAUGHTER\",\"phone\":\"010\",\"email\":\"a@a.com\"}"))
@@ -142,7 +142,7 @@ class UserControllerTest {
     @Test
     @DisplayName("수신자 등록 API 실패 - 필수 name 누락")
     void createReceiver_MissingName_Fail() throws Exception {
-        mockMvc.perform(post("/users/receivers")
+        mockMvc.perform(post("/api/v1/users/receivers")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"relation\":\"DAUGHTER\"}"))
@@ -154,7 +154,7 @@ class UserControllerTest {
     void getReceiverDetail_Success() throws Exception {
         given(userService.getReceiverDetail(USER_ID, 2L)).willReturn(null);
 
-        mockMvc.perform(get("/users/receivers/{receiverId}", 2L)
+        mockMvc.perform(get("/api/v1/users/receivers/{receiverId}", 2L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk());
 
@@ -164,7 +164,7 @@ class UserControllerTest {
     @Test
     @DisplayName("수신자 메시지 수정 API 성공")
     void updateReceiverMessage_Success() throws Exception {
-        mockMvc.perform(patch("/users/receivers/{receiverId}/message", 2L)
+        mockMvc.perform(patch("/api/v1/users/receivers/{receiverId}/message", 2L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"message\":\"hi\"}"))
@@ -178,7 +178,7 @@ class UserControllerTest {
     void getDeliveryCondition_Success() throws Exception {
         given(userService.getDeliveryCondition(USER_ID)).willReturn(null);
 
-        mockMvc.perform(get("/users/delivery-condition").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
+        mockMvc.perform(get("/api/v1/users/delivery-condition").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk());
 
         verify(userService).getDeliveryCondition(USER_ID);
@@ -189,7 +189,7 @@ class UserControllerTest {
     void updateDeliveryCondition_Success() throws Exception {
         given(userService.updateDeliveryCondition(eq(USER_ID), any())).willReturn(null);
 
-        mockMvc.perform(patch("/users/delivery-condition")
+        mockMvc.perform(patch("/api/v1/users/delivery-condition")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"conditionType\":\"INACTIVITY\",\"inactivityPeriodDays\":365}"))
@@ -201,7 +201,7 @@ class UserControllerTest {
     @Test
     @DisplayName("회원 탈퇴 API 성공")
     void deleteAccount_Success() throws Exception {
-        mockMvc.perform(delete("/users/me").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
+        mockMvc.perform(delete("/api/v1/users/me").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk());
 
         verify(userService).deleteAccount(USER_ID);
@@ -212,7 +212,7 @@ class UserControllerTest {
     void updateReceiver_Success() throws Exception {
         given(userService.updateReceiver(eq(USER_ID), eq(2L), any())).willReturn(null);
 
-        mockMvc.perform(patch("/users/receivers/{receiverId}", 2L)
+        mockMvc.perform(patch("/api/v1/users/receivers/{receiverId}", 2L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"name\":\"kim\",\"phone\":\"010-1111-2222\",\"relation\":\"DAUGHTER\",\"email\":\"a@a.com\"}"))

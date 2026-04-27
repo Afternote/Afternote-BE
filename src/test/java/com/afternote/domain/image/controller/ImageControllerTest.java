@@ -49,7 +49,7 @@ class ImageControllerTest {
     void getPresignedUrl_Success() throws Exception {
         given(s3Service.generatePresignedUrl("profiles", "jpg")).willReturn(null);
 
-        mockMvc.perform(post("/files/presigned-url")
+        mockMvc.perform(post("/api/v1/files/presigned-url")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"directory\":\"profiles\",\"extension\":\"jpg\"}"))
@@ -61,7 +61,7 @@ class ImageControllerTest {
     @Test
     @DisplayName("Presigned URL 생성 API 실패 - extension 누락")
     void getPresignedUrl_MissingExtension_Fail() throws Exception {
-        mockMvc.perform(post("/files/presigned-url")
+        mockMvc.perform(post("/api/v1/files/presigned-url")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"directory\":\"profiles\"}"))

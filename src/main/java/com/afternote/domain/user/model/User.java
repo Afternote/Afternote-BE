@@ -2,13 +2,11 @@ package com.afternote.domain.user.model;
 
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
+import com.afternote.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.springframework.data.annotation.CreatedDate;
-import org.springframework.data.annotation.LastModifiedDate;
-import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -20,8 +18,7 @@ import java.util.stream.Collectors;
 @Table(name = "users") // DB 예약어 방지를 위해 테이블명은 users 권장
 @Getter
 @NoArgsConstructor
-@EntityListeners(AuditingEntityListener.class) // 생성/수정 시간 자동 관리
-public class User {
+public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -56,16 +53,16 @@ public class User {
     private java.util.List<com.afternote.domain.timeletter.model.TimeLetter> timeLetters = new java.util.ArrayList<>(); // 작성한 타임레터 목록
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<com.afternote.domain.mindrecord.model.MindRecord> mindRecords = new java.util.ArrayList<>(); // 작성한 마음의 기록 목록
+    private java.util.List<com.afternote.domain.diary.model.Diary> diaries = new java.util.ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<com.afternote.domain.mindrecord.question.model.DailyQuestionAnswer> dailyQuestionAnswers = new java.util.ArrayList<>(); // 작성한 일일 질문 답변 목록
+    private java.util.List<com.afternote.domain.deepthought.model.DeepThought> deepThoughts = new java.util.ArrayList<>();
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
     private java.util.List<com.afternote.domain.afternote.model.Afternote> afternotes = new java.util.ArrayList<>(); // 작성한 애프터노트 목록
 
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, orphanRemoval = true)
-    private java.util.List<com.afternote.domain.mindrecord.question.model.UserDailyQuestion> userDailyQuestions = new java.util.ArrayList<>(); // 매일의 질문 목록
+    private java.util.List<com.afternote.domain.dailyquestion.model.UserDailyQuestion> userDailyQuestions = new java.util.ArrayList<>(); // 매일의 질문 목록
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -92,14 +89,6 @@ public class User {
 
     @Column(nullable = false)
     private boolean afterNotePushEnabled;
-
-    @CreatedDate
-    @Column(nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @LastModifiedDate
-    @Column(nullable = false)
-    private LocalDateTime updatedAt;
 
     public void updatePassword(String encryptedPassword) {
         this.password = encryptedPassword;
@@ -199,8 +188,8 @@ public class User {
             case NONE -> true;
             case DEATH_CERTIFICATE -> this.conditionFulfilled;
             case INACTIVITY -> this.inactivityPeriodDays != null
-                    && this.updatedAt != null
-                    && this.updatedAt.isBefore(LocalDateTime.now().minusDays(this.inactivityPeriodDays));
+                    && this.getUpdatedAt() != null
+                    && this.getUpdatedAt().isBefore(LocalDateTime.now().minusDays(this.inactivityPeriodDays));
             case SPECIFIC_DATE -> this.specificDate != null && !LocalDate.now().isBefore(this.specificDate);
         };
     }

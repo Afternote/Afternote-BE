@@ -3,22 +3,10 @@ package com.afternote.domain.receiver.service;
 import com.afternote.domain.afternote.model.Afternote;
 import com.afternote.domain.afternote.model.AfternoteReceiver;
 import com.afternote.domain.image.service.S3Service;
-import com.afternote.domain.mindrecord.diary.model.Diary;
-import com.afternote.domain.mindrecord.diary.repository.DiaryRepository;
-import com.afternote.domain.mindrecord.image.model.MindRecordImage;
-import com.afternote.domain.mindrecord.image.repository.MindRecordImageRepository;
-import com.afternote.domain.mindrecord.model.MindRecord;
-import com.afternote.domain.mindrecord.model.MindRecordReceiver;
-import com.afternote.domain.mindrecord.question.model.DailyQuestionAnswer;
-import com.afternote.domain.mindrecord.question.repository.DailyQuestionAnswerRepository;
-import com.afternote.domain.mindrecord.repository.MindRecordRepository;
-import com.afternote.domain.mindrecord.thought.model.DeepThought;
-import com.afternote.domain.mindrecord.thought.repository.DeepThoughtRepository;
 import com.afternote.domain.receiver.dto.*;
 import com.afternote.domain.receiver.model.Receiver;
 import com.afternote.domain.receiver.model.TimeLetterReceiver;
 import com.afternote.domain.receiver.repository.AfternoteReceiverRepository;
-import com.afternote.domain.receiver.repository.MindRecordReceiverRepository;
 import com.afternote.domain.receiver.repository.ReceiverRepository;
 import com.afternote.domain.receiver.repository.TimeLetterReceiverRepository;
 import com.afternote.domain.timeletter.model.TimeLetter;
@@ -52,14 +40,8 @@ public class ReceivedService {
     private final ReceiverRepository receiverRepository;
     private final TimeLetterReceiverRepository timeLetterReceiverRepository;
     private final AfternoteReceiverRepository afternoteReceiverRepository;
-    private final MindRecordReceiverRepository mindRecordReceiverRepository;
     private final TimeLetterRepository timeLetterRepository;
     private final TimeLetterMediaRepository timeLetterMediaRepository;
-    private final MindRecordRepository mindRecordRepository;
-    private final DiaryRepository diaryRepository;
-    private final DailyQuestionAnswerRepository dailyQuestionAnswerRepository;
-    private final DeepThoughtRepository deepThoughtRepository;
-    private final MindRecordImageRepository mindRecordImageRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
 
@@ -142,54 +124,6 @@ public class ReceivedService {
                 .toList();
 
         return ReceivedAfternoteListResponse.from(responses);
-    }
-
-    /**
-     * 수신자가 받은 마인드레코드 목록 조회
-     */
-    public ReceivedMindRecordListResponse getMindRecords(Long receiverId) {
-        validateReceiver(receiverId);
-
-        List<MindRecordReceiver> mindRecordReceivers =
-                mindRecordReceiverRepository.findByReceiverIdWithMindRecord(receiverId);
-
-        List<ReceivedMindRecordResponse> responses = mindRecordReceivers.stream()
-                .map(ReceivedMindRecordResponse::from)
-                .toList();
-
-        return ReceivedMindRecordListResponse.from(responses);
-    }
-
-    /**
-     * 수신한 마인드레코드 상세 조회
-     */
-    public ReceivedMindRecordDetailResponse getMindRecord(Long receiverId, Long mindRecordId) {
-        MindRecordReceiver mindRecordReceiver = mindRecordReceiverRepository
-                .findByMindRecordIdAndReceiverIdWithMindRecord(mindRecordId, receiverId)
-                .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
-
-        MindRecord record = mindRecordReceiver.getMindRecord();
-
-        List<MindRecordImage> images = mindRecordImageRepository
-                .findByMindRecordIdOrderByIdAsc(record.getId());
-
-        return switch (record.getType()) {
-            case DIARY -> {
-                Diary diary = diaryRepository.findByMindRecord(record)
-                        .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
-                yield ReceivedMindRecordDetailResponse.from(record, diary, images, s3Service::generateGetPresignedUrl);
-            }
-            case DAILY_QUESTION -> {
-                DailyQuestionAnswer answer = dailyQuestionAnswerRepository.findByMindRecord(record)
-                        .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
-                yield ReceivedMindRecordDetailResponse.from(record, answer, images, s3Service::generateGetPresignedUrl);
-            }
-            case DEEP_THOUGHT -> {
-                DeepThought thought = deepThoughtRepository.findByMindRecord(record)
-                        .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
-                yield ReceivedMindRecordDetailResponse.from(record, thought, images, s3Service::generateGetPresignedUrl);
-            }
-        };
     }
 
     /**
@@ -280,39 +214,6 @@ public class ReceivedService {
 
         return timeLetterReceiverRepository.saveAll(timeLetterReceivers).stream()
                 .map(TimeLetterReceiver::getId)
-                .toList();
-    }
-
-    /**
-     * 마인드레코드에 수신자 등록
-     */
-    @Transactional
-    public List<Long> createMindRecordReceivers(Long userId, CreateMindRecordReceiverRequest request) {
-        MindRecord mindRecord = mindRecordRepository.findById(request.getMindRecordId())
-                .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
-
-        // 본인의 마인드레코드인지 확인
-        if (!mindRecord.getUser().getId().equals(userId)) {
-            throw new CustomException(ErrorCode.NOT_ENOUGH_PERMISSION);
-        }
-
-        List<Receiver> receivers = receiverRepository.findAllById(request.getReceiverIds());
-        if (receivers.size() != request.getReceiverIds().size()) {
-            throw new CustomException(ErrorCode.RECEIVER_NOT_FOUND);
-        }
-
-        // 본인이 등록한 수신자인지 검증
-        validateReceiversOwnership(userId, receivers);
-
-        List<MindRecordReceiver> mindRecordReceivers = receivers.stream()
-                .map(receiver -> MindRecordReceiver.builder()
-                        .mindRecord(mindRecord)
-                        .receiver(receiver)
-                        .build())
-                .toList();
-
-        return mindRecordReceiverRepository.saveAll(mindRecordReceivers).stream()
-                .map(MindRecordReceiver::getId)
                 .toList();
     }
 

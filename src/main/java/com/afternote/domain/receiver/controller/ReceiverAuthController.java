@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Receiver Auth API", description = "수신자 인증번호 기반 콘텐츠 조회 API")
 @RestController
-@RequestMapping("/api/receiver-auth")
+@RequestMapping("/api/v1/receiver-auth")
 @RequiredArgsConstructor
 public class ReceiverAuthController {
 
@@ -55,18 +55,6 @@ public class ReceiverAuthController {
     }
 
     @Operation(
-            summary = "인증번호로 마인드레코드 목록 조회",
-            description = "인증번호를 통해 수신자에게 공유된 마인드레코드 목록을 조회합니다."
-    )
-    @GetMapping("/mind-records")
-    public ApiResponse<ReceivedMindRecordListResponse> getMindRecords(
-            @Parameter(description = "수신자 인증번호 (UUID)", required = true)
-            @RequestHeader("X-Auth-Code") String authCode
-    ) {
-        return ApiResponse.success(receiverAuthService.getMindRecordsByAuthCode(authCode));
-    }
-
-    @Operation(
             summary = "인증번호로 타임레터 상세 조회",
             description = "인증번호를 통해 수신한 특정 타임레터를 상세 조회합니다. 읽음 처리도 함께 수행됩니다."
     )
@@ -78,20 +66,6 @@ public class ReceiverAuthController {
             @PathVariable Long timeLetterReceiverId
     ) {
         return ApiResponse.success(receiverAuthService.getTimeLetterByAuthCode(authCode, timeLetterReceiverId));
-    }
-
-    @Operation(
-            summary = "인증번호로 마인드레코드 상세 조회",
-            description = "인증번호를 통해 수신한 특정 마인드레코드의 상세 내용을 조회합니다."
-    )
-    @GetMapping("/mind-records/{mindRecordId}")
-    public ApiResponse<ReceivedMindRecordDetailResponse> getMindRecord(
-            @Parameter(description = "수신자 인증번호 (UUID)", required = true)
-            @RequestHeader("X-Auth-Code") String authCode,
-            @Parameter(description = "마인드레코드 ID", required = true)
-            @PathVariable Long mindRecordId
-    ) {
-        return ApiResponse.success(receiverAuthService.getMindRecordByAuthCode(authCode, mindRecordId));
     }
 
     @Operation(

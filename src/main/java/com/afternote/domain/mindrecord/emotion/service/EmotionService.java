@@ -3,7 +3,6 @@ package com.afternote.domain.mindrecord.emotion.service;
 import com.afternote.domain.mindrecord.emotion.dto.GetEmotionResponse;
 import com.afternote.domain.mindrecord.emotion.model.Emotion;
 import com.afternote.domain.mindrecord.emotion.repository.EmotionRepository;
-import com.afternote.domain.user.model.User;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,7 +20,6 @@ import java.util.stream.Collectors;
 public class EmotionService {
 
     private final EmotionRepository emotionRepository;
-    private final EmotionCacheService emotionCacheService;
 
     /**
      * 유저의 감정별 비율 계산 (공백으로 분리된 각 감정을 개별 계산)

@@ -1,6 +1,5 @@
 package com.afternote.domain.receiver.model;
 
-import com.afternote.domain.receiver.model.Receiver; // 패키지명 확인!
 import com.afternote.domain.timeletter.model.TimeLetter;
 import jakarta.persistence.*;
 import lombok.AccessLevel;

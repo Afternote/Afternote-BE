@@ -5,11 +5,13 @@ import com.afternote.domain.dailyquestion.model.DailyQuestion;
 import com.afternote.domain.dailyquestion.model.UserDailyQuestion;
 import com.afternote.domain.dailyquestion.repository.DailyQuestionRepository;
 import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
+import com.afternote.domain.mindrecord.emotion.event.DailyQuestionEmotionAnalysisRequestedEvent;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,7 @@ public class DailyQuestionService {
 
     private final UserDailyQuestionRepository userDailyQuestionRepository;
     private final DailyQuestionRepository dailyQuestionRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
 
     @Transactional
@@ -87,6 +90,9 @@ public class DailyQuestionService {
                 request.getImageUrl(),
                 request.getIsDraft() != null ? request.getIsDraft() : false
         );
+        if (!userDailyQuestion.isDraft()) {
+            eventPublisher.publishEvent(new DailyQuestionEmotionAnalysisRequestedEvent(userId, userDailyQuestion.getId()));
+        }
 
         return DailyQuestionAnswerResponse.builder()
                 .userDailyQuestionId(userDailyQuestion.getId())
@@ -111,6 +117,9 @@ public class DailyQuestionService {
                     request.getImageUrl() != null ? request.getImageUrl() : userDailyQuestion.getImageUrl(),
                     request.getIsDraft() != null ? request.getIsDraft() : userDailyQuestion.isDraft()
             );
+            if (!userDailyQuestion.isDraft()) {
+                eventPublisher.publishEvent(new DailyQuestionEmotionAnalysisRequestedEvent(userId, userDailyQuestion.getId()));
+            }
         }
 
         return DailyQuestionAnswerResponse.builder()

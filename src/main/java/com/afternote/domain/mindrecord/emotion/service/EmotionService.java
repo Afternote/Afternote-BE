@@ -1,67 +1,134 @@
 package com.afternote.domain.mindrecord.emotion.service;
 
-import com.afternote.domain.mindrecord.emotion.dto.GetEmotionResponse;
 import com.afternote.domain.mindrecord.emotion.model.Emotion;
+import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
 import com.afternote.domain.mindrecord.emotion.repository.EmotionRepository;
+import com.afternote.domain.user.model.User;
+import com.afternote.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
-import java.util.stream.Collectors;
+import java.util.Objects;
+import java.util.Optional;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EmotionService {
 
     private final EmotionRepository emotionRepository;
+    private final UserRepository userRepository;
 
     /**
-     * 유저의 감정별 비율 계산 (공백으로 분리된 각 감정을 개별 계산)
-     *
-     * @param userId 대상 유저 ID
-     * @return 감정별 비율 리스트 (예: 기쁨 40%, 슬픔 30%, ...)
+     * Gemini 등으로 분석된 감정 문자열을 저장한다.
+     * 클래스의 readOnly 기본값과 무관하게 쓰기 가능한 새 트랜잭션에서 커밋한다.
      */
-    public List<GetEmotionResponse.EmotionStat> getEmotionStatistics(Long userId) {
-        // 1) 유저의 모든 감정 조회
-        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
+    @Transactional(propagation = Propagation.REQUIRES_NEW, readOnly = false)
+    public void persistAnalyzedEmotion(
+            Long userId,
+            EmotionSourceType sourceType,
+            Long sourceId,
+            String analyzedCategory,
+            LocalDateTime sourceCreatedAt
+    ) {
+        try {
+            upsertInTransaction(userId, sourceType, sourceId, analyzedCategory, sourceCreatedAt);
+        } catch (Exception e) {
+            log.error(
+                    "[Emotion] persist failed userId={} sourceType={} sourceId={}",
+                    userId,
+                    sourceType,
+                    sourceId,
+                    e
+            );
+        }
+    }
 
-        List<Emotion> emotions = emotionRepository.findByUserIdAndCreatedAtAfter(userId, sevenDaysAgo);
-
-        if (emotions.isEmpty()) {
-            return List.of(); // 빈 리스트 반환
+    private void upsertInTransaction(
+            Long userId,
+            EmotionSourceType sourceType,
+            Long sourceId,
+            String emotionCategory,
+            LocalDateTime sourceCreatedAt
+    ) {
+        String category = normalizeAnalyzedCategory(emotionCategory);
+        if (category == null || category.isBlank()) {
+            log.debug(
+                    "[Emotion] skip (no category) userId={} sourceType={} sourceId={}",
+                    userId,
+                    sourceType,
+                    sourceId
+            );
+            return;
         }
 
-        // 1) 모든 감정의 개수를 먼저 집계 (Map)
-        Map<String, Long> emotionCounts = emotions.stream()
-                .flatMap(emotion -> Arrays.stream(emotion.getEmotionCategory().split("\\s+")))
-                .map(String::trim)
-                .filter(e -> !e.isEmpty())
-                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null) {
+            log.warn("[Emotion] skip (user not found) userId={} sourceType={} sourceId={}", userId, sourceType, sourceId);
+            return;
+        }
 
-// 2) 개수(Value)가 높은 순서대로 상위 4개만 먼저 추출하여 리스트화
-        List<Map.Entry<String, Long>> top4Entries = emotionCounts.entrySet().stream()
-                .sorted(Map.Entry.<String, Long>comparingByValue().reversed())
-                .limit(4)
-                .collect(Collectors.toList());
+        Optional<Emotion> existing = emotionRepository.findByUserIdAndSourceTypeAndSourceId(userId, sourceType, sourceId);
+        if (existing.isEmpty()) {
+            Emotion created = Emotion.create(
+                    user,
+                    sourceType,
+                    sourceId,
+                    category,
+                    sourceCreatedAt != null ? sourceCreatedAt : LocalDateTime.now()
+            );
+            emotionRepository.save(created);
+            log.info(
+                    "[Emotion] created emotionId={} userId={} sourceType={} sourceId={} category={}",
+                    created.getId(),
+                    userId,
+                    sourceType,
+                    sourceId,
+                    category
+            );
+            return;
+        }
 
-// 3) 추출된 '상위 4개만의 합계'를 구함 (이게 분모가 됨)
-        long top4TotalCount = top4Entries.stream()
-                .mapToLong(Map.Entry::getValue)
-                .sum();
+        Emotion emotion = existing.get();
+        String before = emotion.getEmotionCategory();
+        emotion.updateEmotionCategory(category);
+        emotionRepository.save(emotion);
+        if (Objects.equals(before, category)) {
+            log.info(
+                    "[Emotion] saved (category unchanged) emotionId={} userId={} sourceType={} sourceId={} category={}",
+                    emotion.getId(),
+                    userId,
+                    sourceType,
+                    sourceId,
+                    category
+            );
+        } else {
+            log.info(
+                    "[Emotion] updated emotionId={} userId={} sourceType={} sourceId={} categoryBefore={} categoryAfter={}",
+                    emotion.getId(),
+                    userId,
+                    sourceType,
+                    sourceId,
+                    before,
+                    category
+            );
+        }
+    }
 
-// 4) 상위 4개에 대해서만 새로운 합계를 기준으로 비율 계산
-        return top4Entries.stream()
-                .map(entry -> new GetEmotionResponse.EmotionStat(
-                        entry.getKey(),
-                        top4TotalCount == 0 ? 0 : (entry.getValue() * 100.0) / top4TotalCount
-                ))
-                .collect(Collectors.toList());
-
+    /** DB 컬럼 길이(30) 및 공백 정리 */
+    private String normalizeAnalyzedCategory(String raw) {
+        if (raw == null) {
+            return null;
+        }
+        String s = raw.trim().replaceAll("\\s+", " ");
+        if (s.isEmpty()) {
+            return null;
+        }
+        return s.length() > 30 ? s.substring(0, 30) : s;
     }
 }

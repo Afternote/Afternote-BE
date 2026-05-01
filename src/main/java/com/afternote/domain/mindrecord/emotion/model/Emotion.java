@@ -9,19 +9,19 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(
-    name = "emotions",
-    uniqueConstraints = {
-        @UniqueConstraint(columnNames = {"user_id", "source_type", "source_id"})
-    }
+        name = "emotions",
+        uniqueConstraints = {
+                @UniqueConstraint(columnNames = {"user_id", "source_type", "source_id"})
+        }
 )
 @Getter
 @NoArgsConstructor
 public class Emotion {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-    
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

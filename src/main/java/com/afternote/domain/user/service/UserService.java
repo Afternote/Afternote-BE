@@ -142,11 +142,6 @@ public class UserService {
                 request.getSpecificDate()
         );
 
-        if (previousConditionType == DeliveryConditionType.DEATH_CERTIFICATE
-                && user.getDeliveryConditionType() != DeliveryConditionType.DEATH_CERTIFICATE) {
-            deliveryVerificationService.cancelPendingVerifications(user.getId());
-        }
-
         return DeliveryConditionResponse.from(user);
     }
 

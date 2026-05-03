@@ -155,11 +155,6 @@ public class User extends BaseEntity {
                 this.specificDate = null;
                 this.conditionFulfilled = true;
             }
-            case DEATH_CERTIFICATE -> {
-                this.inactivityPeriodDays = null;
-                this.specificDate = null;
-                this.conditionFulfilled = false;
-            }
             case INACTIVITY -> {
                 if (inactivityPeriodDays == null || inactivityPeriodDays <= 0) {
                     throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
@@ -186,7 +181,6 @@ public class User extends BaseEntity {
     public boolean isDeliveryConditionMet() {
         return switch (this.deliveryConditionType) {
             case NONE -> true;
-            case DEATH_CERTIFICATE -> this.conditionFulfilled;
             case INACTIVITY -> this.inactivityPeriodDays != null
                     && this.getUpdatedAt() != null
                     && this.getUpdatedAt().isBefore(LocalDateTime.now().minusDays(this.inactivityPeriodDays));

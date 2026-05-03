@@ -109,7 +109,7 @@ public class ReceiverAuthController {
 
     @Operation(
             summary = "사망확인 서류 제출",
-            description = "전달 조건이 DEATH_CERTIFICATE인 경우 수신자가 인증 서류를 제출합니다."
+            description = "수신자가 인증 서류를 제출합니다."
     )
     @PostMapping("/delivery-verification")
     public ApiResponse<DeliveryVerificationResponse> submitDeliveryVerification(

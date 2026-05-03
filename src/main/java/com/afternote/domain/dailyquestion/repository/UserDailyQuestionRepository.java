@@ -14,4 +14,10 @@ public interface UserDailyQuestionRepository extends JpaRepository<UserDailyQues
     List<UserDailyQuestion> findByUserIdOrderByCreatedAtDesc(Long userId);
     
     List<UserDailyQuestion> findByUserIdAndQuestionDateOrderByCreatedAtDesc(Long userId, LocalDate questionDate);
+
+    List<UserDailyQuestion> findByUserIdAndQuestionDateBetweenOrderByQuestionDateAscCreatedAtAsc(
+            Long userId,
+            LocalDate fromInclusive,
+            LocalDate toInclusive
+    );
 }

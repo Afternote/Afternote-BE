@@ -18,4 +18,10 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
 			LocalDateTime start,
 			LocalDateTime end
 	);
+
+	List<Diary> findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+			Long userId,
+			LocalDateTime startInclusive,
+			LocalDateTime endExclusive
+	);
 }

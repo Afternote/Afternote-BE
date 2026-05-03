@@ -84,5 +84,26 @@ public class GeminiService {
         return s != null ? s : "";
     }
 
-   
+    /**
+     * 주간 감정 키워드 JSON을 바탕으로 인사이트 문구(한국어)를 생성한다. 실패 시 null.
+     */
+    public String generateWeeklyMindRecordSummary(String keywordJson) {
+        String instruction = String.format(
+                "아래 JSON은 한 사용자의 한 주 동안 기록에서 집계된 감정 키워드와 비율(퍼센트)이다.\n"
+                        + "%s\n\n"
+                        + "[작성 지침]\n"
+                        + "- 한국어로, 위 키워드를 자연스럽게 녹여 반성·격려가 담긴 인사이트를 약 2문장으로 쓴다.\n"
+                        + "- 이어서 짧은 격려 한 줄과 이모지 하나를 덧붙인다.\n"
+                        + "- JSON·목록·따옴표로 감싼 메타 설명 없이 본문만 출력한다.\n"
+                        + "- 키워드가 비어 있거나 비율이 모두 0에 가깝다면, 기록 습관을 칭찬하는 따뜻한 한두 문장으로 대체한다.",
+                blankToEmpty(keywordJson)
+        );
+        try {
+            log.info("Gemini 주간 마음기록 요약 요청: {}", instruction);
+            return chatModel.call(new Prompt(instruction)).getResult().getOutput().getText().trim();
+        } catch (Exception e) {
+            log.error("Gemini 주간 마음기록 요약 실패", e);
+            return null;
+        }
+    }
 }

@@ -11,7 +11,7 @@ import java.util.Optional;
 
 @Repository
 public interface EmotionRepository extends JpaRepository<Emotion, Long> {
-    
+
     List<Emotion> findByUserId(Long userId);
 
     List<Emotion> findByUserIdAndCreatedAtAfter(Long userId, LocalDateTime startDate);

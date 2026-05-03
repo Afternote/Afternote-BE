@@ -1,7 +1,6 @@
 package com.afternote.domain.timeletter.service;
 
 import com.afternote.domain.image.service.S3Service;
-import com.afternote.domain.receiver.model.TimeLetterReceiver;
 import com.afternote.domain.receiver.repository.TimeLetterReceiverRepository;
 import com.afternote.domain.receiver.service.ReceivedService;
 import com.afternote.domain.timeletter.dto.*;

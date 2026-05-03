@@ -34,4 +34,10 @@ public interface DeepThoughtRepository extends JpaRepository<DeepThought, Long> 
 
     @Query(value = "SELECT * FROM deep_thought dt WHERE dt.user_id = :userId LIMIT 1 OFFSET :offset", nativeQuery = true)
     Optional<DeepThought> findByUserIdWithOffset(@Param("userId") Long userId, @Param("offset") int offset);
+
+    List<DeepThought> findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+            Long userId,
+            LocalDateTime startInclusive,
+            LocalDateTime endExclusive
+    );
 }

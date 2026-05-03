@@ -6,11 +6,13 @@ import com.afternote.domain.deepthought.dto.DeepThoughtResponse;
 import com.afternote.domain.deepthought.model.DeepThought;
 import com.afternote.domain.deepthought.repository.DeepThoughtCategoryRepository;
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
+import com.afternote.domain.mindrecord.emotion.event.DeepThoughtEmotionAnalysisRequestedEvent;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,6 +27,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class DeepThoughtService {
     private final DeepThoughtCategoryRepository deepThoughtCategoryRepository;
     private final DeepThoughtRepository deepThoughtRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
 
     @Transactional
@@ -44,6 +47,9 @@ public class DeepThoughtService {
         );
 
         DeepThought saved = deepThoughtRepository.save(deepThought);
+        if (Boolean.FALSE.equals(saved.getIsDraft())) {
+            eventPublisher.publishEvent(new DeepThoughtEmotionAnalysisRequestedEvent(userId, saved.getId()));
+        }
 
         return DeepThoughtResponse.from(saved);
     }

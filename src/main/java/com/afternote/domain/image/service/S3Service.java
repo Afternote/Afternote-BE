@@ -8,11 +8,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
@@ -44,7 +41,7 @@ public class S3Service {
     );
     private static final Set<String> ALLOWED_DIRECTORIES = Set.of("profiles", "timeletters", "afternotes", "mindrecords", "documents");
     private static final Duration PRESIGNED_URL_EXPIRATION = Duration.ofMinutes(10);
-    private static final Duration GET_PRESIGNED_URL_EXPIRATION = Duration.ofHours(1);
+    // private static final Duration GET_PRESIGNED_URL_EXPIRATION = Duration.ofHours(1);
 
     public PresignedUrlResponse generatePresignedUrl(String directory, String extension) {
         String normalizedDir = directory.toLowerCase();

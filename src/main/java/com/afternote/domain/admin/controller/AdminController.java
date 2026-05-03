@@ -36,8 +36,8 @@ public class AdminController {
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "대기 중인 인증 요청 목록 조회 성공"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 999)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "관리자 권한 필요 (code: 605)")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "관리자 권한 필요 (code: 2005)")
     })
     @GetMapping("/verifications")
     public ApiResponse<List<AdminVerificationResponse>> getPendingVerifications(
@@ -58,9 +58,9 @@ public class AdminController {
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "인증 요청 상세 조회 성공"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 999)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "관리자 권한 필요 (code: 605)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인증 요청을 찾을 수 없음 (code: 602)")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "관리자 권한 필요 (code: 2005)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인증 요청을 찾을 수 없음 (code: 2002)")
     })
     @GetMapping("/verifications/{id}")
     public ApiResponse<AdminVerificationResponse> getVerificationDetail(
@@ -85,10 +85,10 @@ public class AdminController {
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "인증 요청 승인 성공"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "이미 처리된 인증 요청 (code: 604)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 999)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "관리자 권한 필요 (code: 605)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인증 요청을 찾을 수 없음 (code: 602)")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "이미 처리된 인증 요청 (code: 2004)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "관리자 권한 필요 (code: 2005)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인증 요청을 찾을 수 없음 (code: 2002)")
     })
     @PostMapping("/verifications/{id}/approve")
     public ApiResponse<AdminVerificationResponse> approveVerification(
@@ -115,10 +115,10 @@ public class AdminController {
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "인증 요청 거절 성공"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "이미 처리된 인증 요청 (code: 604)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 999)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "관리자 권한 필요 (code: 605)"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인증 요청을 찾을 수 없음 (code: 602)")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "이미 처리된 인증 요청 (code: 2004)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "관리자 권한 필요 (code: 2005)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "인증 요청을 찾을 수 없음 (code: 2002)")
     })
     @PostMapping("/verifications/{id}/reject")
     public ApiResponse<AdminVerificationResponse> rejectVerification(

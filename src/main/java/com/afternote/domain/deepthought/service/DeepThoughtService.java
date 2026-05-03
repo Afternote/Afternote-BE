@@ -4,12 +4,15 @@ import com.afternote.domain.deepthought.dto.DeepThoughtCreateRequest;
 import com.afternote.domain.deepthought.dto.DeepThoughtListResponse;
 import com.afternote.domain.deepthought.dto.DeepThoughtResponse;
 import com.afternote.domain.deepthought.model.DeepThought;
+import com.afternote.domain.deepthought.repository.DeepThoughtCategoryRepository;
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
+import com.afternote.domain.mindrecord.emotion.event.DeepThoughtEmotionAnalysisRequestedEvent;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,13 +25,16 @@ import java.util.concurrent.ThreadLocalRandom;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class DeepThoughtService {
+    private final DeepThoughtCategoryRepository deepThoughtCategoryRepository;
     private final DeepThoughtRepository deepThoughtRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
 
     @Transactional
     public DeepThoughtResponse createDeepThought(Long userId, DeepThoughtCreateRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        validateCategoryExists(userId, request.getCategory());
 
         DeepThought deepThought = DeepThought.create(
                 user,
@@ -41,8 +47,22 @@ public class DeepThoughtService {
         );
 
         DeepThought saved = deepThoughtRepository.save(deepThought);
+        if (Boolean.FALSE.equals(saved.getIsDraft())) {
+            eventPublisher.publishEvent(new DeepThoughtEmotionAnalysisRequestedEvent(userId, saved.getId()));
+        }
 
         return DeepThoughtResponse.from(saved);
+    }
+
+    private void validateCategoryExists(Long userId, String categoryTitle) {
+        String normalizedCategory = categoryTitle == null ? null : categoryTitle.trim();
+        if (normalizedCategory == null || normalizedCategory.isBlank()) {
+            throw new CustomException(ErrorCode.DEEP_THOUGHT_CATEGORY_REQUIRED);
+        }
+
+        if (!deepThoughtCategoryRepository.existsByUserIdAndTitle(userId, normalizedCategory)) {
+            throw new CustomException(ErrorCode.DEEP_THOUGHT_CATEGORY_NOT_FOUND);
+        }
     }
 
     public DeepThoughtListResponse getDeepThoughts(Long userId, LocalDate date, String tag, String category) {
@@ -64,12 +84,12 @@ public class DeepThoughtService {
     public DeepThoughtResponse getRandomDeepThought(Long userId) {
         long count = deepThoughtRepository.countByUserId(userId);
         if (count <= 0) {
-            throw new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND);
+            throw new CustomException(ErrorCode.DEEP_THOUGHT_NOT_FOUND);
         }
 
         int randomOffset = ThreadLocalRandom.current().nextInt((int) count);
         DeepThought deepThought = deepThoughtRepository.findByUserIdWithOffset(userId, randomOffset)
-                .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.DEEP_THOUGHT_NOT_FOUND));
 
         return DeepThoughtResponse.from(deepThought);
     }
@@ -77,12 +97,12 @@ public class DeepThoughtService {
     @Transactional
     public void deleteDeepThought(Long userId, Long deepThoughtId) {
         DeepThought deepThought = deepThoughtRepository.findByIdAndUserId(deepThoughtId, userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.DEEP_THOUGHT_NOT_FOUND));
         deepThoughtRepository.delete(deepThought);
     }
 
     public DeepThought getOwnedDeepThought(Long userId, Long deepThoughtId) {
         return deepThoughtRepository.findByIdAndUserId(deepThoughtId, userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.DEEP_THOUGHT_NOT_FOUND));
     }
 }

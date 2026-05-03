@@ -6,11 +6,13 @@ import com.afternote.domain.diary.dto.DiaryResponse;
 import com.afternote.domain.diary.dto.DiaryUpdateRequest;
 import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.repository.DiaryRepository;
+import com.afternote.domain.mindrecord.emotion.event.DiaryEmotionAnalysisRequestedEvent;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ import java.util.List;
 public class DiaryService {
 
     private final DiaryRepository diaryRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
 
     @Transactional
@@ -41,6 +44,9 @@ public class DiaryService {
         );
 
         Diary saved = diaryRepository.save(diary);
+        if (Boolean.FALSE.equals(saved.getIsDraft())) {
+            eventPublisher.publishEvent(new DiaryEmotionAnalysisRequestedEvent(userId, saved.getId()));
+        }
 
         return DiaryResponse.from(saved);
     }
@@ -61,7 +67,7 @@ public class DiaryService {
     @Transactional
     public DiaryResponse updateDiary(Long userId, Long diaryId, DiaryUpdateRequest request) {
         Diary diary = diaryRepository.findByIdAndUserId(diaryId, userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.DIARY_NOT_FOUND));
 
         diary.update(
                 request.getTitle(),
@@ -70,6 +76,9 @@ public class DiaryService {
                 request.getImageUrl(),
                 request.getTodayMood()
         );
+        if (Boolean.FALSE.equals(diary.getIsDraft())) {
+            eventPublisher.publishEvent(new DiaryEmotionAnalysisRequestedEvent(userId, diary.getId()));
+        }
 
         return DiaryResponse.from(diary);
     }
@@ -77,8 +86,7 @@ public class DiaryService {
     @Transactional
     public void deleteDiary(Long userId, Long diaryId) {
         Diary diary = diaryRepository.findByIdAndUserId(diaryId, userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.MIND_RECORD_NOT_FOUND));
+                .orElseThrow(() -> new CustomException(ErrorCode.DIARY_NOT_FOUND));
         diaryRepository.delete(diary);
     }
-
 }

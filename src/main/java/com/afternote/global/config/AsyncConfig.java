@@ -1,9 +1,13 @@
 package com.afternote.global.config;
 
+import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.scheduling.annotation.AsyncConfigurer;
 import org.springframework.scheduling.annotation.EnableAsync;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.util.concurrent.Executor;
 
@@ -23,5 +27,11 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setThreadNamePrefix("emotion-analysis-");
         executor.initialize();
         return executor;
+    }
+
+    @Bean
+    @Primary
+    public TransactionTemplate transactionTemplate(PlatformTransactionManager transactionManager) {
+        return new TransactionTemplate(transactionManager);
     }
 }

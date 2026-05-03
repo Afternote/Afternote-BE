@@ -5,11 +5,13 @@ import com.afternote.domain.dailyquestion.model.DailyQuestion;
 import com.afternote.domain.dailyquestion.model.UserDailyQuestion;
 import com.afternote.domain.dailyquestion.repository.DailyQuestionRepository;
 import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
+import com.afternote.domain.mindrecord.emotion.event.DailyQuestionEmotionAnalysisRequestedEvent;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +29,7 @@ public class DailyQuestionService {
 
     private final UserDailyQuestionRepository userDailyQuestionRepository;
     private final DailyQuestionRepository dailyQuestionRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
 
     @Transactional
@@ -68,6 +71,7 @@ public class DailyQuestionService {
 
         return DailyQuestionTodayResponse.builder()
                 .questionId(userDailyQuestion.getId())
+                .day(userDailyQuestion.getDailyQuestion().getId())
                 .content(userDailyQuestion.getDailyQuestion().getContent())
                 .isAnswered(userDailyQuestion.isAnswered())
                 .build();
@@ -75,6 +79,7 @@ public class DailyQuestionService {
 
     @Transactional
     public DailyQuestionAnswerResponse createAnswer(Long userId, DailyQuestionAnswerRequest request) {
+        LocalDate today = LocalDate.now();
         UserDailyQuestion userDailyQuestion = userDailyQuestionRepository.findById(request.getQuestionId())
                 .orElseThrow(() -> new CustomException(ErrorCode.DAILY_QUESTION_NOT_FOUND));
 
@@ -82,11 +87,22 @@ public class DailyQuestionService {
             throw new CustomException(ErrorCode.NOT_ENOUGH_PERMISSION);
         }
 
+        if (!today.equals(userDailyQuestion.getQuestionDate())) {
+            throw new CustomException(ErrorCode.DAILY_QUESTION_DATE_MISMATCH);
+        }
+
+        if (userDailyQuestion.isAnswered()) {
+            throw new CustomException(ErrorCode.DAILY_QUESTION_ALREADY_ANSWERED);
+        }
+
         userDailyQuestion.updateAnswer(
                 request.getContent(),
                 request.getImageUrl(),
                 request.getIsDraft() != null ? request.getIsDraft() : false
         );
+        if (!userDailyQuestion.isDraft()) {
+            eventPublisher.publishEvent(new DailyQuestionEmotionAnalysisRequestedEvent(userId, userDailyQuestion.getId()));
+        }
 
         return DailyQuestionAnswerResponse.builder()
                 .userDailyQuestionId(userDailyQuestion.getId())
@@ -111,6 +127,9 @@ public class DailyQuestionService {
                     request.getImageUrl() != null ? request.getImageUrl() : userDailyQuestion.getImageUrl(),
                     request.getIsDraft() != null ? request.getIsDraft() : userDailyQuestion.isDraft()
             );
+            if (!userDailyQuestion.isDraft()) {
+                eventPublisher.publishEvent(new DailyQuestionEmotionAnalysisRequestedEvent(userId, userDailyQuestion.getId()));
+            }
         }
 
         return DailyQuestionAnswerResponse.builder()

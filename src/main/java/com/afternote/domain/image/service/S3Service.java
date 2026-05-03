@@ -123,6 +123,7 @@ public class S3Service {
         if (!StringUtils.hasText(directory)) {
             return false;
         }
+
         String key = extractStorageKey(rawUrlOrKey);
         return StringUtils.hasText(key) && key.startsWith(directory + "/");
     }

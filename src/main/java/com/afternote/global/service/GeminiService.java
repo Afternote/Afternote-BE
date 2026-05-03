@@ -1,21 +1,10 @@
 package com.afternote.global.service;
 
-import com.afternote.domain.mindrecord.emotion.model.Emotion;
-import com.afternote.domain.mindrecord.emotion.repository.EmotionRepository;
-import com.afternote.domain.user.repository.UserRepository;
-import com.afternote.global.exception.CustomException;
-import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.prompt.Prompt;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import com.afternote.domain.mindrecord.emotion.service.EmotionCacheService;
-
-import java.time.LocalDateTime;
-import java.util.Objects;
-import java.util.stream.Collectors;
 
 
 @Slf4j
@@ -24,54 +13,97 @@ import java.util.stream.Collectors;
 public class GeminiService {
 
     private final ChatModel chatModel;
-    private final EmotionRepository emotionRepository;
-    private final UserRepository userRepository;
-    private final EmotionCacheService emotionCacheService;
 
-    @Transactional
-    public String summaryEmotion(Long userId){
-        userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        
-        // 1) Redis에서 먼저 조회
-        String cachedSummary = emotionCacheService.getEmotionSummaryText(userId);
-        if (cachedSummary != null && !cachedSummary.isEmpty()) {
-            return cachedSummary;
-        }
-        
-        // 2) Redis에 없으면 LLM으로 생성
-        LocalDateTime sevenDaysAgo = LocalDateTime.now().minusDays(7);
-
-        String keywordsString = emotionRepository.findByUserIdAndCreatedAtAfter(userId,sevenDaysAgo).stream()
-            .map(Emotion::getEmotionCategory)
-                .filter(Objects::nonNull)
-                .collect(Collectors.joining(" "));
-
-        String instruction = String.format(
-                "사용자의 이번 주 일기에서 가장 많이 등장한 핵심 키워드는 [%s]입니다.\n" +
-                        "이 키워드들을 조합하여 사용자의 한 주를 아우르는 통찰력 있는 '한 문장'을 작성해주세요.\n\n" +
-                        "[제약 조건]\n" +
-                        "1. 말투: 따뜻하고 부드러운 존댓말 (예: '~마음이 엿보입니다', '~시간이었군요')\n" +
-                        "2. 문장은 자연스럽게 연결하고, 모든 키워드를 다 쓸 필요는 없음 (가장 중요한 2개 정도 활용)\n" +
-                        "3. 길이: 20자 이내\n\n" +
-                        "결과만 출력하세요.",
-                keywordsString
+    /**
+     * 일기 제목·내용·오늘의 기분을 바탕으로 짧은 감정 키워드(한 줄)를 반환한다. 실패 시 null.
+     */
+    public String analyzeEmotionFromDiary(String title, String content, String todayMoodLabel) {
+        String ctx = String.format(
+                "일기 제목: %s\n일기 내용: %s\n오늘의 기분: %s",
+                blankToEmpty(title),
+                blankToEmpty(content),
+                todayMoodLabel != null ? todayMoodLabel : "없음"
         );
+        return analyzeEmotionShort(ctx, "일기");
+    }
 
-        String answer = "";
+    /**
+     * 데일리 질문과 답을 바탕으로 짧은 감정 키워드(한 줄)를 반환한다. 실패 시 null.
+     */
+    public String analyzeEmotionFromDailyQuestion(String question, String answer) {
+        String ctx = String.format(
+                "질문: %s\n답변: %s",
+                blankToEmpty(question),
+                blankToEmpty(answer)
+        );
+        return analyzeEmotionShort(ctx, "데일리 질문");
+    }
+
+    /**
+     * 깊은 생각 제목·내용을 바탕으로 짧은 감정 키워드(한 줄)를 반환한다. 실패 시 null.
+     */
+    public String analyzeEmotionFromDeepThought(String title, String content) {
+        String ctx = String.format(
+                "제목: %s\n내용: %s",
+                blankToEmpty(title),
+                blankToEmpty(content)
+        );
+        return analyzeEmotionShort(ctx, "깊은 생각");
+    }
+
+    private String analyzeEmotionShort(String contextBlock, String recordTypeLabel) {
+        String instruction = String.format(
+                "아래는 사용자의 %s 기록이다. 내용만 보고 가장 잘 맞는 감정을 **아래 목록에서 정확히 하나만** 고른다.\n"
+                        + "[감정 목록 — 아래 단어 중 하나만 그대로 출력]\n"
+                        + "- 기쁨\n"
+                        + "- 평온\n"
+                        + "- 슬픔\n"
+                        + "- 우울\n"
+                        + "- 분노\n"
+                        + "- 불안\n"
+                        + "- 놀람\n"
+                        + "- 감사\n"
+                        + "[출력 규칙] 위 목록의 단어 하나만 출력. 하이픈(-)·따옴표·설명·다른 문장 금지.\n\n"
+                        + "%s",
+                recordTypeLabel,
+                contextBlock
+        );
         try {
-            answer = chatModel.call(new Prompt(instruction)).getResult().getOutput().getText().trim();
-            log.debug("제미니 요약 성공!!!: {}",answer);
+            String text = chatModel.call(new Prompt(instruction)).getResult().getOutput().getText().trim();
+            if (text.startsWith("- ")) {
+                text = text.substring(2).trim();
+            }
+            return text;
         } catch (Exception e) {
-            log.error("Gemini API 호출 실패, 기본값 반환: {}", e.getMessage());
-            throw new CustomException(ErrorCode.GEMINI_FAILED);
+            log.error("Gemini 감정 분석 실패 ({})", recordTypeLabel, e);
+            return null;
         }
-        
-        // 3) 생성한 요약을 Redis에 저장 (1일)
-        if (!answer.isEmpty()) {
-            emotionCacheService.saveSummaryText(userId, answer);
+    }
+
+    private static String blankToEmpty(String s) {
+        return s != null ? s : "";
+    }
+
+    /**
+     * 주간 감정 키워드 JSON을 바탕으로 인사이트 문구(한국어)를 생성한다. 실패 시 null.
+     */
+    public String generateWeeklyMindRecordSummary(String keywordJson) {
+        String instruction = String.format(
+                "아래 JSON은 한 사용자의 한 주 동안 기록에서 집계된 감정 키워드와 비율(퍼센트)이다.\n"
+                        + "%s\n\n"
+                        + "[작성 지침]\n"
+                        + "- 한국어로, 위 키워드를 자연스럽게 녹여 반성·격려가 담긴 인사이트를 약 2문장으로 쓴다.\n"
+                        + "- 이어서 짧은 격려 한 줄과 이모지 하나를 덧붙인다.\n"
+                        + "- JSON·목록·따옴표로 감싼 메타 설명 없이 본문만 출력한다.\n"
+                        + "- 키워드가 비어 있거나 비율이 모두 0에 가깝다면, 기록 습관을 칭찬하는 따뜻한 한두 문장으로 대체한다.",
+                blankToEmpty(keywordJson)
+        );
+        try {
+            log.info("Gemini 주간 마음기록 요약 요청: {}", instruction);
+            return chatModel.call(new Prompt(instruction)).getResult().getOutput().getText().trim();
+        } catch (Exception e) {
+            log.error("Gemini 주간 마음기록 요약 실패", e);
+            return null;
         }
-        
-        return answer;
     }
 }

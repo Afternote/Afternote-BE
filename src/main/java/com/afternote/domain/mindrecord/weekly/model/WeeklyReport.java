@@ -49,4 +49,16 @@ public class WeeklyReport {
         report.keywordJson = keywordJson;
         return report;
     }
+
+    public void updateWeeklyContent(
+            LocalDateTime startDate,
+            LocalDateTime endDate,
+            String summaryText,
+            String keywordJson
+    ) {
+        this.startDate = startDate;
+        this.endDate = endDate;
+        this.summaryText = summaryText;
+        this.keywordJson = keywordJson;
+    }
 }

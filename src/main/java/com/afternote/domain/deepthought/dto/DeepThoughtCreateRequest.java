@@ -1,5 +1,6 @@
 package com.afternote.domain.deepthought.dto;
 
+import com.afternote.global.sanitizer.MindRecordHtmlSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -17,7 +18,7 @@ public class DeepThoughtCreateRequest {
     @NotBlank(message = "제목은 필수입니다.")
     private String title;
 
-    @Schema(description = "내용", example = "오늘은 스스로를 더 이해하는 하루였다.")
+    @Schema(description = MindRecordHtmlSchema.CONTENT, example = MindRecordHtmlSchema.CONTENT_EXAMPLE)
     @NotBlank(message = "내용은 필수입니다.")
     private String content;
 

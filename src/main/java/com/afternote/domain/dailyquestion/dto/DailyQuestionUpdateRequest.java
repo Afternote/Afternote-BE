@@ -1,5 +1,6 @@
 package com.afternote.domain.dailyquestion.dto;
 
+import com.afternote.global.sanitizer.MindRecordHtmlSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -8,7 +9,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 public class DailyQuestionUpdateRequest {
 
-    @Schema(description = "수정할 답변 내용", example = "수정된 답변입니다.")
+    @Schema(description = MindRecordHtmlSchema.CONTENT, example = MindRecordHtmlSchema.CONTENT_EXAMPLE)
     private String content;
 
     @Schema(description = "수정할 이미지 URL", example = "https://s3.../new-image.jpg", nullable = true)

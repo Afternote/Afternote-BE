@@ -35,10 +35,6 @@ public class DeliveryVerificationService {
         User user = userRepository.findById(receiver.getUserId())
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        if (user.getDeliveryConditionType() != DeliveryConditionType.DEATH_CERTIFICATE) {
-            throw new CustomException(ErrorCode.CONDITION_TYPE_MISMATCH);
-        }
-
         if (!s3Service.isManagedObjectKeyInDirectory(deathCertUrl, "documents")
                 || !s3Service.isManagedObjectKeyInDirectory(familyRelationCertUrl, "documents")) {
             throw new CustomException(ErrorCode.INVALID_DELIVERY_CONDITION);
@@ -60,16 +56,6 @@ public class DeliveryVerificationService {
                 .build();
 
         return deliveryVerificationRepository.save(verification);
-    }
-
-    @Transactional
-    public void cancelPendingVerifications(Long userId) {
-        List<DeliveryVerification> pendingVerifications =
-                deliveryVerificationRepository.findByUserIdAndStatus(userId, VerificationStatus.PENDING);
-
-        for (DeliveryVerification verification : pendingVerifications) {
-            verification.reject("조건 변경으로 자동 취소");
-        }
     }
 
     public DeliveryVerification getVerificationStatus(String authCode) {

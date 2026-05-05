@@ -1,5 +1,6 @@
 package com.afternote.domain.dailyquestion.dto;
 
+import com.afternote.global.sanitizer.MindRecordHtmlSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -10,7 +11,7 @@ public class DailyQuestionAnswerResponse {
     @Schema(description = "유저 데일리 질문(답변) ID", example = "12")
     private Long userDailyQuestionId;
 
-    @Schema(description = "답변 내용", example = "오늘 날씨가 좋아서 산책을 다녀왔습니다.")
+    @Schema(description = MindRecordHtmlSchema.CONTENT, example = MindRecordHtmlSchema.CONTENT_EXAMPLE)
     private String content;
 
     @Schema(description = "이미지 URL", example = "https://s3.../image.jpg", nullable = true)

@@ -1,6 +1,7 @@
 package com.afternote.domain.mindrecord.weekly.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.afternote.global.sanitizer.MindRecordHtmlSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -47,7 +48,10 @@ public class WeeklyMindRecordResponse {
     @Builder
     public static class WeeklyDailyQuestionItem {
         private String title;
+
+        @Schema(description = MindRecordHtmlSchema.CONTENT, example = MindRecordHtmlSchema.CONTENT_EXAMPLE)
         private String content;
+
         private String date;
     }
 

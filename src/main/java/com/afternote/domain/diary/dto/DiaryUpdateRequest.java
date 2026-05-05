@@ -1,6 +1,7 @@
 package com.afternote.domain.diary.dto;
 
 import com.afternote.domain.diary.model.TodayMood;
+import com.afternote.global.sanitizer.MindRecordHtmlSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -13,7 +14,7 @@ public class DiaryUpdateRequest {
     @Schema(description = "제목", example = "수정된 제목")
     private String title;
 
-    @Schema(description = "내용", example = "수정된 내용")
+    @Schema(description = MindRecordHtmlSchema.CONTENT, example = MindRecordHtmlSchema.CONTENT_EXAMPLE)
     private String content;
 
     @Schema(description = "임시저장 여부", example = "true")

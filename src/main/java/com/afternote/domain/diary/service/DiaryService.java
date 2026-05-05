@@ -11,6 +11,7 @@ import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
+import com.afternote.global.sanitizer.MindRecordHtmlSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -28,6 +29,7 @@ public class DiaryService {
     private final DiaryRepository diaryRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
+    private final MindRecordHtmlSanitizer mindRecordHtmlSanitizer;
 
     @Transactional
     public DiaryResponse createDiary(Long userId, DiaryCreateRequest request) {
@@ -37,7 +39,7 @@ public class DiaryService {
         Diary diary = Diary.create(
                 user,
                 request.getTitle(),
-                request.getContent(),
+                mindRecordHtmlSanitizer.sanitize(request.getContent()),
                 request.getIsDraft(),
                 request.getImageUrl(),
                 request.getTodayMood()
@@ -71,7 +73,7 @@ public class DiaryService {
 
         diary.update(
                 request.getTitle(),
-                request.getContent(),
+                request.getContent() != null ? mindRecordHtmlSanitizer.sanitize(request.getContent()) : null,
                 request.getIsDraft(),
                 request.getImageUrl(),
                 request.getTodayMood()

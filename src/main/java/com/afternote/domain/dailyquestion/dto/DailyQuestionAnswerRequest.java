@@ -1,5 +1,6 @@
 package com.afternote.domain.dailyquestion.dto;
 
+import com.afternote.global.sanitizer.MindRecordHtmlSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -14,7 +15,7 @@ public class DailyQuestionAnswerRequest {
     @NotNull(message = "질문 ID는 필수입니다.")
     private Long questionId;
 
-    @Schema(description = "답변 내용", example = "오늘 날씨가 좋아서 산책을 다녀왔습니다.")
+    @Schema(description = MindRecordHtmlSchema.CONTENT, example = MindRecordHtmlSchema.CONTENT_EXAMPLE)
     @NotBlank(message = "답변 내용은 필수입니다.")
     private String content;
 

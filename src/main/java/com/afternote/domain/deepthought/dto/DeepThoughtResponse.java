@@ -1,6 +1,7 @@
 package com.afternote.domain.deepthought.dto;
 
 import com.afternote.domain.deepthought.model.DeepThought;
+import com.afternote.global.sanitizer.MindRecordHtmlSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -24,7 +25,7 @@ public class DeepThoughtResponse {
     @Schema(description = "제목", example = "나의 성장에 대한 생각")
     private String title;
 
-    @Schema(description = "내용", example = "오늘은 스스로를 더 이해하는 하루였다.")
+    @Schema(description = MindRecordHtmlSchema.CONTENT, example = MindRecordHtmlSchema.CONTENT_EXAMPLE)
     private String content;
 
     @Schema(description = "임시저장 여부", example = "false")

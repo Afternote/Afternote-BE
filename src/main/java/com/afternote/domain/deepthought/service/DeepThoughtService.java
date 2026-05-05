@@ -11,6 +11,7 @@ import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
+import com.afternote.global.sanitizer.MindRecordHtmlSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -29,6 +30,7 @@ public class DeepThoughtService {
     private final DeepThoughtRepository deepThoughtRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
+    private final MindRecordHtmlSanitizer mindRecordHtmlSanitizer;
 
     @Transactional
     public DeepThoughtResponse createDeepThought(Long userId, DeepThoughtCreateRequest request) {
@@ -39,7 +41,7 @@ public class DeepThoughtService {
         DeepThought deepThought = DeepThought.create(
                 user,
                 request.getTitle(),
-                request.getContent(),
+                mindRecordHtmlSanitizer.sanitize(request.getContent()),
                 request.getIsDraft(),
                 request.getImageUrl(),
                 request.getCategory(),

@@ -10,6 +10,7 @@ import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
+import com.afternote.global.sanitizer.MindRecordHtmlSanitizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -31,6 +32,7 @@ public class DailyQuestionService {
     private final DailyQuestionRepository dailyQuestionRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
+    private final MindRecordHtmlSanitizer mindRecordHtmlSanitizer;
 
     @Transactional
     public DailyQuestionTodayResponse getTodayQuestion(Long userId) {
@@ -96,7 +98,7 @@ public class DailyQuestionService {
         }
 
         userDailyQuestion.updateAnswer(
-                request.getContent(),
+                mindRecordHtmlSanitizer.sanitize(request.getContent()),
                 request.getImageUrl(),
                 request.getIsDraft() != null ? request.getIsDraft() : false
         );
@@ -123,7 +125,9 @@ public class DailyQuestionService {
 
         if (request.getContent() != null || request.getImageUrl() != null || request.getIsDraft() != null) {
             userDailyQuestion.updateAnswer(
-                    request.getContent() != null ? request.getContent() : userDailyQuestion.getContent(),
+                    request.getContent() != null
+                            ? mindRecordHtmlSanitizer.sanitize(request.getContent())
+                            : userDailyQuestion.getContent(),
                     request.getImageUrl() != null ? request.getImageUrl() : userDailyQuestion.getImageUrl(),
                     request.getIsDraft() != null ? request.getIsDraft() : userDailyQuestion.isDraft()
             );

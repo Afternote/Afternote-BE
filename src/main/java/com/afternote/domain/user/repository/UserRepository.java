@@ -3,6 +3,8 @@ package com.afternote.domain.user.repository;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
@@ -22,5 +24,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     
     // 이름으로 사용자 검색 (부분 일치)
     List<User> findByNameContaining(String name);
-    
+
+    @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.providers WHERE u.id = :id")
+    Optional<User> findWithProvidersById(@Param("id") Long id);
+
 }

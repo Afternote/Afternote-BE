@@ -98,10 +98,18 @@ public class AuthController {
             - refreshToken: 서비스 JWT Refresh Token
             - isNewUser: 신규 회원 여부 (true/false)
             
-            **예시:**
+            **예시 (카카오):**
             ```json
             {
               "provider": "KAKAO",
+              "accessToken": "카카오_액세스_토큰"
+            }
+            ```
+            
+            **예시 (구글):** 클라이언트는 Google Sign-In으로 받은 OAuth2 access token을 넘깁니다. `email` 스코프가 포함되어야 합니다.
+            ```json
+            {
+              "provider": "GOOGLE",
               "accessToken": "ya29.a0AfH6..."
             }
             ```

@@ -1,5 +1,7 @@
 package com.afternote.domain.user.service;
 
+import com.afternote.domain.auth.dto.SocialUserInfo;
+import com.afternote.domain.auth.service.social.SocialLoginFactory;
 import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.receiver.model.Receiver;
 import com.afternote.domain.receiver.model.UserReceiver;
@@ -10,6 +12,8 @@ import com.afternote.domain.user.dto.*;
 import com.afternote.domain.user.model.AuthProvider;
 import com.afternote.domain.user.model.DeliveryConditionType;
 import com.afternote.domain.user.model.User;
+import com.afternote.domain.user.model.UserProvider;
+import com.afternote.domain.user.repository.UserProviderRepository;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.domain.receiver.service.AuthCodeMessageService;
 import com.afternote.global.exception.CustomException;
@@ -20,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -33,6 +38,8 @@ public class UserService {
     private final S3Service s3Service;
     private final DeliveryVerificationService deliveryVerificationService;
     private final com.afternote.domain.auth.service.TokenService tokenService;
+    private final SocialLoginFactory socialLoginFactory;
+    private final UserProviderRepository userProviderRepository;
 
     public UserResponse getMyProfile(Long userId) {
 
@@ -68,15 +75,65 @@ public class UserService {
     }
 
     public UserConnectedAccountResponse getConnectedAccounts(Long userId) {
-        User user = findUserById(userId);
+        User user = findUserByIdWithProviders(userId);
+        return UserConnectedAccountResponse.from(user);
+    }
 
-        boolean local = user.hasProvider(AuthProvider.LOCAL);
-        boolean google = user.hasProvider(AuthProvider.GOOGLE);
-        boolean naver = user.hasProvider(AuthProvider.NAVER);
-        boolean kakao = user.hasProvider(AuthProvider.KAKAO);
-        boolean apple = false;
+    @Transactional
+    public UserConnectedAccountResponse linkConnectedAccount(
+            Long userId,
+            String providerPath,
+            SocialAccountLinkRequest request
+    ) {
+        AuthProvider authProvider = parseLinkableProvider(providerPath);
+        SocialUserInfo info = socialLoginFactory
+                .getService(authProvider.name())
+                .getUserInfo(request.getAccessToken());
 
-        return new UserConnectedAccountResponse(local, google, naver, kakao, apple);
+        if (info.getProviderId() == null || info.getProviderId().isBlank()) {
+            throw new CustomException(ErrorCode.SOCIAL_LOGIN_FAILED);
+        }
+
+        User user = findUserByIdWithProviders(userId);
+
+        Optional<UserProvider> existingGlobal = userProviderRepository
+                .findByProviderAndProviderId(authProvider, info.getProviderId());
+        if (existingGlobal.isPresent()) {
+            User owner = existingGlobal.get().getUser();
+            if (!owner.getId().equals(userId)) {
+                throw new CustomException(ErrorCode.SOCIAL_ACCOUNT_LINKED_TO_OTHER_USER);
+            }
+            return UserConnectedAccountResponse.from(user);
+        }
+
+        if (user.hasProvider(authProvider)) {
+            user.getLinkedProviderId(authProvider).ifPresent(existingId -> {
+                if (existingId != null && !existingId.isBlank()
+                        && !existingId.equals(info.getProviderId())) {
+                    throw new CustomException(ErrorCode.PROVIDER_ALREADY_CONNECTED_OTHER_ACCOUNT);
+                }
+            });
+        }
+
+        user.addProvider(authProvider, info.getProviderId());
+        return UserConnectedAccountResponse.from(user);
+    }
+
+    @Transactional
+    public UserConnectedAccountResponse unlinkConnectedAccount(Long userId, String providerPath) {
+        AuthProvider authProvider = parseUnlinkableProvider(providerPath);
+        User user = findUserByIdWithProviders(userId);
+
+        if (!user.hasProvider(authProvider)) {
+            throw new CustomException(ErrorCode.PROVIDER_NOT_CONNECTED);
+        }
+
+        if (user.getPassword() == null && user.getProviderLinkCount() <= 1) {
+            throw new CustomException(ErrorCode.CANNOT_UNLINK_LAST_CREDENTIAL);
+        }
+
+        user.removeProvider(authProvider);
+        return UserConnectedAccountResponse.from(user);
     }
 
     @Transactional
@@ -112,7 +169,6 @@ public class UserService {
 
         Receiver receiver = userReceiver.getReceiver();
 
-        // TODO: DailyQuestion, TimeLetter, AfterNote 도메인 생성 후 count 로직 추가
         int dailyCount = 0;
         int timeLetterCount = 0;
         int afterNoteCount = 0;
@@ -211,6 +267,37 @@ public class UserService {
     private User findUserById(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private User findUserByIdWithProviders(Long userId) {
+        return userRepository.findWithProvidersById(userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private static AuthProvider parseLinkableProvider(String raw) {
+        AuthProvider provider;
+        try {
+            provider = AuthProvider.valueOf(raw.toUpperCase().trim());
+        } catch (IllegalArgumentException e) {
+            throw new CustomException(ErrorCode.INVALID_CONNECTED_ACCOUNT_PROVIDER);
+        }
+        if (provider == AuthProvider.LOCAL) {
+            throw new CustomException(ErrorCode.INVALID_CONNECTED_ACCOUNT_PROVIDER);
+        }
+        return provider;
+    }
+
+    private static AuthProvider parseUnlinkableProvider(String raw) {
+        AuthProvider provider;
+        try {
+            provider = AuthProvider.valueOf(raw.toUpperCase().trim());
+        } catch (IllegalArgumentException e) {
+            throw new CustomException(ErrorCode.INVALID_CONNECTED_ACCOUNT_PROVIDER);
+        }
+        if (provider == AuthProvider.LOCAL) {
+            throw new CustomException(ErrorCode.CANNOT_UNLINK_LOCAL_PROVIDER);
+        }
+        return provider;
     }
 
     @Transactional

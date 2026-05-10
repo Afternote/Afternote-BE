@@ -12,6 +12,8 @@ public interface DeepThoughtCategoryRepository extends JpaRepository<DeepThought
 
     Optional<DeepThoughtCategory> findByIdAndUserId(Long id, Long userId);
 
+    Optional<DeepThoughtCategory> findByUserIdAndTitle(Long userId, String title);
+
     List<DeepThoughtCategory> findByUserIdOrderByIdAsc(Long userId);
 
     boolean existsByUserIdAndTitle(Long userId, String title);

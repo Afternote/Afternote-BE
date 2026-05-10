@@ -53,7 +53,7 @@ public class DeepThoughtResponse {
                 .content(deepThought.getContent())
                 .isDraft(deepThought.getIsDraft())
                 .imageUrl(deepThought.getImageUrl())
-                .category(deepThought.getCategory())
+                .category(deepThought.getCategoryTitle())
                 .tags(deepThought.getTags().stream()
                         .map(tag -> tag.getTitle())
                         .filter(Objects::nonNull)

@@ -6,6 +6,7 @@ import com.afternote.domain.deepthought.dto.DeepThoughtCategoryResponse;
 import com.afternote.domain.deepthought.dto.DeepThoughtCategoryUpdateRequest;
 import com.afternote.domain.deepthought.model.DeepThoughtCategory;
 import com.afternote.domain.deepthought.repository.DeepThoughtCategoryRepository;
+import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
@@ -21,6 +22,7 @@ import java.util.List;
 @Transactional(readOnly = true)
 public class DeepThoughtCategoryService {
     private final DeepThoughtCategoryRepository deepThoughtCategoryRepository;
+    private final DeepThoughtRepository deepThoughtRepository;
     private final UserRepository userRepository;
 
     public DeepThoughtCategoryListResponse getCategories(Long userId) {
@@ -64,6 +66,7 @@ public class DeepThoughtCategoryService {
     public void deleteCategory(Long userId, Long categoryId) {
         DeepThoughtCategory category = deepThoughtCategoryRepository.findByIdAndUserId(categoryId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.CATEGORY_REQUIRED));
+        deepThoughtRepository.clearCategoryByUserIdAndCategoryId(userId, category.getId());
         deepThoughtCategoryRepository.delete(category);
     }
 }

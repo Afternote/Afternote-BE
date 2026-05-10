@@ -35,8 +35,9 @@ public class DeepThought extends BaseEntity {
     @Column(name = "image_url", length = 100)
     private String imageUrl;
 
-    @Column(name = "category", length = 50)
-    private String category;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id")
+    private DeepThoughtCategory category;
 
     @OneToMany(mappedBy = "deepThought", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<DeepThoughtTag> tags = new ArrayList<>();
@@ -47,7 +48,7 @@ public class DeepThought extends BaseEntity {
             String content,
             Boolean isDraft,
             String imageUrl,
-            String category,
+            DeepThoughtCategory category,
             List<String> tags
     ) {
         DeepThought record = new DeepThought();
@@ -56,7 +57,7 @@ public class DeepThought extends BaseEntity {
         record.content = content;
         record.isDraft = isDraft;
         record.imageUrl = imageUrl;
-        record.category = category != null ? category.trim() : null;
+        record.category = category;
         if (tags != null) {
             tags.stream()
                     .filter(tag -> tag != null && !tag.isBlank())
@@ -69,5 +70,9 @@ public class DeepThought extends BaseEntity {
 
     private void addTag(String title) {
         this.tags.add(DeepThoughtTag.create(this, title));
+    }
+
+    public String getCategoryTitle() {
+        return category != null ? category.getTitle() : null;
     }
 }

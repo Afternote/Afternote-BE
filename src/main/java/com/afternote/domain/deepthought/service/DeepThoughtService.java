@@ -4,6 +4,7 @@ import com.afternote.domain.deepthought.dto.DeepThoughtCreateRequest;
 import com.afternote.domain.deepthought.dto.DeepThoughtListResponse;
 import com.afternote.domain.deepthought.dto.DeepThoughtResponse;
 import com.afternote.domain.deepthought.model.DeepThought;
+import com.afternote.domain.deepthought.model.DeepThoughtCategory;
 import com.afternote.domain.deepthought.repository.DeepThoughtCategoryRepository;
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
 import com.afternote.domain.mindrecord.emotion.event.DeepThoughtEmotionAnalysisRequestedEvent;
@@ -36,7 +37,7 @@ public class DeepThoughtService {
     public DeepThoughtResponse createDeepThought(Long userId, DeepThoughtCreateRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        validateCategoryExists(userId, request.getCategory());
+        DeepThoughtCategory category = getCategory(userId, request.getCategory());
 
         DeepThought deepThought = DeepThought.create(
                 user,
@@ -44,7 +45,7 @@ public class DeepThoughtService {
                 mindRecordHtmlSanitizer.sanitize(request.getContent()),
                 request.getIsDraft(),
                 request.getImageUrl(),
-                request.getCategory(),
+                category,
                 request.getTags()
         );
 
@@ -56,15 +57,14 @@ public class DeepThoughtService {
         return DeepThoughtResponse.from(saved);
     }
 
-    private void validateCategoryExists(Long userId, String categoryTitle) {
+    private DeepThoughtCategory getCategory(Long userId, String categoryTitle) {
         String normalizedCategory = categoryTitle == null ? null : categoryTitle.trim();
         if (normalizedCategory == null || normalizedCategory.isBlank()) {
             throw new CustomException(ErrorCode.DEEP_THOUGHT_CATEGORY_REQUIRED);
         }
 
-        if (!deepThoughtCategoryRepository.existsByUserIdAndTitle(userId, normalizedCategory)) {
-            throw new CustomException(ErrorCode.DEEP_THOUGHT_CATEGORY_NOT_FOUND);
-        }
+        return deepThoughtCategoryRepository.findByUserIdAndTitle(userId, normalizedCategory)
+                .orElseThrow(() -> new CustomException(ErrorCode.DEEP_THOUGHT_CATEGORY_NOT_FOUND));
     }
 
     public DeepThoughtListResponse getDeepThoughts(Long userId, LocalDate date, String tag, String category) {
@@ -75,12 +75,22 @@ public class DeepThoughtService {
             end = date.plusDays(1).atStartOfDay();
         }
 
-        List<DeepThoughtResponse> list = deepThoughtRepository.search(userId, start, end, tag, category)
+        String normalizedCategory = normalizeSearchParam(category);
+        String normalizedTag = normalizeSearchParam(tag);
+
+        List<DeepThoughtResponse> list = deepThoughtRepository.search(userId, start, end, normalizedTag, normalizedCategory)
                 .stream()
                 .map(DeepThoughtResponse::from)
                 .toList();
 
         return DeepThoughtListResponse.from(list);
+    }
+
+    private String normalizeSearchParam(String value) {
+        if (value == null || value.trim().isBlank()) {
+            return null;
+        }
+        return value.trim();
     }
 
     public DeepThoughtResponse getRandomDeepThought(Long userId) {

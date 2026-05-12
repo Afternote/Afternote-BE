@@ -39,15 +39,17 @@ public class DeepThoughtController {
         return ApiResponse.success(deepThoughtService.createDeepThought(userId, request));
     }
 
-    @Operation(summary = "깊은 생각 조회", description = "날짜/태그/카테고리 조건으로 깊은 생각을 조회합니다.")
+    @Operation(summary = "깊은 생각 조회", description = "날짜/태그/카테고리 조건으로 깊은 생각을 조회합니다. draftOnly=true이면 임시저장만 반환합니다.")
     @GetMapping
     public ApiResponse<DeepThoughtListResponse> getDeepThoughts(
             @Parameter(hidden = true) @UserId Long userId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
             @RequestParam(required = false) String tag,
-            @RequestParam(required = false) String category
+            @RequestParam(required = false) String category,
+            @Parameter(description = "true면 임시저장(isDraft=true)만 조회")
+            @RequestParam(required = false) Boolean draftOnly
     ) {
-        return ApiResponse.success(deepThoughtService.getDeepThoughts(userId, date, tag, category));
+        return ApiResponse.success(deepThoughtService.getDeepThoughts(userId, date, tag, category, draftOnly));
     }
 
     @Operation(summary = "깊은 생각 랜덤 조회", description = "유저의 깊은 생각 중 하나를 랜덤으로 조회합니다.")

@@ -23,13 +23,15 @@ public interface DeepThoughtRepository extends JpaRepository<DeepThought, Long> 
             "AND (:start IS NULL OR (dt.createdAt >= :start AND dt.createdAt < :end)) " +
             "AND (:category IS NULL OR c.title = :category) " +
             "AND (:tag IS NULL OR t.title = :tag OR dt.title LIKE CONCAT('%', :tag, '%') OR dt.content LIKE CONCAT('%', :tag, '%')) " +
+            "AND (:draftOnly IS NULL OR :draftOnly = false OR dt.isDraft = true) " +
             "ORDER BY dt.createdAt DESC")
     List<DeepThought> search(
             @Param("userId") Long userId,
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end,
             @Param("tag") String tag,
-            @Param("category") String category
+            @Param("category") String category,
+            @Param("draftOnly") Boolean draftOnly
     );
 
     long countByUserId(Long userId);

@@ -50,14 +50,16 @@ public class DailyQuestionController {
         return ApiResponse.success(dailyQuestionService.updateAnswer(userId, userDailyQuestionId, request));
     }
 
-    @Operation(summary = "데일리 질문 목록 조회", description = "특정 날짜 혹은 전체 답변 목록을 최신순으로 조회합니다.")
+    @Operation(summary = "데일리 질문 목록 조회", description = "특정 날짜 혹은 전체 답변 목록을 최신순으로 조회합니다. draftOnly=true이면 임시저장 답변만, 그렇지 않으면 제출 완료(비임시) 답변만 반환합니다.")
     @GetMapping
     public ApiResponse<List<DailyQuestionListResponse>> getDailyQuestions(
             @Parameter(hidden = true) @UserId Long userId,
             @Parameter(description = "조회할 날짜 (yyyy-MM-dd), 없으면 전체 조회", example = "2023-10-01")
-            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date
+            @RequestParam(required = false) @DateTimeFormat(pattern = "yyyy-MM-dd") LocalDate date,
+            @Parameter(description = "true면 임시저장(isDraft=true)만 조회")
+            @RequestParam(required = false) Boolean draftOnly
     ) {
-        return ApiResponse.success(dailyQuestionService.getDailyQuestions(userId, date));
+        return ApiResponse.success(dailyQuestionService.getDailyQuestions(userId, date, draftOnly));
     }
 
     @Operation(summary = "데일리 질문 삭제", description = "유저의 답변을 삭제합니다.")

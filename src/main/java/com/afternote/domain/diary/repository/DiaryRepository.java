@@ -19,6 +19,12 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
 			LocalDateTime end
 	);
 
+	List<Diary> findByUserIdAndIsDraftTrueAndCreatedAtBetweenOrderByCreatedAtDesc(
+			Long userId,
+			LocalDateTime start,
+			LocalDateTime end
+	);
+
 	List<Diary> findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
 			Long userId,
 			LocalDateTime startInclusive,

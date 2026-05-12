@@ -40,7 +40,7 @@ public class DiaryController {
         return ApiResponse.success(diaryService.createDiary(userId, request));
     }
 
-    @Operation(summary = "Diary 조회", description = "날짜 기준으로 다이어리를 조회합니다.")
+    @Operation(summary = "Diary 조회", description = "날짜 기준으로 다이어리를 조회합니다. draftOnly=true이면 해당 날짜의 임시저장만 반환합니다.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Diary 조회 성공"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 값이 올바르지 않음 (code: 1400)"),
@@ -49,9 +49,11 @@ public class DiaryController {
     @GetMapping
     public ApiResponse<DiaryListResponse> getDiaries(
             @Parameter(hidden = true) @UserId Long userId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @Parameter(description = "true면 임시저장(isDraft=true)만 조회")
+            @RequestParam(required = false) Boolean draftOnly
     ) {
-        return ApiResponse.success(diaryService.getDiariesByDate(userId, date));
+        return ApiResponse.success(diaryService.getDiariesByDate(userId, date, draftOnly));
     }
 
     @Operation(summary = "Diary 수정", description = "다이어리를 수정합니다.")

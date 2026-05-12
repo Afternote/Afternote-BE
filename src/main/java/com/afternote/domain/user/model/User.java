@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -235,5 +236,29 @@ public class User extends BaseEntity {
         return this.providers.stream()
                 .map(UserProvider::getProvider)
                 .collect(Collectors.toSet());
+    }
+
+    public Optional<String> getLinkedProviderId(AuthProvider provider) {
+        return this.providers.stream()
+                .filter(p -> p.getProvider() == provider)
+                .map(UserProvider::getProviderId)
+                .findFirst();
+    }
+
+    public int getProviderLinkCount() {
+        return this.providers.size();
+    }
+
+    /**
+     * 소셜 제공자 연결 해제. LOCAL은 해제할 수 없습니다.
+     */
+    public void removeProvider(AuthProvider provider) {
+        if (provider == null || provider == AuthProvider.LOCAL) {
+            throw new CustomException(ErrorCode.CANNOT_UNLINK_LOCAL_PROVIDER);
+        }
+        boolean removed = this.providers.removeIf(p -> p.getProvider() == provider);
+        if (!removed) {
+            throw new CustomException(ErrorCode.PROVIDER_NOT_CONNECTED);
+        }
     }
 }

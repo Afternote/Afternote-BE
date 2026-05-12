@@ -75,6 +75,42 @@ public class UserController {
     }
 
     @Operation(
+            summary = "연결 계정 추가(소셜 연동) API",
+            description = """
+                    로그인한 사용자에게 소셜 제공자를 추가로 연결합니다.
+                    클라이언트는 해당 제공자 SDK로 받은 OAuth2 access token을 전달합니다.
+                    provider: KAKAO, GOOGLE, NAVER, APPLE (구현된 제공자만 성공)
+                    """
+    )
+    @PostMapping("/connected-accounts/{provider}")
+    public ApiResponse<UserConnectedAccountResponse> linkConnectedAccount(
+            @Parameter(hidden = true) @UserId Long userId,
+            @PathVariable String provider,
+            @Valid @RequestBody SocialAccountLinkRequest request
+    ) {
+        return ApiResponse.success(
+                userService.linkConnectedAccount(userId, provider, request)
+        );
+    }
+
+    @Operation(
+            summary = "연결 계정 해제 API",
+            description = """
+                    연결된 소셜 제공자 연동을 해제합니다. LOCAL(이메일 가입)은 해제할 수 없습니다.
+                    비밀번호가 없는 순수 소셜 계정은 마지막 남은 로그인 수단을 해제할 수 없습니다.
+                    """
+    )
+    @DeleteMapping("/connected-accounts/{provider}")
+    public ApiResponse<UserConnectedAccountResponse> unlinkConnectedAccount(
+            @Parameter(hidden = true) @UserId Long userId,
+            @PathVariable String provider
+    ) {
+        return ApiResponse.success(
+                userService.unlinkConnectedAccount(userId, provider)
+        );
+    }
+
+    @Operation(
             summary = "푸시 알림 설정 수정 API",
             description = "로그인한 사용자의 푸시 알림 수신 설정을 수정합니다."
     )

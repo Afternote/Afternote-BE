@@ -5,6 +5,7 @@ import com.afternote.domain.diary.dto.DiaryListResponse;
 import com.afternote.domain.diary.dto.DiaryResponse;
 import com.afternote.domain.diary.dto.DiaryUpdateRequest;
 import com.afternote.domain.diary.model.Diary;
+import com.afternote.domain.diary.model.TodayMood;
 import com.afternote.domain.diary.repository.DiaryRepository;
 import com.afternote.domain.mindrecord.emotion.event.DiaryEmotionAnalysisRequestedEvent;
 import com.afternote.domain.user.model.User;
@@ -19,7 +20,11 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -53,17 +58,43 @@ public class DiaryService {
         return DiaryResponse.from(saved);
     }
 
-    public DiaryListResponse getDiariesByDate(Long userId, LocalDate date) {
+    public DiaryListResponse getDiariesByDate(Long userId, LocalDate date, Boolean draftOnly) {
         LocalDateTime start = date.atStartOfDay();
         LocalDateTime end = date.plusDays(1).atStartOfDay();
 
-        List<DiaryResponse> responseList = diaryRepository
-                .findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, start, end)
-                .stream()
+        List<Diary> diaries = Boolean.TRUE.equals(draftOnly)
+                ? diaryRepository.findByUserIdAndIsDraftTrueAndCreatedAtBetweenOrderByCreatedAtDesc(userId, start, end)
+                : diaryRepository.findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, start, end);
+
+        List<DiaryResponse> responseList = diaries.stream()
                 .map(DiaryResponse::from)
                 .toList();
 
-        return DiaryListResponse.from(responseList);
+        LocalDate today = LocalDate.now();
+        LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
+        LocalDateTime monthEnd = today.plusMonths(1).withDayOfMonth(1).atStartOfDay();
+        long thisMonthCount = diaryRepository.countByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+                userId, monthStart, monthEnd);
+
+        LocalDateTime weekStart = today.minusDays(6).atStartOfDay();
+        LocalDateTime weekEnd = today.plusDays(1).atStartOfDay();
+        List<TodayMood> weekMoods = diaryRepository.findTodayMoodsByUserIdAndCreatedAtRange(userId, weekStart, weekEnd);
+        TodayMood weeklyDominant = dominantMood(weekMoods);
+
+        return DiaryListResponse.from(responseList, thisMonthCount, weeklyDominant);
+    }
+
+    private static TodayMood dominantMood(List<TodayMood> moods) {
+        if (moods == null || moods.isEmpty()) {
+            return null;
+        }
+        return moods.stream()
+                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
+                .entrySet().stream()
+                .max(Comparator.<Map.Entry<TodayMood, Long>>comparingLong(Map.Entry::getValue)
+                        .thenComparing(e -> e.getKey().name()))
+                .map(Map.Entry::getKey)
+                .orElse(null);
     }
 
     @Transactional

@@ -9,5 +9,6 @@ public enum AuthProvider {
     LOCAL,   // 일반 회원가입
     KAKAO,   // 카카오 로그인
     GOOGLE,  // 구글 로그인
-    NAVER    // 네이버 로그인 (향후 추가 예정)
+    NAVER,   // 네이버 로그인
+    APPLE    // 애플 로그인
 }

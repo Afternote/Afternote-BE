@@ -78,7 +78,7 @@ class DiaryControllerTest {
     @Test
     @DisplayName("Diary 조회 API 성공")
     void getDiaries_Success() throws Exception {
-        given(diaryService.getDiariesByDate(USER_ID, java.time.LocalDate.of(2020, 3, 12)))
+        given(diaryService.getDiariesByDate(USER_ID, java.time.LocalDate.of(2020, 3, 12), null))
                 .willReturn(DiaryListResponse.from(List.of(sampleResponse(1L))));
 
         mockMvc.perform(get("/api/v1/diary").queryParam("date", "2020-03-12")
@@ -87,7 +87,7 @@ class DiaryControllerTest {
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data.diaries[0].diaryId").value(1));
 
-        verify(diaryService).getDiariesByDate(USER_ID, java.time.LocalDate.of(2020, 3, 12));
+        verify(diaryService).getDiariesByDate(USER_ID, java.time.LocalDate.of(2020, 3, 12), null);
     }
 
     @Test

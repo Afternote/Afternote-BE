@@ -145,7 +145,7 @@ public class DailyQuestionService {
     }
 
     @Transactional(readOnly = true)
-    public List<DailyQuestionListResponse> getDailyQuestions(Long userId, LocalDate date) {
+    public List<DailyQuestionListResponse> getDailyQuestions(Long userId, LocalDate date, Boolean draftOnly) {
         List<UserDailyQuestion> questions;
         if (date != null) {
             questions = userDailyQuestionRepository.findByUserIdAndQuestionDateOrderByCreatedAtDesc(userId, date);
@@ -156,7 +156,7 @@ public class DailyQuestionService {
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN);
 
         return questions.stream()
-                .filter(UserDailyQuestion::isAnswered)
+                .filter(q -> Boolean.TRUE.equals(draftOnly) ? q.isDraft() : q.isAnswered())
                 .map(q -> DailyQuestionListResponse.builder()
                         .userDailyQuestionId(q.getId())
                         .title(q.getDailyQuestion().getContent())

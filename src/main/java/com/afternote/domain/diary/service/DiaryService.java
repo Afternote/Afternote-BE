@@ -53,13 +53,15 @@ public class DiaryService {
         return DiaryResponse.from(saved);
     }
 
-    public DiaryListResponse getDiariesByDate(Long userId, LocalDate date) {
+    public DiaryListResponse getDiariesByDate(Long userId, LocalDate date, Boolean draftOnly) {
         LocalDateTime start = date.atStartOfDay();
         LocalDateTime end = date.plusDays(1).atStartOfDay();
 
-        List<DiaryResponse> responseList = diaryRepository
-                .findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, start, end)
-                .stream()
+        List<Diary> diaries = Boolean.TRUE.equals(draftOnly)
+                ? diaryRepository.findByUserIdAndIsDraftTrueAndCreatedAtBetweenOrderByCreatedAtDesc(userId, start, end)
+                : diaryRepository.findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, start, end);
+
+        List<DiaryResponse> responseList = diaries.stream()
                 .map(DiaryResponse::from)
                 .toList();
 

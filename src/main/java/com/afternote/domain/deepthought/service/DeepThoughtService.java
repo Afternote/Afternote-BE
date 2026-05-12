@@ -67,7 +67,7 @@ public class DeepThoughtService {
                 .orElseThrow(() -> new CustomException(ErrorCode.DEEP_THOUGHT_CATEGORY_NOT_FOUND));
     }
 
-    public DeepThoughtListResponse getDeepThoughts(Long userId, LocalDate date, String tag, String category) {
+    public DeepThoughtListResponse getDeepThoughts(Long userId, LocalDate date, String tag, String category, Boolean draftOnly) {
         LocalDateTime start = null;
         LocalDateTime end = null;
         if (date != null) {
@@ -78,7 +78,8 @@ public class DeepThoughtService {
         String normalizedCategory = normalizeSearchParam(category);
         String normalizedTag = normalizeSearchParam(tag);
 
-        List<DeepThoughtResponse> list = deepThoughtRepository.search(userId, start, end, normalizedTag, normalizedCategory)
+        List<DeepThoughtResponse> list = deepThoughtRepository.search(
+                        userId, start, end, normalizedTag, normalizedCategory, draftOnly)
                 .stream()
                 .map(DeepThoughtResponse::from)
                 .toList();

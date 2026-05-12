@@ -1,5 +1,6 @@
 package com.afternote.domain.deepthought.repository;
 
+import com.afternote.domain.deepthought.dto.DeepThoughtTagCountResponse;
 import com.afternote.domain.deepthought.model.DeepThought;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -30,6 +31,23 @@ public interface DeepThoughtRepository extends JpaRepository<DeepThought, Long> 
             @Param("start") LocalDateTime start,
             @Param("end") LocalDateTime end,
             @Param("tag") String tag,
+            @Param("category") String category,
+            @Param("draftOnly") Boolean draftOnly
+    );
+
+    @Query("SELECT NEW com.afternote.domain.deepthought.dto.DeepThoughtTagCountResponse(t.title, COUNT(DISTINCT dt.id)) "
+            + "FROM DeepThought dt JOIN dt.tags t "
+            + "LEFT JOIN dt.category c "
+            + "WHERE dt.user.id = :userId "
+            + "AND (:start IS NULL OR (dt.createdAt >= :start AND dt.createdAt < :end)) "
+            + "AND (:category IS NULL OR c.title = :category) "
+            + "AND (:draftOnly IS NULL OR :draftOnly = false OR dt.isDraft = true) "
+            + "GROUP BY t.title "
+            + "ORDER BY COUNT(DISTINCT dt.id) DESC, t.title ASC")
+    List<DeepThoughtTagCountResponse> aggregateTagCounts(
+            @Param("userId") Long userId,
+            @Param("start") LocalDateTime start,
+            @Param("end") LocalDateTime end,
             @Param("category") String category,
             @Param("draftOnly") Boolean draftOnly
     );

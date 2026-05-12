@@ -40,7 +40,8 @@ public class DiaryController {
         return ApiResponse.success(diaryService.createDiary(userId, request));
     }
 
-    @Operation(summary = "Diary 조회", description = "날짜 기준으로 다이어리를 조회합니다. draftOnly=true이면 해당 날짜의 임시저장만 반환합니다.")
+    @Operation(summary = "Diary 조회", description = "날짜 기준으로 다이어리를 조회합니다. draftOnly=true이면 해당 날짜의 임시저장만 반환합니다. "
+            + "응답에는 항상 이번 달 정식(비임시) 다이어리 개수(thisMonthDiaryCount)와 최근 7일 정식 다이어리 중 최빈 기분(weeklyDominantMood)이 포함됩니다.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Diary 조회 성공"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 값이 올바르지 않음 (code: 1400)"),

@@ -84,7 +84,10 @@ public class DeepThoughtService {
                 .map(DeepThoughtResponse::from)
                 .toList();
 
-        return DeepThoughtListResponse.from(list);
+        var tagCounts = deepThoughtRepository.aggregateTagCounts(
+                userId, start, end, normalizedCategory, draftOnly);
+
+        return DeepThoughtListResponse.from(list, tagCounts);
     }
 
     private String normalizeSearchParam(String value) {

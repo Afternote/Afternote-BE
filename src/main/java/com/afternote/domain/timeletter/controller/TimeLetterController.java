@@ -54,7 +54,7 @@ public class TimeLetterController {
     }
 
     @Operation(summary = "타임레터 삭제", description = "타임레터를 단일/다건 삭제합니다.")
-    @PostMapping("/delete")
+    @DeleteMapping
     public ApiResponse<Void> deleteTimeLetters(
             @Parameter(hidden = true) @UserId Long userId,
             @Valid @RequestBody TimeLetterDeleteRequest request) {

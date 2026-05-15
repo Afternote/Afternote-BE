@@ -1,6 +1,10 @@
 package com.afternote.domain.timeletter.controller;
 
-import com.afternote.domain.timeletter.dto.*;
+import com.afternote.domain.timeletter.dto.request.TimeLetterCreateRequest;
+import com.afternote.domain.timeletter.dto.request.TimeLetterDeleteRequest;
+import com.afternote.domain.timeletter.dto.request.TimeLetterUpdateRequest;
+import com.afternote.domain.timeletter.dto.response.TimeLetterListResponse;
+import com.afternote.domain.timeletter.dto.response.TimeLetterResponse;
 import com.afternote.domain.timeletter.service.TimeLetterService;
 import com.afternote.global.common.ApiResponse;
 import com.afternote.global.resolver.UserId;
@@ -23,8 +27,7 @@ public class TimeLetterController {
     @GetMapping
     public ApiResponse<TimeLetterListResponse> getTimeLetters(
             @Parameter(hidden = true) @UserId Long userId) {
-        TimeLetterListResponse response = timeLetterService.getTimeLetters(userId);
-        return ApiResponse.success(response);
+        return ApiResponse.success(timeLetterService.getTimeLetters(userId));
     }
 
     @Operation(summary = "타임레터 단일 조회", description = "특정 타임레터를 조회합니다.")
@@ -32,8 +35,7 @@ public class TimeLetterController {
     public ApiResponse<TimeLetterResponse> getTimeLetter(
             @Parameter(hidden = true) @UserId Long userId,
             @PathVariable Long timeLetterId) {
-        TimeLetterResponse response = timeLetterService.getTimeLetter(userId, timeLetterId);
-        return ApiResponse.success(response);
+        return ApiResponse.success(timeLetterService.getTimeLetter(userId, timeLetterId));
     }
 
     @Operation(summary = "타임레터 등록", description = "새 타임레터를 등록합니다. (DRAFT: 임시저장, SCHEDULED: 정식등록)")
@@ -41,16 +43,14 @@ public class TimeLetterController {
     public ApiResponse<TimeLetterResponse> createTimeLetter(
             @Parameter(hidden = true) @UserId Long userId,
             @Valid @RequestBody TimeLetterCreateRequest request) {
-        TimeLetterResponse response = timeLetterService.createTimeLetter(userId, request);
-        return ApiResponse.success(response);
+        return ApiResponse.success(timeLetterService.createTimeLetter(userId, request));
     }
 
     @Operation(summary = "임시저장 전체 조회", description = "임시저장된(DRAFT) 타임레터 전체를 조회합니다.")
     @GetMapping("/temporary")
     public ApiResponse<TimeLetterListResponse> getTemporaryTimeLetters(
             @Parameter(hidden = true) @UserId Long userId) {
-        TimeLetterListResponse response = timeLetterService.getTemporaryTimeLetters(userId);
-        return ApiResponse.success(response);
+        return ApiResponse.success(timeLetterService.getTemporaryTimeLetters(userId));
     }
 
     @Operation(summary = "타임레터 삭제", description = "타임레터를 단일/다건 삭제합니다.")
@@ -76,7 +76,6 @@ public class TimeLetterController {
             @Parameter(hidden = true) @UserId Long userId,
             @PathVariable Long timeLetterId,
             @Valid @RequestBody TimeLetterUpdateRequest request) {
-        TimeLetterResponse response = timeLetterService.updateTimeLetter(userId, timeLetterId, request);
-        return ApiResponse.success(response);
+        return ApiResponse.success(timeLetterService.updateTimeLetter(userId, timeLetterId, request));
     }
 }

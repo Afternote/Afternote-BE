@@ -5,7 +5,7 @@ close #
 -
 
 ## 🛠️ 테스트 계획 및 결과
-- [ ] docker build 완료 (docker-compose up --build )
+- [ ] 로컬 API 테스트(Postman/Swagger) 완료
 - [ ] API 테스트(Postman/Swagger) 완료
 
 ## 📚 체크리스트

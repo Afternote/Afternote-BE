@@ -96,8 +96,12 @@ public enum ErrorCode {
     TIME_LETTER_ACCESS_DENIED(HttpStatus.FORBIDDEN, 1301, "해당 타임레터에 대한 권한이 없습니다."),
     TIME_LETTER_ALREADY_SENT(HttpStatus.BAD_REQUEST, 1302, "이미 발송된 타임레터는 수정/삭제할 수 없습니다."),
     TIME_LETTER_INVALID_STATUS(HttpStatus.BAD_REQUEST, 1303, "유효하지 않은 상태 변경입니다."),
-    TIME_LETTER_REQUIRED_FIELDS(HttpStatus.BAD_REQUEST, 1304, "정식 등록 시 제목, 내용, 발송일시는 필수입니다."),
+    TIME_LETTER_REQUIRED_FIELDS(HttpStatus.BAD_REQUEST, 1304, "정식 등록 시 제목, 본문, 발송일시는 필수입니다."),
     TIME_LETTER_INVALID_SEND_DATE(HttpStatus.BAD_REQUEST, 1305, "발송일시는 현재 시간 이후여야 합니다."),
+    TIME_LETTER_BLOCK_REQUIRED_FIELDS(HttpStatus.BAD_REQUEST, 1306, "본문 블록의 필수값이 누락되었습니다."),
+    TIME_LETTER_BLOCK_ORDER_INVALID(HttpStatus.BAD_REQUEST, 1307, "본문 블록 순서는 1 이상의 숫자여야 합니다."),
+    TIME_LETTER_BLOCK_ORDER_DUPLICATED(HttpStatus.BAD_REQUEST, 1308, "본문 블록 순서는 중복될 수 없습니다."),
+    TIME_LETTER_BLOCK_CONTENT_REQUIRED(HttpStatus.BAD_REQUEST, 1309, "텍스트 블록은 내용이 필요하고, 미디어/링크 블록은 URL이 필요합니다."),
 
     // ======================================                                                                                                                                                               
     // 5. 요청 값 검증 오류 (code: 1400 ~ 1499)                                                                                                                                                                   

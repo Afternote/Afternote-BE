@@ -1,4 +1,4 @@
-package com.afternote.domain.timeletter.dto;
+package com.afternote.domain.timeletter.dto.response;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;

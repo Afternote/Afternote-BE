@@ -1,7 +1,7 @@
 package com.afternote.domain.timeletter.controller;
 
-import com.afternote.domain.timeletter.dto.TimeLetterListResponse;
-import com.afternote.domain.timeletter.dto.TimeLetterResponse;
+import com.afternote.domain.timeletter.dto.response.TimeLetterListResponse;
+import com.afternote.domain.timeletter.dto.response.TimeLetterResponse;
 import com.afternote.domain.timeletter.model.TimeLetterStatus;
 import com.afternote.domain.timeletter.service.TimeLetterService;
 import com.afternote.global.resolver.UserId;

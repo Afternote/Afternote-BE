@@ -1,18 +1,15 @@
 package com.afternote.domain.timeletter.service;
 
 import com.afternote.domain.image.service.S3Service;
-import com.afternote.domain.receiver.model.Receiver;
-import com.afternote.domain.receiver.model.TimeLetterReceiver;
 import com.afternote.domain.receiver.repository.TimeLetterReceiverRepository;
 import com.afternote.domain.receiver.service.ReceivedService;
-import com.afternote.domain.timeletter.dto.TimeLetterCreateRequest;
-import com.afternote.domain.timeletter.dto.TimeLetterDeleteRequest;
-import com.afternote.domain.timeletter.dto.TimeLetterListResponse;
-import com.afternote.domain.timeletter.dto.TimeLetterResponse;
-import com.afternote.domain.timeletter.dto.TimeLetterUpdateRequest;
+import com.afternote.domain.timeletter.dto.request.TimeLetterCreateRequest;
+import com.afternote.domain.timeletter.dto.request.TimeLetterDeleteRequest;
+import com.afternote.domain.timeletter.dto.response.TimeLetterListResponse;
+import com.afternote.domain.timeletter.dto.response.TimeLetterResponse;
+import com.afternote.domain.timeletter.dto.request.TimeLetterUpdateRequest;
 import com.afternote.domain.timeletter.model.TimeLetter;
 import com.afternote.domain.timeletter.model.TimeLetterStatus;
-import com.afternote.domain.timeletter.repository.TimeLetterMediaRepository;
 import com.afternote.domain.timeletter.repository.TimeLetterRepository;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;

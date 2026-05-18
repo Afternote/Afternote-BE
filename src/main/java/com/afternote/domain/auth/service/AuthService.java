@@ -133,6 +133,9 @@ public class AuthService {
 
     @Transactional
     public void emailSend(EmailSendRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
+        }
         emailService.sendCode(request.getEmail());
     }
 

@@ -88,6 +88,12 @@ public enum ErrorCode {
     CANNOT_UNLINK_LOCAL_PROVIDER(HttpStatus.BAD_REQUEST, 1214, "일반(이메일) 계정 연결은 이 방식으로 해제할 수 없습니다."),
     PROVIDER_NOT_CONNECTED(HttpStatus.BAD_REQUEST, 1215, "연결되지 않은 제공자입니다."),
 
+    // 이메일 인증번호 재전송 쿨다운
+    EMAIL_SEND_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, 1216, "잠시 후 다시 시도해주세요."),
+
+    // 이메일 인증번호 시간당 발송 한도 초과
+    EMAIL_SEND_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, 1217, "이메일 인증번호 발송 한도를 초과했습니다. 잠시 후 다시 시도해주세요."),
+
     // ======================================
     // 4. 타임레터 관련 오류 (code: 1300 ~ 1399)
     // ======================================

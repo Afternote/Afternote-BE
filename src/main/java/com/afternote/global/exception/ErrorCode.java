@@ -81,13 +81,18 @@ public enum ErrorCode {
     UNSUPPORTED_SOCIAL_LOGIN(HttpStatus.BAD_REQUEST, 1209, "지원하지 않는 소셜 로그인 제공자입니다."),
 
     // 연결 계정(소셜 연동)
-    SOCIAL_ACCOUNT_EMAIL_MISMATCH(HttpStatus.BAD_REQUEST, 1210, "소셜 계정 이메일이 현재 계정과 일치하지 않습니다."),
+    INVALID_CONNECTED_ACCOUNT_PROVIDER(HttpStatus.BAD_REQUEST, 1210, "연결할 수 없는 제공자입니다."),
     SOCIAL_ACCOUNT_LINKED_TO_OTHER_USER(HttpStatus.CONFLICT, 1211, "해당 소셜 계정은 이미 다른 사용자에게 연결되어 있습니다."),
     PROVIDER_ALREADY_CONNECTED_OTHER_ACCOUNT(HttpStatus.CONFLICT, 1212, "이미 다른 소셜 계정이 이 제공자에 연결되어 있습니다."),
     CANNOT_UNLINK_LAST_CREDENTIAL(HttpStatus.BAD_REQUEST, 1213, "최소 한 가지 로그인 수단은 유지해야 합니다."),
     CANNOT_UNLINK_LOCAL_PROVIDER(HttpStatus.BAD_REQUEST, 1214, "일반(이메일) 계정 연결은 이 방식으로 해제할 수 없습니다."),
     PROVIDER_NOT_CONNECTED(HttpStatus.BAD_REQUEST, 1215, "연결되지 않은 제공자입니다."),
-    INVALID_CONNECTED_ACCOUNT_PROVIDER(HttpStatus.BAD_REQUEST, 1216, "연결할 수 없는 제공자입니다."),
+
+    // 이메일 인증번호 재전송 쿨다운
+    EMAIL_SEND_COOLDOWN(HttpStatus.TOO_MANY_REQUESTS, 1216, "잠시 후 다시 시도해주세요."),
+
+    // 이메일 인증번호 시간당 발송 한도 초과
+    EMAIL_SEND_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, 1217, "이메일 인증번호 발송 한도를 초과했습니다. 잠시 후 다시 시도해주세요."),
 
     // ======================================
     // 4. 타임레터 관련 오류 (code: 1300 ~ 1399)
@@ -96,8 +101,12 @@ public enum ErrorCode {
     TIME_LETTER_ACCESS_DENIED(HttpStatus.FORBIDDEN, 1301, "해당 타임레터에 대한 권한이 없습니다."),
     TIME_LETTER_ALREADY_SENT(HttpStatus.BAD_REQUEST, 1302, "이미 발송된 타임레터는 수정/삭제할 수 없습니다."),
     TIME_LETTER_INVALID_STATUS(HttpStatus.BAD_REQUEST, 1303, "유효하지 않은 상태 변경입니다."),
-    TIME_LETTER_REQUIRED_FIELDS(HttpStatus.BAD_REQUEST, 1304, "정식 등록 시 제목, 내용, 발송일시는 필수입니다."),
+    TIME_LETTER_REQUIRED_FIELDS(HttpStatus.BAD_REQUEST, 1304, "정식 등록 시 제목, 본문, 발송일시는 필수입니다."),
     TIME_LETTER_INVALID_SEND_DATE(HttpStatus.BAD_REQUEST, 1305, "발송일시는 현재 시간 이후여야 합니다."),
+    TIME_LETTER_BLOCK_REQUIRED_FIELDS(HttpStatus.BAD_REQUEST, 1306, "본문 블록의 필수값이 누락되었습니다."),
+    TIME_LETTER_BLOCK_ORDER_INVALID(HttpStatus.BAD_REQUEST, 1307, "본문 블록 순서는 1 이상의 숫자여야 합니다."),
+    TIME_LETTER_BLOCK_ORDER_DUPLICATED(HttpStatus.BAD_REQUEST, 1308, "본문 블록 순서는 중복될 수 없습니다."),
+    TIME_LETTER_BLOCK_CONTENT_REQUIRED(HttpStatus.BAD_REQUEST, 1309, "텍스트 블록은 내용이 필요하고, 미디어/링크 블록은 URL이 필요합니다."),
 
     // ======================================                                                                                                                                                               
     // 5. 요청 값 검증 오류 (code: 1400 ~ 1499)                                                                                                                                                                   

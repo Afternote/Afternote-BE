@@ -1,8 +1,9 @@
-package com.afternote.domain.timeletter.dto;
+package com.afternote.domain.timeletter.dto.request;
 
 import com.afternote.domain.timeletter.model.TimeLetterStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -18,9 +19,6 @@ public class TimeLetterCreateRequest {
     @Schema(description = "제목", example = "미래의 나에게")
     private String title;
 
-    @Schema(description = "내용", example = "1년 후의 나에게 보내는 편지...")
-    private String content;
-
     @Schema(description = "발송 예정 시간", example = "2025-12-31T23:59:59")
     private LocalDateTime sendAt;
 
@@ -28,13 +26,11 @@ public class TimeLetterCreateRequest {
     @NotNull(message = "상태를 입력해주세요.")
     private TimeLetterStatus status;
 
-    @Schema(description = "미디어 목록")
+    @Schema(description = "본문 블록 목록")
     @Valid
-    private List<TimeLetterMediaRequest> mediaList;
+    private List<TimeLetterBlockRequest> blocks;
 
     @Schema(description = "수신자 ID 목록", example = "[1, 2, 3]")
+    @NotEmpty(message = "수신자를 선택해주세요.")
     private List<Long> receiverIds;
-
-    @Schema(description = "배달 예정 시간", example = "2025-12-31T23:59:59")
-    private LocalDateTime deliveredAt;
 }

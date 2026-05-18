@@ -195,6 +195,32 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("이메일 인증번호 전송 실패 - 이미 가입된 이메일")
+    void emailSend_DuplicateEmail_Fail() {
+        EmailSendRequest request = org.mockito.Mockito.mock(EmailSendRequest.class);
+        given(request.getEmail()).willReturn("dup@test.com");
+        given(userRepository.existsByEmail("dup@test.com")).willReturn(true);
+
+        assertThatThrownBy(() -> authService.emailSend(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.DUPLICATE_EMAIL));
+
+        verify(emailService, org.mockito.Mockito.never()).sendCode(any());
+    }
+
+    @Test
+    @DisplayName("이메일 인증번호 전송 성공")
+    void emailSend_Success() {
+        EmailSendRequest request = org.mockito.Mockito.mock(EmailSendRequest.class);
+        given(request.getEmail()).willReturn("new@test.com");
+        given(userRepository.existsByEmail("new@test.com")).willReturn(false);
+
+        authService.emailSend(request);
+
+        verify(emailService).sendCode("new@test.com");
+    }
+
+    @Test
     @DisplayName("이메일 인증 실패")
     void emailVerify_Fail() {
         EmailVerifyRequest request = org.mockito.Mockito.mock(EmailVerifyRequest.class);

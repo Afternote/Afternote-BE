@@ -106,11 +106,13 @@ public class AuthController {
             }
             ```
             
-            **예시 (구글):** 클라이언트는 Google Sign-In으로 받은 OAuth2 access token을 넘깁니다. `email` 스코프가 포함되어야 합니다.
+            **예시 (구글):** 클라이언트(모바일)는 Google Sign-In SDK로 받은 **ID Token(JWT)** 을 `accessToken` 필드로 넘깁니다.
+            서버는 ID Token의 서명 / iss / aud(=Web Client ID) / exp 를 검증합니다.
+            Android/iOS 클라는 Google Sign-In의 `serverClientId`로 백엔드와 동일한 Web Client ID를 지정해야 합니다.
             ```json
             {
               "provider": "GOOGLE",
-              "accessToken": "ya29.a0AfH6..."
+              "accessToken": "eyJhbGciOiJSUzI1NiIs..."
             }
             ```
             """

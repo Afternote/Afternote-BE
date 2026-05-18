@@ -4,79 +4,76 @@ import com.afternote.domain.auth.dto.SocialUserInfo;
 import com.afternote.domain.user.model.AuthProvider;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
-import lombok.RequiredArgsConstructor;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdToken;
+import com.google.api.client.googleapis.auth.oauth2.GoogleIdTokenVerifier;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
-import java.util.List;
-import java.util.Map;
+import java.security.GeneralSecurityException;
+import java.util.Collections;
 
 /**
  * 구글 소셜 로그인 구현체.
- * 클라이언트가 받은 Google OAuth2 access token으로 userinfo를 조회합니다.
+ * 클라이언트(모바일)가 Google Sign-In SDK로 받은 ID Token(JWT)을 검증합니다.
+ *
+ * 검증 항목 (라이브러리가 자동 처리):
+ * - 서명: Google 공개키로 RSA 검증
+ * - issuer: accounts.google.com / https://accounts.google.com
+ * - audience: setAudience()로 등록한 Web Client ID
+ * - 만료(exp), 발행시각(iat)
  */
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class GoogleLoginService implements SocialLoginService {
 
-    private final RestTemplate restTemplate;
+    private final String webClientId;
+    private GoogleIdTokenVerifier verifier;
 
-    @Value("${google.oauth2.user-info-url}")
-    private String googleUserInfoUrl;
+    public GoogleLoginService(@Value("${google.oauth2.web-client-id}") String webClientId) {
+        this.webClientId = webClientId;
+    }
+
+    @PostConstruct
+    void initVerifier() {
+        this.verifier = new GoogleIdTokenVerifier.Builder(
+                new com.google.api.client.http.javanet.NetHttpTransport(),
+                new com.google.api.client.json.gson.GsonFactory()
+        )
+                .setAudience(Collections.singletonList(webClientId))
+                .build();
+    }
 
     @Override
-    public SocialUserInfo getUserInfo(String accessToken) {
+    public SocialUserInfo getUserInfo(String idTokenString) {
         try {
-            log.debug(
-                    "Google userinfo request, token prefix: {}...",
-                    accessToken.substring(0, Math.min(20, accessToken.length()))
-            );
-
-            HttpHeaders headers = new HttpHeaders();
-            headers.setBearerAuth(accessToken);
-            headers.setAccept(List.of(MediaType.APPLICATION_JSON));
-
-            HttpEntity<Void> entity = new HttpEntity<>(headers);
-
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    googleUserInfoUrl,
-                    HttpMethod.GET,
-                    entity,
-                    Map.class
-            );
-
-            Map<String, Object> body = response.getBody();
-            if (body == null || body.isEmpty()) {
-                log.error("Google userinfo response body is empty");
+            GoogleIdToken idToken = verifier.verify(idTokenString);
+            if (idToken == null) {
+                log.warn("Google ID Token verification failed (invalid signature/aud/iss/exp)");
                 throw new CustomException(ErrorCode.SOCIAL_LOGIN_FAILED);
             }
 
-            String sub = stringValue(body.get("sub"));
+            GoogleIdToken.Payload payload = idToken.getPayload();
+
+            String sub = payload.getSubject();
             if (sub == null || sub.isBlank()) {
-                log.error("Google userinfo missing sub: {}", body);
+                log.error("Google ID Token missing sub: {}", payload);
                 throw new CustomException(ErrorCode.SOCIAL_LOGIN_FAILED);
             }
 
-            String email = stringValue(body.get("email"));
+            String email = payload.getEmail();
             if (email == null || email.isBlank()) {
-                log.error("Google userinfo missing email (ensure email scope): {}", body);
+                log.error("Google ID Token missing email (ensure email scope): {}", payload);
                 throw new CustomException(ErrorCode.SOCIAL_LOGIN_FAILED);
             }
 
-            String name = stringValue(body.get("name"));
+            String name = stringValue(payload.get("name"));
             if (name == null || name.isBlank()) {
                 name = email;
             }
 
-            String picture = stringValue(body.get("picture"));
+            String picture = stringValue(payload.get("picture"));
 
             return SocialUserInfo.builder()
                     .providerId(sub)
@@ -87,8 +84,8 @@ public class GoogleLoginService implements SocialLoginService {
                     .build();
         } catch (CustomException e) {
             throw e;
-        } catch (Exception e) {
-            log.error("Google userinfo failed: {} - {}", e.getClass().getSimpleName(), e.getMessage(), e);
+        } catch (GeneralSecurityException | java.io.IOException e) {
+            log.error("Google ID Token verify failed: {} - {}", e.getClass().getSimpleName(), e.getMessage(), e);
             throw new CustomException(ErrorCode.SOCIAL_LOGIN_FAILED);
         }
     }

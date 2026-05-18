@@ -48,7 +48,9 @@ kakao:
 
 google:
   oauth2:
-    user-info-url: https://www.googleapis.com/oauth2/v3/userinfo
+    # 클라이언트가 보내는 ID Token의 aud 값과 일치해야 함 (Web Client ID)
+    # Android/iOS 네이티브 앱이 serverClientId로 지정하는 값
+    web-client-id: ${GOOGLE_WEB_CLIENT_ID}
 
 server:
   port: ${SERVER_PORT:8080}

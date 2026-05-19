@@ -148,7 +148,7 @@ class TimeLetterControllerTest {
     void deleteTimeLetters_Success() throws Exception {
         String requestBody = objectMapper.writeValueAsString(java.util.Map.of("timeLetterIds", List.of(1L, 2L)));
 
-        mockMvc.perform(post("/api/v1/time-letters/delete")
+        mockMvc.perform(delete("/api/v1/time-letters")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
@@ -197,12 +197,10 @@ class TimeLetterControllerTest {
         return TimeLetterResponse.builder()
                 .id(id)
                 .title(title)
-                .content("content")
-                .status(TimeLetterStatus.DRAFT)
+                .status(TimeLetterStatus.DRAFT.name())
                 .sendAt(LocalDateTime.now().plusDays(1))
                 .receiverIds(List.of(1L))
-                .createdAt(LocalDateTime.now())
-                .updatedAt(LocalDateTime.now())
+                .blocks(List.of())
                 .build();
     }
 

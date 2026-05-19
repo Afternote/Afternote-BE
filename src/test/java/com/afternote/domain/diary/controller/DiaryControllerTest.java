@@ -76,18 +76,22 @@ class DiaryControllerTest {
     }
 
     @Test
-    @DisplayName("Diary 조회 API 성공")
+    @DisplayName("Diary 월 단위 조회 API 성공")
     void getDiaries_Success() throws Exception {
-        given(diaryService.getDiariesByDate(USER_ID, java.time.LocalDate.of(2020, 3, 12), null))
-                .willReturn(DiaryListResponse.from(List.of(sampleResponse(1L))));
+        java.time.YearMonth yearMonth = java.time.YearMonth.of(2020, 3);
+        given(diaryService.getDiariesByMonth(USER_ID, yearMonth, null))
+                .willReturn(DiaryListResponse.from(yearMonth, List.of(sampleResponse(1L)), 1L, TodayMood.HAPPY));
 
-        mockMvc.perform(get("/api/v1/diary").queryParam("date", "2020-03-12")
+        mockMvc.perform(get("/api/v1/diary").queryParam("yearMonth", "2020-03")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.yearMonth").value("2020-03"))
+                .andExpect(jsonPath("$.data.monthDiaryCount").value(1))
+                .andExpect(jsonPath("$.data.weeklyDominantMood").value("HAPPY"))
                 .andExpect(jsonPath("$.data.diaries[0].diaryId").value(1));
 
-        verify(diaryService).getDiariesByDate(USER_ID, java.time.LocalDate.of(2020, 3, 12), null);
+        verify(diaryService).getDiariesByMonth(USER_ID, yearMonth, null);
     }
 
     @Test

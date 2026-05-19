@@ -16,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
+import java.time.YearMonth;
 
 @Tag(name = "📝 Diary API", description = "다이어리 API")
 @RestController
@@ -40,8 +40,10 @@ public class DiaryController {
         return ApiResponse.success(diaryService.createDiary(userId, request));
     }
 
-    @Operation(summary = "Diary 조회", description = "날짜 기준으로 다이어리를 조회합니다. draftOnly=true이면 해당 날짜의 임시저장만 반환합니다. "
-            + "응답에는 항상 이번 달 정식(비임시) 다이어리 개수(thisMonthDiaryCount)와 최근 7일 정식 다이어리 중 최빈 기분(weeklyDominantMood)이 포함됩니다.")
+    @Operation(summary = "Diary 월 단위 조회", description = "지정한 yyyy-MM 한 달의 다이어리 전체를 최신순으로 조회합니다. "
+            + "캘린더형 화면은 응답을 날짜별로 그룹핑하여 셀에 표시하고, 카드형 화면은 그대로 그리드에 렌더하면 됩니다. "
+            + "draftOnly=true이면 해당 달의 임시저장만 반환합니다. "
+            + "응답에는 조회 대상 달의 정식(비임시) 다이어리 개수(monthDiaryCount)와 최근 7일(서버 기준 오늘 포함) 정식 다이어리 중 최빈 기분(weeklyDominantMood)이 포함됩니다.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Diary 조회 성공"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 값이 올바르지 않음 (code: 1400)"),
@@ -50,11 +52,12 @@ public class DiaryController {
     @GetMapping
     public ApiResponse<DiaryListResponse> getDiaries(
             @Parameter(hidden = true) @UserId Long userId,
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
+            @Parameter(description = "조회할 연-월 (yyyy-MM)", example = "2026-03")
+            @RequestParam @DateTimeFormat(pattern = "yyyy-MM") YearMonth yearMonth,
             @Parameter(description = "true면 임시저장(isDraft=true)만 조회")
             @RequestParam(required = false) Boolean draftOnly
     ) {
-        return ApiResponse.success(diaryService.getDiariesByDate(userId, date, draftOnly));
+        return ApiResponse.success(diaryService.getDiariesByMonth(userId, yearMonth, draftOnly));
     }
 
     @Operation(summary = "Diary 수정", description = "다이어리를 수정합니다.")

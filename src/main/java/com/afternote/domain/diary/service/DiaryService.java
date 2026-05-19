@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -58,30 +59,28 @@ public class DiaryService {
         return DiaryResponse.from(saved);
     }
 
-    public DiaryListResponse getDiariesByDate(Long userId, LocalDate date, Boolean draftOnly) {
-        LocalDateTime start = date.atStartOfDay();
-        LocalDateTime end = date.plusDays(1).atStartOfDay();
+    public DiaryListResponse getDiariesByMonth(Long userId, YearMonth yearMonth, Boolean draftOnly) {
+        LocalDateTime monthStart = yearMonth.atDay(1).atStartOfDay();
+        LocalDateTime monthEnd = yearMonth.plusMonths(1).atDay(1).atStartOfDay();
 
         List<Diary> diaries = Boolean.TRUE.equals(draftOnly)
-                ? diaryRepository.findByUserIdAndIsDraftTrueAndCreatedAtBetweenOrderByCreatedAtDesc(userId, start, end)
-                : diaryRepository.findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, start, end);
+                ? diaryRepository.findByUserIdAndIsDraftTrueAndCreatedAtBetweenOrderByCreatedAtDesc(userId, monthStart, monthEnd)
+                : diaryRepository.findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, monthStart, monthEnd);
 
         List<DiaryResponse> responseList = diaries.stream()
                 .map(DiaryResponse::from)
                 .toList();
 
-        LocalDate today = LocalDate.now();
-        LocalDateTime monthStart = today.withDayOfMonth(1).atStartOfDay();
-        LocalDateTime monthEnd = today.plusMonths(1).withDayOfMonth(1).atStartOfDay();
-        long thisMonthCount = diaryRepository.countByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+        long monthDiaryCount = diaryRepository.countByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
                 userId, monthStart, monthEnd);
 
+        LocalDate today = LocalDate.now();
         LocalDateTime weekStart = today.minusDays(6).atStartOfDay();
         LocalDateTime weekEnd = today.plusDays(1).atStartOfDay();
         List<TodayMood> weekMoods = diaryRepository.findTodayMoodsByUserIdAndCreatedAtRange(userId, weekStart, weekEnd);
         TodayMood weeklyDominant = dominantMood(weekMoods);
 
-        return DiaryListResponse.from(responseList, thisMonthCount, weeklyDominant);
+        return DiaryListResponse.from(yearMonth, responseList, monthDiaryCount, weeklyDominant);
     }
 
     private static TodayMood dominantMood(List<TodayMood> moods) {

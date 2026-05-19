@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Locale;
@@ -39,6 +40,9 @@ public class DiaryResponse {
     @Schema(description = "오늘의 기분")
     private TodayMood todayMood;
 
+    @Schema(description = "작성일 (ISO yyyy-MM-dd). 캘린더 셀 그루핑 / 날짜 필터링에 사용", example = "2026-04-25")
+    private LocalDate date;
+
     @Schema(description = "생성일 (yyyy.MM.dd E)", example = "2026.04.25 토")
     private String createdAt;
 
@@ -53,6 +57,7 @@ public class DiaryResponse {
                 .isDraft(diary.getIsDraft())
                 .imageUrl(diary.getImageUrl())
                 .todayMood(diary.getTodayMood())
+                .date(toLocalDate(diary.getCreatedAt()))
                 .createdAt(formatDate(diary.getCreatedAt()))
                 .updatedAt(formatDate(diary.getUpdatedAt()))
                 .build();
@@ -67,9 +72,14 @@ public class DiaryResponse {
                 .imageUrl(diary.getImageUrl())
                 .emotion(emotion)
                 .todayMood(todayMood)
+                .date(toLocalDate(diary.getCreatedAt()))
                 .createdAt(formatDate(diary.getCreatedAt()))
                 .updatedAt(formatDate(diary.getUpdatedAt()))
                 .build();
+    }
+
+    private static LocalDate toLocalDate(LocalDateTime dateTime) {
+        return dateTime != null ? dateTime.toLocalDate() : null;
     }
 
     private static String formatDate(LocalDateTime dateTime) {

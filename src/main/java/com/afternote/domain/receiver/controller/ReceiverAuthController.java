@@ -131,4 +131,32 @@ public class ReceiverAuthController {
     ) {
         return ApiResponse.success(receiverAuthService.getDeliveryVerificationStatus(authCode));
     }
+
+    @Operation(
+            summary = "수신자 이메일 인증번호 발송",
+            description = "수신자 이메일로 6자리 인증번호를 발송합니다."
+    )
+    @PostMapping("/email/auth-code")
+    public ApiResponse<Void> sendEmailAuthCode(
+            @Valid @RequestBody ReceiverAuthCodeEmailSendRequest request
+    ) {
+        receiverAuthService.sendEmailAuthCode(request.getEmail());
+        return ApiResponse.success(null);
+    }
+
+    @Operation(
+            summary = "수신자 이메일 인증번호 검증",
+            description = "수신자가 입력한 6자리 이메일 인증번호를 검증하고, 콘텐츠 조회용 접근 코드를 반환합니다."
+    )
+    @PostMapping("/email/verify")
+    public ApiResponse<ReceiverEmailAuthVerifyResponse> verifyEmailAuthCode(
+            @Valid @RequestBody ReceiverEmailAuthVerifyRequest request
+    ) {
+        return ApiResponse.success(
+                receiverAuthService.verifyEmailAuthCode(
+                        request.getEmail(),
+                        request.getAuthCode()
+                )
+        );
+    }
 }

@@ -10,9 +10,12 @@ import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Duration;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.regex.Pattern;
 
 @Service
@@ -22,12 +25,16 @@ public class ReceiverAuthService {
 
     private static final Pattern UUID_PATTERN =
             Pattern.compile("^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$");
+    private static final Duration EMAIL_AUTH_CODE_TTL = Duration.ofMinutes(5);
+    private static final String EMAIL_AUTH_CODE_PREFIX = "receiver:email-auth:";
 
     private final ReceiverRepository receiverRepository;
     private final UserRepository userRepository;
     private final ReceivedService receivedService;
     private final DeliveryVerificationService deliveryVerificationService;
     private final S3Service s3Service;
+    private final AuthCodeMessageService authCodeMessageService;
+    private final StringRedisTemplate stringRedisTemplate;
 
     public ReceiverAuthVerifyResponse verifyAuthCode(String authCode) {
         Receiver receiver = findReceiverByAuthCode(authCode);
@@ -109,5 +116,81 @@ public class ReceiverAuthService {
         if (!sender.isDeliveryConditionMet()) {
             throw new CustomException(ErrorCode.DELIVERY_CONDITION_NOT_MET);
         }
+    }
+
+    public void sendEmailAuthCode(String email) {
+        String normalizedEmail = normalizeEmail(email);
+
+        Receiver receiver = receiverRepository.findFirstByEmailIgnoreCaseOrderByIdDesc(normalizedEmail)
+                .orElseThrow(() -> new CustomException(ErrorCode.RECEIVER_EMAIL_NOT_FOUND));
+
+        User sender = userRepository.findById(receiver.getUserId())
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        String emailAuthCode = generateSixDigitCode();
+
+        String redisKey = EMAIL_AUTH_CODE_PREFIX + normalizedEmail;
+        String redisValue = receiver.getId() + ":" + emailAuthCode;
+
+        try {
+            stringRedisTemplate.opsForValue().set(
+                    redisKey,
+                    redisValue,
+                    EMAIL_AUTH_CODE_TTL
+            );
+
+            authCodeMessageService.sendAuthCode(
+                    receiver.getEmail(),
+                    emailAuthCode,
+                    sender.getName(),
+                    receiver.getName()
+            );
+        } catch (Exception e) {
+            stringRedisTemplate.delete(redisKey);
+            throw new CustomException(ErrorCode.RECEIVER_EMAIL_SEND_FAILED);
+        }
+    }
+
+    public ReceiverEmailAuthVerifyResponse verifyEmailAuthCode(String email, String inputAuthCode) {
+        String normalizedEmail = normalizeEmail(email);
+        String redisKey = EMAIL_AUTH_CODE_PREFIX + normalizedEmail;
+
+        String savedValue = stringRedisTemplate.opsForValue().get(redisKey);
+
+        if (savedValue == null) {
+            throw new CustomException(ErrorCode.RECEIVER_EMAIL_AUTH_CODE_NOT_FOUND);
+        }
+
+        String[] values = savedValue.split(":");
+
+        if (values.length != 2) {
+            stringRedisTemplate.delete(redisKey);
+            throw new CustomException(ErrorCode.RECEIVER_EMAIL_AUTH_CODE_NOT_FOUND);
+        }
+
+        Long receiverId = Long.parseLong(values[0]);
+        String savedAuthCode = values[1];
+
+        if (!savedAuthCode.equals(inputAuthCode)) {
+            throw new CustomException(ErrorCode.RECEIVER_EMAIL_AUTH_CODE_MISMATCH);
+        }
+
+        Receiver receiver = receiverRepository.findById(receiverId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RECEIVER_NOT_FOUND));
+
+        User sender = userRepository.findById(receiver.getUserId())
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        stringRedisTemplate.delete(redisKey);
+
+        return ReceiverEmailAuthVerifyResponse.from(receiver, sender.getName());
+    }
+
+    private String generateSixDigitCode() {
+        return String.valueOf(ThreadLocalRandom.current().nextInt(100000, 1000000));
+    }
+
+    private String normalizeEmail(String email) {
+        return email.trim().toLowerCase();
     }
 }

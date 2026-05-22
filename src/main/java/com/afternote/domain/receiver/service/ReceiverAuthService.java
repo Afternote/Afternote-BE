@@ -3,8 +3,13 @@ package com.afternote.domain.receiver.service;
 import com.afternote.domain.image.dto.PresignedUrlResponse;
 import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.receiver.dto.*;
+import com.afternote.domain.receiver.model.DeliveryVerification;
+import com.afternote.domain.receiver.model.ReceivedRecordStatus;
 import com.afternote.domain.receiver.model.Receiver;
+import com.afternote.domain.receiver.repository.AfternoteReceiverRepository;
+import com.afternote.domain.receiver.repository.DeliveryVerificationRepository;
 import com.afternote.domain.receiver.repository.ReceiverRepository;
+import com.afternote.domain.receiver.repository.TimeLetterReceiverRepository;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
@@ -15,8 +20,12 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.function.Function;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -35,6 +44,9 @@ public class ReceiverAuthService {
     private final S3Service s3Service;
     private final AuthCodeMessageService authCodeMessageService;
     private final StringRedisTemplate stringRedisTemplate;
+    private final DeliveryVerificationRepository deliveryVerificationRepository;
+    private final TimeLetterReceiverRepository timeLetterReceiverRepository;
+    private final AfternoteReceiverRepository afternoteReceiverRepository;
 
     public ReceiverAuthVerifyResponse verifyAuthCode(String authCode) {
         Receiver receiver = findReceiverByAuthCode(authCode);
@@ -121,8 +133,14 @@ public class ReceiverAuthService {
     public void sendEmailAuthCode(String email) {
         String normalizedEmail = normalizeEmail(email);
 
-        Receiver receiver = receiverRepository.findFirstByEmailIgnoreCaseOrderByIdDesc(normalizedEmail)
-                .orElseThrow(() -> new CustomException(ErrorCode.RECEIVER_EMAIL_NOT_FOUND));
+        List<Receiver> receivers =
+                receiverRepository.findAllByEmailIgnoreCaseOrderByIdDesc(normalizedEmail);
+
+        if (receivers.isEmpty()) {
+            throw new CustomException(ErrorCode.RECEIVER_EMAIL_NOT_FOUND);
+        }
+
+        Receiver receiver = receivers.get(0);
 
         User sender = userRepository.findById(receiver.getUserId())
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -192,5 +210,86 @@ public class ReceiverAuthService {
 
     private String normalizeEmail(String email) {
         return email.trim().toLowerCase();
+    }
+
+    public ReceivedRecordBoxListResponse getReceivedRecordBoxes(String authCode) {
+        Receiver authenticatedReceiver = findReceiverByAuthCode(authCode);
+
+        String email = normalizeEmail(authenticatedReceiver.getEmail());
+
+        List<Receiver> receivers = receiverRepository.findAllByEmailIgnoreCaseOrderByIdDesc(email);
+
+        if (receivers.isEmpty()) {
+            throw new CustomException(ErrorCode.RECEIVER_NOT_FOUND);
+        }
+
+        Map<Long, User> senderMap = userRepository.findAllById(
+                        receivers.stream()
+                                .map(Receiver::getUserId)
+                                .collect(Collectors.toSet())
+                )
+                .stream()
+                .collect(Collectors.toMap(User::getId, Function.identity()));
+
+        List<ReceivedRecordBoxResponse> responses = receivers.stream()
+                .map(receiver -> toReceivedRecordBoxResponse(receiver, senderMap))
+                .toList();
+
+        return ReceivedRecordBoxListResponse.from(responses);
+    }
+
+    public ReceivedRecordBoxResponse getReceivedRecordBox(String authCode, Long receiverId) {
+        Receiver authenticatedReceiver = findReceiverByAuthCode(authCode);
+
+        Receiver targetReceiver = receiverRepository.findById(receiverId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RECEIVER_NOT_FOUND));
+
+        if (!normalizeEmail(authenticatedReceiver.getEmail()).equals(normalizeEmail(targetReceiver.getEmail()))) {
+            throw new CustomException(ErrorCode.NOT_ENOUGH_PERMISSION);
+        }
+
+        User sender = userRepository.findById(targetReceiver.getUserId())
+                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        DeliveryVerification verification = deliveryVerificationRepository
+                .findFirstByUserIdAndReceiverIdOrderByCreatedAtDesc(
+                        sender.getId(),
+                        targetReceiver.getId()
+                )
+                .orElse(null);
+
+        ReceivedRecordStatus recordStatus = determineRecordStatus(targetReceiver.getId());
+        return ReceivedRecordBoxResponse.from(targetReceiver, sender, verification, recordStatus);    }
+
+    private ReceivedRecordBoxResponse toReceivedRecordBoxResponse(
+            Receiver receiver,
+            Map<Long, User> senderMap
+    ) {
+        User sender = senderMap.get(receiver.getUserId());
+
+        if (sender == null) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
+
+        DeliveryVerification verification = deliveryVerificationRepository
+                .findFirstByUserIdAndReceiverIdOrderByCreatedAtDesc(
+                        sender.getId(),
+                        receiver.getId()
+                )
+                .orElse(null);
+
+        ReceivedRecordStatus recordStatus = determineRecordStatus(receiver.getId());
+        return ReceivedRecordBoxResponse.from(receiver, sender, verification, recordStatus);
+    }
+
+    private ReceivedRecordStatus determineRecordStatus(Long receiverId) {
+        boolean hasTimeLetter = timeLetterReceiverRepository.existsByReceiverId(receiverId);
+        boolean hasAfternote = afternoteReceiverRepository.existsByReceiverId(receiverId);
+
+        if (hasTimeLetter || hasAfternote) {
+            return ReceivedRecordStatus.STORED;
+        }
+
+        return ReceivedRecordStatus.EMPTY;
     }
 }

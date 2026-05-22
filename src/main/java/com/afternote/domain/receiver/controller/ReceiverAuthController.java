@@ -159,4 +159,30 @@ public class ReceiverAuthController {
                 )
         );
     }
+
+    @Operation(
+            summary = "받은 기록함 리스트 조회",
+            description = "수신자 접근 코드로 같은 이메일에 등록된 모든 받은 기록함 목록을 조회합니다."
+    )
+    @GetMapping("/record-boxes")
+    public ApiResponse<ReceivedRecordBoxListResponse> getReceivedRecordBoxes(
+            @Parameter(description = "수신자 접근 코드", required = true)
+            @RequestHeader("X-Auth-Code") String authCode
+    ) {
+        return ApiResponse.success(receiverAuthService.getReceivedRecordBoxes(authCode));
+    }
+
+    @Operation(
+            summary = "받은 기록함 단일 조회",
+            description = "수신자 접근 코드로 같은 이메일에 등록된 특정 받은 기록함을 조회합니다."
+    )
+    @GetMapping("/record-boxes/{receiverId}")
+    public ApiResponse<ReceivedRecordBoxResponse> getReceivedRecordBox(
+            @Parameter(description = "수신자 접근 코드", required = true)
+            @RequestHeader("X-Auth-Code") String authCode,
+            @Parameter(description = "조회할 수신자 ID", required = true)
+            @PathVariable Long receiverId
+    ) {
+        return ApiResponse.success(receiverAuthService.getReceivedRecordBox(authCode, receiverId));
+    }
 }

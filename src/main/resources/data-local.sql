@@ -54,5 +54,5 @@ ALTER TABLE time_letter_receiver
 ALTER TABLE user_daily_question_receiver
     MODIFY COLUMN created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6);
 
-ALTER TABLE time_letter_media
+ALTER TABLE time_letter_blocks
     MODIFY COLUMN created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6);

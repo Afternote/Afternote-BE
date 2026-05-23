@@ -131,4 +131,58 @@ public class ReceiverAuthController {
     ) {
         return ApiResponse.success(receiverAuthService.getDeliveryVerificationStatus(authCode));
     }
+
+    @Operation(
+            summary = "수신자 이메일 인증번호 발송",
+            description = "수신자 이메일로 6자리 인증번호를 발송합니다."
+    )
+    @PostMapping("/email/auth-code")
+    public ApiResponse<Void> sendEmailAuthCode(
+            @Valid @RequestBody ReceiverAuthCodeEmailSendRequest request
+    ) {
+        receiverAuthService.sendEmailAuthCode(request.getEmail());
+        return ApiResponse.success(null);
+    }
+
+    @Operation(
+            summary = "수신자 이메일 인증번호 검증",
+            description = "수신자가 입력한 6자리 이메일 인증번호를 검증하고, 콘텐츠 조회용 접근 코드를 반환합니다."
+    )
+    @PostMapping("/email/verify")
+    public ApiResponse<ReceiverEmailAuthVerifyResponse> verifyEmailAuthCode(
+            @Valid @RequestBody ReceiverEmailAuthVerifyRequest request
+    ) {
+        return ApiResponse.success(
+                receiverAuthService.verifyEmailAuthCode(
+                        request.getEmail(),
+                        request.getAuthCode()
+                )
+        );
+    }
+
+    @Operation(
+            summary = "받은 기록함 리스트 조회",
+            description = "수신자 접근 코드로 같은 이메일에 등록된 모든 받은 기록함 목록을 조회합니다."
+    )
+    @GetMapping("/record-boxes")
+    public ApiResponse<ReceivedRecordBoxListResponse> getReceivedRecordBoxes(
+            @Parameter(description = "수신자 접근 코드", required = true)
+            @RequestHeader("X-Auth-Code") String authCode
+    ) {
+        return ApiResponse.success(receiverAuthService.getReceivedRecordBoxes(authCode));
+    }
+
+    @Operation(
+            summary = "받은 기록함 단일 조회",
+            description = "수신자 접근 코드로 같은 이메일에 등록된 특정 받은 기록함을 조회합니다."
+    )
+    @GetMapping("/record-boxes/{receiverId}")
+    public ApiResponse<ReceivedRecordBoxResponse> getReceivedRecordBox(
+            @Parameter(description = "수신자 접근 코드", required = true)
+            @RequestHeader("X-Auth-Code") String authCode,
+            @Parameter(description = "조회할 수신자 ID", required = true)
+            @PathVariable Long receiverId
+    ) {
+        return ApiResponse.success(receiverAuthService.getReceivedRecordBox(authCode, receiverId));
+    }
 }

@@ -43,4 +43,6 @@ public interface TimeLetterReceiverRepository extends JpaRepository<TimeLetterRe
     void deleteByTimeLetterId(Long timeLetterId);
 
     void deleteByTimeLetterIdIn(List<Long> timeLetterIds);
+
+    boolean existsByReceiverId(Long receiverId);
 }

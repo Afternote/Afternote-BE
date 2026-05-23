@@ -163,6 +163,10 @@ public enum ErrorCode {
 
     //gemini api
     GEMINI_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1901, "LLM API 가 실패하였습니다. 원인은 토큰 만료, 시간 초과 등이 있습니다."),
+    RECEIVER_EMAIL_NOT_FOUND(HttpStatus.NOT_FOUND, 1902, "등록된 수신자 이메일이 아닙니다."),
+    RECEIVER_EMAIL_AUTH_CODE_NOT_FOUND(HttpStatus.BAD_REQUEST, 1903, "인증번호가 만료되었거나 존재하지 않습니다. 다시 요청해주세요."),
+    RECEIVER_EMAIL_AUTH_CODE_MISMATCH(HttpStatus.BAD_REQUEST, 1904, "이메일 인증번호가 일치하지 않습니다."),
+    RECEIVER_EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1905, "이메일 인증번호 발송에 실패했습니다."),
 
     // ======================================
     // 10. 전달 조건/인증 관련 오류 (code: 2000 ~ 2099)

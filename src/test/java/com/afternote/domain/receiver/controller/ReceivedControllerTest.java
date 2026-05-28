@@ -26,6 +26,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -69,6 +70,61 @@ class ReceivedControllerTest {
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"timeLetterID\":1}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("깊은 생각 수신자 등록 API 성공")
+    void createDeepThoughtReceivers_Success() throws Exception {
+        given(receivedService.createDeepThoughtReceivers(eq(USER_ID), any())).willReturn(List.of(1L, 2L));
+
+        mockMvc.perform(post("/api/v1/received/deep-thought")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"deepThoughtId\":1,\"receiverIds\":[1,2]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(receivedService).createDeepThoughtReceivers(eq(USER_ID), any());
+    }
+
+    @Test
+    @DisplayName("다이어리 수신자 등록 API 성공")
+    void createDiaryReceivers_Success() throws Exception {
+        given(receivedService.createDiaryReceivers(eq(USER_ID), any())).willReturn(List.of(1L, 2L));
+
+        mockMvc.perform(post("/api/v1/received/diary")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"diaryId\":1,\"receiverIds\":[1,2]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(receivedService).createDiaryReceivers(eq(USER_ID), any());
+    }
+
+    @Test
+    @DisplayName("데일리 질문 수신자 등록 API 성공")
+    void createUserDailyQuestionReceivers_Success() throws Exception {
+        given(receivedService.createUserDailyQuestionReceivers(eq(USER_ID), any())).willReturn(List.of(1L, 2L));
+
+        mockMvc.perform(post("/api/v1/received/daily-question")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userDailyQuestionId\":1,\"receiverIds\":[1,2]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data").doesNotExist());
+
+        verify(receivedService).createUserDailyQuestionReceivers(eq(USER_ID), any());
+    }
+
+    @Test
+    @DisplayName("다이어리 수신자 등록 API 실패 - receiverIds 누락")
+    void createDiaryReceivers_MissingReceiverIds_Fail() throws Exception {
+        mockMvc.perform(post("/api/v1/received/diary")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"diaryId\":1}"))
                 .andExpect(status().isBadRequest());
     }
 

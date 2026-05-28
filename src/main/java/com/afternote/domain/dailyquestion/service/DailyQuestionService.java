@@ -6,6 +6,7 @@ import com.afternote.domain.dailyquestion.model.UserDailyQuestion;
 import com.afternote.domain.dailyquestion.repository.DailyQuestionRepository;
 import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
 import com.afternote.domain.mindrecord.emotion.event.DailyQuestionEmotionAnalysisRequestedEvent;
+import com.afternote.domain.receiver.repository.UserDailyQuestionReceiverRepository;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
@@ -33,6 +34,7 @@ public class DailyQuestionService {
     private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
     private final MindRecordHtmlSanitizer mindRecordHtmlSanitizer;
+    private final UserDailyQuestionReceiverRepository userDailyQuestionReceiverRepository;
 
     @Transactional
     public DailyQuestionTodayResponse getTodayQuestion(Long userId) {
@@ -176,6 +178,7 @@ public class DailyQuestionService {
             throw new CustomException(ErrorCode.NOT_ENOUGH_PERMISSION);
         }
 
+        userDailyQuestionReceiverRepository.deleteByUserDailyQuestionId(userDailyQuestionId);
         userDailyQuestionRepository.delete(userDailyQuestion);
     }
 }

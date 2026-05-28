@@ -1,6 +1,7 @@
 package com.afternote.domain.receiver.controller;
 
 import com.afternote.domain.image.dto.PresignedUrlResponse;
+import com.afternote.domain.receiver.model.ReceivedRecordSort;
 import com.afternote.domain.receiver.dto.*;
 import com.afternote.domain.receiver.service.ReceiverAuthService;
 import com.afternote.global.common.ApiResponse;
@@ -10,6 +11,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.format.annotation.DateTimeFormat;
+import java.time.LocalDate;
 
 @Tag(name = "Receiver Auth API", description = "수신자 인증번호 기반 콘텐츠 조회 API")
 @RestController
@@ -80,6 +83,70 @@ public class ReceiverAuthController {
             @PathVariable Long afternoteId
     ) {
         return ApiResponse.success(receiverAuthService.getAfternoteByAuthCode(authCode, afternoteId));
+    }
+
+    @Operation(
+            summary = "수신자 일기 목록 조회",
+            description = "수신자 접근 코드로 해당 수신자에게 전달된 일기 목록을 조회합니다."
+    )
+    @GetMapping("/diary")
+    public ApiResponse<ReceivedDiaryListResponse> getReceivedDiaries(
+            @Parameter(description = "수신자 접근 코드", required = true)
+            @RequestHeader("X-Auth-Code") String authCode,
+            @Parameter(description = "정렬 기준: LATEST 또는 OLDEST")
+            @RequestParam(defaultValue = "LATEST") ReceivedRecordSort sort,
+            @Parameter(description = "조회 시작일", example = "2026-12-12")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @Parameter(description = "조회 종료일", example = "2026-12-16")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        return ApiResponse.success(
+                receiverAuthService.getReceivedDiaries(authCode, sort, startDate, endDate)
+        );
+    }
+
+    @Operation(
+            summary = "수신자 깊은 생각 목록 조회",
+            description = "수신자 접근 코드로 해당 수신자에게 전달된 깊은 생각 목록을 조회합니다. 카테고리/태그/기간/정렬 필터를 지원합니다."
+    )
+    @GetMapping("/deep-thought")
+    public ApiResponse<ReceivedDeepThoughtListResponse> getReceivedDeepThoughts(
+            @Parameter(description = "수신자 접근 코드", required = true)
+            @RequestHeader("X-Auth-Code") String authCode,
+            @Parameter(description = "카테고리", example = "성장")
+            @RequestParam(required = false) String category,
+            @Parameter(description = "태그", example = "희망")
+            @RequestParam(required = false) String tag,
+            @Parameter(description = "정렬 기준: LATEST 또는 OLDEST")
+            @RequestParam(defaultValue = "LATEST") ReceivedRecordSort sort,
+            @Parameter(description = "조회 시작일", example = "2026-12-12")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @Parameter(description = "조회 종료일", example = "2026-12-16")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        return ApiResponse.success(
+                receiverAuthService.getReceivedDeepThoughts(authCode, category, tag, sort, startDate, endDate)
+        );
+    }
+
+    @Operation(
+            summary = "수신자 데일리 질문 답변 목록 조회",
+            description = "수신자 접근 코드로 해당 수신자에게 전달된 데일리 질문 답변 목록을 조회합니다."
+    )
+    @GetMapping("/daily-question")
+    public ApiResponse<ReceivedDailyQuestionListResponse> getReceivedDailyQuestions(
+            @Parameter(description = "수신자 접근 코드", required = true)
+            @RequestHeader("X-Auth-Code") String authCode,
+            @Parameter(description = "정렬 기준: LATEST 또는 OLDEST")
+            @RequestParam(defaultValue = "LATEST") ReceivedRecordSort sort,
+            @Parameter(description = "조회 시작일", example = "2026-12-12")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @Parameter(description = "조회 종료일", example = "2026-12-16")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate
+    ) {
+        return ApiResponse.success(
+                receiverAuthService.getReceivedDailyQuestions(authCode, sort, startDate, endDate)
+        );
     }
 
     @Operation(

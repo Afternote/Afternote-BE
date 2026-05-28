@@ -6,6 +6,10 @@ import com.afternote.domain.receiver.dto.*;
 import com.afternote.domain.receiver.model.DeliveryVerification;
 import com.afternote.domain.receiver.model.ReceivedRecordStatus;
 import com.afternote.domain.receiver.model.Receiver;
+import com.afternote.domain.receiver.model.ReceivedRecordSort;
+import com.afternote.domain.receiver.repository.DiaryReceiverRepository;
+import com.afternote.domain.receiver.repository.DeepThoughtReceiverRepository;
+import com.afternote.domain.receiver.repository.UserDailyQuestionReceiverRepository;
 import com.afternote.domain.receiver.repository.AfternoteReceiverRepository;
 import com.afternote.domain.receiver.repository.DeliveryVerificationRepository;
 import com.afternote.domain.receiver.repository.ReceiverRepository;
@@ -19,6 +23,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -47,6 +52,9 @@ public class ReceiverAuthService {
     private final DeliveryVerificationRepository deliveryVerificationRepository;
     private final TimeLetterReceiverRepository timeLetterReceiverRepository;
     private final AfternoteReceiverRepository afternoteReceiverRepository;
+    private final DiaryReceiverRepository diaryReceiverRepository;
+    private final DeepThoughtReceiverRepository deepThoughtReceiverRepository;
+    private final UserDailyQuestionReceiverRepository userDailyQuestionReceiverRepository;
 
     public ReceiverAuthVerifyResponse verifyAuthCode(String authCode) {
         Receiver receiver = findReceiverByAuthCode(authCode);
@@ -285,11 +293,69 @@ public class ReceiverAuthService {
     private ReceivedRecordStatus determineRecordStatus(Long receiverId) {
         boolean hasTimeLetter = timeLetterReceiverRepository.existsByReceiverId(receiverId);
         boolean hasAfternote = afternoteReceiverRepository.existsByReceiverId(receiverId);
+        boolean hasDiary = diaryReceiverRepository.existsByReceiverId(receiverId);
+        boolean hasDeepThought = deepThoughtReceiverRepository.existsByReceiverId(receiverId);
+        boolean hasDailyQuestion = userDailyQuestionReceiverRepository.existsByReceiverId(receiverId);
 
-        if (hasTimeLetter || hasAfternote) {
+        if (hasTimeLetter || hasAfternote || hasDiary || hasDeepThought || hasDailyQuestion) {
             return ReceivedRecordStatus.STORED;
         }
 
         return ReceivedRecordStatus.EMPTY;
+    }
+
+    public ReceivedDiaryListResponse getReceivedDiaries(
+            String authCode,
+            ReceivedRecordSort sort,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        Receiver receiver = findReceiverByAuthCode(authCode);
+        validateDeliveryCondition(receiver);
+
+        return receivedService.getReceivedDiaries(
+                receiver.getId(),
+                sort,
+                startDate,
+                endDate
+        );
+    }
+
+    public ReceivedDeepThoughtListResponse getReceivedDeepThoughts(
+            String authCode,
+            String category,
+            String tag,
+            ReceivedRecordSort sort,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        Receiver receiver = findReceiverByAuthCode(authCode);
+        validateDeliveryCondition(receiver);
+
+        return receivedService.getReceivedDeepThoughts(
+                receiver.getId(),
+                category,
+                tag,
+                sort,
+                startDate,
+                endDate
+        );
+    }
+
+    public ReceivedDailyQuestionListResponse getReceivedDailyQuestions(
+            String authCode,
+            ReceivedRecordSort sort,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        Receiver receiver = findReceiverByAuthCode(authCode);
+        validateDeliveryCondition(receiver);
+
+        return receivedService.getReceivedDailyQuestions(
+                receiver.getId(),
+                sort,
+                startDate,
+                endDate
+        );
     }
 }

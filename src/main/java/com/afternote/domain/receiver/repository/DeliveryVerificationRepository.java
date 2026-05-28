@@ -22,4 +22,9 @@ public interface DeliveryVerificationRepository extends JpaRepository<DeliveryVe
     Optional<DeliveryVerification> findFirstByUserIdOrderByCreatedAtDesc(Long userId);
 
     boolean existsByUserIdAndReceiverIdAndStatus(Long userId, Long receiverId, VerificationStatus status);
+
+    Optional<DeliveryVerification> findFirstByUserIdAndReceiverIdOrderByCreatedAtDesc(
+            Long userId,
+            Long receiverId
+    );
 }

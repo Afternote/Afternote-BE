@@ -28,4 +28,6 @@ public interface AfternoteReceiverRepository extends JpaRepository<AfternoteRece
     Optional<AfternoteReceiver> findByAfternoteIdAndReceiverIdWithAfternote(
             @Param("afternoteId") Long afternoteId,
             @Param("receiverId") Long receiverId);
+
+    boolean existsByReceiverId(Long receiverId);
 }

@@ -8,6 +8,7 @@ import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.model.TodayMood;
 import com.afternote.domain.diary.repository.DiaryRepository;
 import com.afternote.domain.mindrecord.emotion.event.DiaryEmotionAnalysisRequestedEvent;
+import com.afternote.domain.receiver.repository.DiaryReceiverRepository;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
@@ -36,6 +37,7 @@ public class DiaryService {
     private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
     private final MindRecordHtmlSanitizer mindRecordHtmlSanitizer;
+    private final DiaryReceiverRepository diaryReceiverRepository;
 
     @Transactional
     public DiaryResponse createDiary(Long userId, DiaryCreateRequest request) {
@@ -119,6 +121,7 @@ public class DiaryService {
     public void deleteDiary(Long userId, Long diaryId) {
         Diary diary = diaryRepository.findByIdAndUserId(diaryId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DIARY_NOT_FOUND));
+        diaryReceiverRepository.deleteByDiaryId(diaryId);
         diaryRepository.delete(diary);
     }
 }

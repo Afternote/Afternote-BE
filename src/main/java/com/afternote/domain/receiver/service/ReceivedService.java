@@ -2,13 +2,20 @@ package com.afternote.domain.receiver.service;
 
 import com.afternote.domain.afternote.model.Afternote;
 import com.afternote.domain.afternote.model.AfternoteReceiver;
+import com.afternote.domain.dailyquestion.dto.DailyQuestionListResponse;
+import com.afternote.domain.dailyquestion.model.UserDailyQuestion;
+import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
+import com.afternote.domain.deepthought.dto.DeepThoughtResponse;
+import com.afternote.domain.deepthought.dto.DeepThoughtTagCountResponse;
+import com.afternote.domain.deepthought.model.DeepThought;
+import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
+import com.afternote.domain.diary.dto.DiaryResponse;
+import com.afternote.domain.diary.model.Diary;
+import com.afternote.domain.diary.repository.DiaryRepository;
 import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.receiver.dto.*;
-import com.afternote.domain.receiver.model.Receiver;
-import com.afternote.domain.receiver.model.TimeLetterReceiver;
-import com.afternote.domain.receiver.repository.AfternoteReceiverRepository;
-import com.afternote.domain.receiver.repository.ReceiverRepository;
-import com.afternote.domain.receiver.repository.TimeLetterReceiverRepository;
+import com.afternote.domain.receiver.model.*;
+import com.afternote.domain.receiver.repository.*;
 import com.afternote.domain.timeletter.model.TimeLetter;
 import com.afternote.domain.timeletter.repository.TimeLetterRepository;
 import com.afternote.domain.user.model.User;
@@ -19,12 +26,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -36,9 +41,18 @@ public class ReceivedService {
     private final ReceiverRepository receiverRepository;
     private final TimeLetterReceiverRepository timeLetterReceiverRepository;
     private final AfternoteReceiverRepository afternoteReceiverRepository;
+    private final DeepThoughtReceiverRepository deepThoughtReceiverRepository;
+    private final DiaryReceiverRepository diaryReceiverRepository;
+    private final UserDailyQuestionReceiverRepository userDailyQuestionReceiverRepository;
     private final TimeLetterRepository timeLetterRepository;
+    private final DeepThoughtRepository deepThoughtRepository;
+    private final DiaryRepository diaryRepository;
+    private final UserDailyQuestionRepository userDailyQuestionRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+
+    private static final DateTimeFormatter KOREAN_DATE_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN);
 
     /**
      * 수신자가 받은 타임레터 목록 조회
@@ -229,6 +243,94 @@ public class ReceivedService {
     }
 
     /**
+     * 깊은 생각에 수신자 등록
+     */
+    @Transactional
+    public List<Long> createDeepThoughtReceivers(Long userId, CreateDeepThoughtReceiverRequest request) {
+        DeepThought deepThought = deepThoughtRepository.findByIdAndUserId(request.getDeepThoughtId(), userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.DEEP_THOUGHT_NOT_FOUND));
+
+        List<Receiver> receivers = findOwnedReceivers(userId, request.getReceiverIds());
+        Set<Long> existingReceiverIds = deepThoughtReceiverRepository
+                .findByDeepThoughtIdAndReceiverIdIn(deepThought.getId(), toReceiverIds(receivers))
+                .stream()
+                .map(deepThoughtReceiver -> deepThoughtReceiver.getReceiver().getId())
+                .collect(Collectors.toSet());
+
+        List<DeepThoughtReceiver> deepThoughtReceivers = receivers.stream()
+                .filter(receiver -> !existingReceiverIds.contains(receiver.getId()))
+                .map(receiver -> DeepThoughtReceiver.builder()
+                        .deepThought(deepThought)
+                        .receiver(receiver)
+                        .build())
+                .toList();
+
+        return deepThoughtReceiverRepository.saveAll(deepThoughtReceivers).stream()
+                .map(DeepThoughtReceiver::getId)
+                .toList();
+    }
+
+    /**
+     * 다이어리에 수신자 등록
+     */
+    @Transactional
+    public List<Long> createDiaryReceivers(Long userId, CreateDiaryReceiverRequest request) {
+        Diary diary = diaryRepository.findByIdAndUserId(request.getDiaryId(), userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.DIARY_NOT_FOUND));
+
+        List<Receiver> receivers = findOwnedReceivers(userId, request.getReceiverIds());
+        Set<Long> existingReceiverIds = diaryReceiverRepository
+                .findByDiaryIdAndReceiverIdIn(diary.getId(), toReceiverIds(receivers))
+                .stream()
+                .map(diaryReceiver -> diaryReceiver.getReceiver().getId())
+                .collect(Collectors.toSet());
+
+        List<DiaryReceiver> diaryReceivers = receivers.stream()
+                .filter(receiver -> !existingReceiverIds.contains(receiver.getId()))
+                .map(receiver -> DiaryReceiver.builder()
+                        .diary(diary)
+                        .receiver(receiver)
+                        .build())
+                .toList();
+
+        return diaryReceiverRepository.saveAll(diaryReceivers).stream()
+                .map(DiaryReceiver::getId)
+                .toList();
+    }
+
+    /**
+     * 데일리 질문 답변에 수신자 등록
+     */
+    @Transactional
+    public List<Long> createUserDailyQuestionReceivers(Long userId, CreateUserDailyQuestionReceiverRequest request) {
+        UserDailyQuestion userDailyQuestion = userDailyQuestionRepository.findById(request.getUserDailyQuestionId())
+                .orElseThrow(() -> new CustomException(ErrorCode.DAILY_QUESTION_NOT_FOUND));
+
+        if (!userDailyQuestion.getUser().getId().equals(userId)) {
+            throw new CustomException(ErrorCode.NOT_ENOUGH_PERMISSION);
+        }
+
+        List<Receiver> receivers = findOwnedReceivers(userId, request.getReceiverIds());
+        Set<Long> existingReceiverIds = userDailyQuestionReceiverRepository
+                .findByUserDailyQuestionIdAndReceiverIdIn(userDailyQuestion.getId(), toReceiverIds(receivers))
+                .stream()
+                .map(userDailyQuestionReceiver -> userDailyQuestionReceiver.getReceiver().getId())
+                .collect(Collectors.toSet());
+
+        List<UserDailyQuestionReceiver> userDailyQuestionReceivers = receivers.stream()
+                .filter(receiver -> !existingReceiverIds.contains(receiver.getId()))
+                .map(receiver -> UserDailyQuestionReceiver.builder()
+                        .userDailyQuestion(userDailyQuestion)
+                        .receiver(receiver)
+                        .build())
+                .toList();
+
+        return userDailyQuestionReceiverRepository.saveAll(userDailyQuestionReceivers).stream()
+                .map(UserDailyQuestionReceiver::getId)
+                .toList();
+    }
+
+    /**
      * 수신자 ID 목록 정규화
      * - null 또는 빈 목록이면 예외를 발생시킨다.
      * - null 원소를 제거한다.
@@ -250,6 +352,24 @@ public class ReceivedService {
         }
 
         return uniqueReceiverIds;
+    }
+
+    private List<Receiver> findOwnedReceivers(Long userId, List<Long> receiverIds) {
+        List<Long> uniqueReceiverIds = normalizeReceiverIds(receiverIds);
+
+        List<Receiver> receivers = receiverRepository.findAllById(uniqueReceiverIds);
+        if (receivers.size() != uniqueReceiverIds.size()) {
+            throw new CustomException(ErrorCode.RECEIVER_NOT_FOUND);
+        }
+
+        validateReceiversOwnership(userId, receivers);
+        return receivers;
+    }
+
+    private List<Long> toReceiverIds(List<Receiver> receivers) {
+        return receivers.stream()
+                .map(Receiver::getId)
+                .toList();
     }
 
     /**
@@ -279,5 +399,220 @@ public class ReceivedService {
         if (!sender.isDeliveryConditionMet()) {
             throw new CustomException(ErrorCode.DELIVERY_CONDITION_NOT_MET);
         }
+    }
+    /**
+     * 수신자가 받은 일기 목록 조회
+     * - 수신자 ID 기준으로 DiaryReceiver 목록을 조회한다.
+     * - 임시저장이 아닌 정식 등록 일기만 반환한다.
+     * - startDate/endDate가 있으면 원본 일기 작성일 기준으로 기간 필터링한다.
+     * - sort 값에 따라 최신순 또는 오래된순으로 정렬한다.
+     */
+    public ReceivedDiaryListResponse getReceivedDiaries(
+            Long receiverId,
+            ReceivedRecordSort sort,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        // 수신자 존재 여부 및 배달 조건 검증
+        validateReceiver(receiverId);
+
+        // 날짜 조건을 LocalDateTime 범위로 변환
+        LocalDateTime start = toStartDateTime(startDate);
+        LocalDateTime end = toEndDateTime(endDate);
+
+        List<DiaryResponse> diaries = diaryReceiverRepository
+                .findReceivedDiaries(receiverId, start, end)
+                .stream()
+                // 연결 엔티티에서 실제 Diary 엔티티만 꺼낸다.
+                .map(DiaryReceiver::getDiary)
+                // 요청한 정렬 기준에 따라 createdAt 기준 정렬
+                .sorted(diaryComparator(sort))
+                // 기존 Diary 응답 DTO로 변환
+                .map(DiaryResponse::from)
+                .toList();
+
+        return ReceivedDiaryListResponse.from(diaries);
+    }
+
+    /**
+     * 수신자가 받은 깊은 생각 목록 조회
+     * - 수신자 ID 기준으로 DeepThoughtReceiver 목록을 조회한다.
+     * - 임시저장이 아닌 정식 등록 깊은 생각만 반환한다.
+     * - 기간, 카테고리, 태그 조건으로 필터링할 수 있다.
+     * - 태그 검색어는 태그명뿐 아니라 제목/내용 검색에도 사용된다.
+     * - 응답에는 깊은 생각 목록과 함께 카테고리 목록, 태그별 글 개수를 포함한다.
+     */
+    public ReceivedDeepThoughtListResponse getReceivedDeepThoughts(
+            Long receiverId,
+            String category,
+            String tag,
+            ReceivedRecordSort sort,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        // 수신자 존재 여부 및 배달 조건 검증
+        validateReceiver(receiverId);
+
+        // 날짜 조건을 LocalDateTime 범위로 변환
+        LocalDateTime start = toStartDateTime(startDate);
+        LocalDateTime end = toEndDateTime(endDate);
+
+        // 검색 조건 공백 제거 및 null 처리
+        String normalizedCategory = normalizeSearchParam(category);
+        String normalizedTag = normalizeTag(tag);
+
+        List<DeepThought> thoughts = deepThoughtReceiverRepository
+                .findReceivedDeepThoughts(receiverId, start, end, normalizedCategory, normalizedTag)
+                .stream()
+                // 연결 엔티티에서 실제 DeepThought 엔티티만 꺼낸다.
+                .map(DeepThoughtReceiver::getDeepThought)
+                // 태그 JOIN으로 인해 중복될 수 있는 깊은 생각을 제거
+                .distinct()
+                // 요청한 정렬 기준에 따라 createdAt 기준 정렬
+                .sorted(deepThoughtComparator(sort))
+                .toList();
+
+        // 필터 UI에 사용할 카테고리 목록 조회
+        List<String> categories = deepThoughtReceiverRepository
+                .findReceivedCategoryTitles(receiverId, start, end);
+
+        // 태그별 글 개수 조회
+        // tag 검색어는 목록 필터에만 적용하고, 태그 개수 집계에는 적용하지 않는다.
+        List<DeepThoughtTagCountResponse> tagCounts = deepThoughtReceiverRepository
+                .aggregateReceivedTagCounts(receiverId, start, end, normalizedCategory);
+
+        // 기존 DeepThought 응답 DTO로 변환
+        List<DeepThoughtResponse> deepThoughts = thoughts.stream()
+                .map(DeepThoughtResponse::from)
+                .toList();
+
+        return ReceivedDeepThoughtListResponse.from(categories, tagCounts, deepThoughts);
+    }
+
+    /**
+     * 수신자가 받은 데일리 질문 답변 목록 조회
+     * - 수신자 ID 기준으로 UserDailyQuestionReceiver 목록을 조회한다.
+     * - 임시저장이 아니고 답변 완료된 데일리 질문만 반환한다.
+     * - startDate/endDate가 있으면 답변 작성일 기준으로 기간 필터링한다.
+     * - sort 값에 따라 최신순 또는 오래된순으로 정렬한다.
+     */
+    public ReceivedDailyQuestionListResponse getReceivedDailyQuestions(
+            Long receiverId,
+            ReceivedRecordSort sort,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        // 수신자 존재 여부 및 배달 조건 검증
+        validateReceiver(receiverId);
+
+        // 날짜 조건을 LocalDateTime 범위로 변환
+        LocalDateTime start = toStartDateTime(startDate);
+        LocalDateTime end = toEndDateTime(endDate);
+
+        List<DailyQuestionListResponse> dailyQuestions = userDailyQuestionReceiverRepository
+                .findReceivedDailyQuestions(receiverId, start, end)
+                .stream()
+                // 연결 엔티티에서 실제 UserDailyQuestion 엔티티만 꺼낸다.
+                .map(UserDailyQuestionReceiver::getUserDailyQuestion)
+                // 요청한 정렬 기준에 따라 createdAt 기준 정렬
+                .sorted(userDailyQuestionComparator(sort))
+                // 데일리 질문 목록 응답 DTO로 변환
+                .map(this::toDailyQuestionListResponse)
+                .toList();
+
+        return ReceivedDailyQuestionListResponse.from(dailyQuestions);
+    }
+
+    /**
+     * 조회 시작일을 LocalDateTime으로 변환
+     * - startDate가 있으면 해당 날짜의 00:00:00으로 변환한다.
+     * - 없으면 Repository 조건에서 필터링하지 않도록 null을 반환한다.
+     */
+    private LocalDateTime toStartDateTime(LocalDate startDate) {
+        return startDate != null ? startDate.atStartOfDay() : null;
+    }
+
+    /**
+     * 조회 종료일을 LocalDateTime으로 변환
+     * - endDate가 있으면 다음 날 00:00:00으로 변환한다.
+     * - Repository에서는 '< end' 조건을 사용하므로 종료일 당일까지 포함된다.
+     * - 없으면 Repository 조건에서 필터링하지 않도록 null을 반환한다.
+     */
+    private LocalDateTime toEndDateTime(LocalDate endDate) {
+        return endDate != null ? endDate.plusDays(1).atStartOfDay() : null;
+    }
+
+    /**
+     * 검색 파라미터 정규화
+     * - null 또는 공백 문자열이면 검색 조건을 적용하지 않도록 null을 반환한다.
+     * - 값이 있으면 앞뒤 공백을 제거한다.
+     */
+    private String normalizeSearchParam(String value) {
+        if (value == null || value.trim().isBlank()) {
+            return null;
+        }
+        return value.trim();
+    }
+
+    /**
+     * 태그 검색어 정규화
+     * - null 또는 공백 문자열이면 태그 검색 조건을 적용하지 않도록 null을 반환한다.
+     * - 프론트에서 '#성장'처럼 전달해도 DB 값과 비교할 수 있도록 '#'을 제거한다.
+     */
+    private String normalizeTag(String tag) {
+        if (tag == null || tag.trim().isBlank()) {
+            return null;
+        }
+
+        String normalized = tag.trim();
+        return normalized.startsWith("#") ? normalized.substring(1) : normalized;
+    }
+
+    /**
+     * 일기 정렬 조건 생성
+     * - LATEST이면 createdAt 기준 최신순
+     * - OLDEST이면 createdAt 기준 오래된순
+     */
+    private Comparator<Diary> diaryComparator(ReceivedRecordSort sort) {
+        Comparator<Diary> comparator = Comparator.comparing(Diary::getCreatedAt);
+        return sort == ReceivedRecordSort.OLDEST ? comparator : comparator.reversed();
+    }
+
+    /**
+     * 깊은 생각 정렬 조건 생성
+     * - LATEST이면 createdAt 기준 최신순
+     * - OLDEST이면 createdAt 기준 오래된순
+     */
+    private Comparator<DeepThought> deepThoughtComparator(ReceivedRecordSort sort) {
+        Comparator<DeepThought> comparator = Comparator.comparing(DeepThought::getCreatedAt);
+        return sort == ReceivedRecordSort.OLDEST ? comparator : comparator.reversed();
+    }
+
+    /**
+     * 데일리 질문 답변 정렬 조건 생성
+     * - LATEST이면 createdAt 기준 최신순
+     * - OLDEST이면 createdAt 기준 오래된순
+     */
+    private Comparator<UserDailyQuestion> userDailyQuestionComparator(ReceivedRecordSort sort) {
+        Comparator<UserDailyQuestion> comparator = Comparator.comparing(UserDailyQuestion::getCreatedAt);
+        return sort == ReceivedRecordSort.OLDEST ? comparator : comparator.reversed();
+    }
+
+    /**
+     * UserDailyQuestion 엔티티를 목록 응답 DTO로 변환
+     * - title에는 원본 데일리 질문 내용을 담는다.
+     * - content에는 사용자가 작성한 답변 내용을 담는다.
+     * - createdAt은 기존 데일리 질문 목록과 동일한 yyyy.MM.dd E 형식으로 변환한다.
+     */
+    private DailyQuestionListResponse toDailyQuestionListResponse(UserDailyQuestion userDailyQuestion) {
+        return DailyQuestionListResponse.builder()
+                .userDailyQuestionId(userDailyQuestion.getId())
+                .title(userDailyQuestion.getDailyQuestion().getContent())
+                .content(userDailyQuestion.getContent())
+                .createdAt(userDailyQuestion.getCreatedAt() != null
+                        ? userDailyQuestion.getCreatedAt().format(KOREAN_DATE_FORMATTER)
+                        : null)
+                .imageUrl(userDailyQuestion.getImageUrl())
+                .build();
     }
 }

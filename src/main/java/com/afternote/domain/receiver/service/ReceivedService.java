@@ -2,13 +2,25 @@ package com.afternote.domain.receiver.service;
 
 import com.afternote.domain.afternote.model.Afternote;
 import com.afternote.domain.afternote.model.AfternoteReceiver;
+import com.afternote.domain.dailyquestion.model.UserDailyQuestion;
+import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
+import com.afternote.domain.deepthought.model.DeepThought;
+import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
+import com.afternote.domain.diary.model.Diary;
+import com.afternote.domain.diary.repository.DiaryRepository;
 import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.receiver.dto.*;
+import com.afternote.domain.receiver.model.DeepThoughtReceiver;
+import com.afternote.domain.receiver.model.DiaryReceiver;
 import com.afternote.domain.receiver.model.Receiver;
 import com.afternote.domain.receiver.model.TimeLetterReceiver;
+import com.afternote.domain.receiver.model.UserDailyQuestionReceiver;
 import com.afternote.domain.receiver.repository.AfternoteReceiverRepository;
+import com.afternote.domain.receiver.repository.DeepThoughtReceiverRepository;
+import com.afternote.domain.receiver.repository.DiaryReceiverRepository;
 import com.afternote.domain.receiver.repository.ReceiverRepository;
 import com.afternote.domain.receiver.repository.TimeLetterReceiverRepository;
+import com.afternote.domain.receiver.repository.UserDailyQuestionReceiverRepository;
 import com.afternote.domain.timeletter.model.TimeLetter;
 import com.afternote.domain.timeletter.repository.TimeLetterRepository;
 import com.afternote.domain.user.model.User;
@@ -36,7 +48,13 @@ public class ReceivedService {
     private final ReceiverRepository receiverRepository;
     private final TimeLetterReceiverRepository timeLetterReceiverRepository;
     private final AfternoteReceiverRepository afternoteReceiverRepository;
+    private final DeepThoughtReceiverRepository deepThoughtReceiverRepository;
+    private final DiaryReceiverRepository diaryReceiverRepository;
+    private final UserDailyQuestionReceiverRepository userDailyQuestionReceiverRepository;
     private final TimeLetterRepository timeLetterRepository;
+    private final DeepThoughtRepository deepThoughtRepository;
+    private final DiaryRepository diaryRepository;
+    private final UserDailyQuestionRepository userDailyQuestionRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
 
@@ -229,6 +247,94 @@ public class ReceivedService {
     }
 
     /**
+     * 깊은 생각에 수신자 등록
+     */
+    @Transactional
+    public List<Long> createDeepThoughtReceivers(Long userId, CreateDeepThoughtReceiverRequest request) {
+        DeepThought deepThought = deepThoughtRepository.findByIdAndUserId(request.getDeepThoughtId(), userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.DEEP_THOUGHT_NOT_FOUND));
+
+        List<Receiver> receivers = findOwnedReceivers(userId, request.getReceiverIds());
+        Set<Long> existingReceiverIds = deepThoughtReceiverRepository
+                .findByDeepThoughtIdAndReceiverIdIn(deepThought.getId(), toReceiverIds(receivers))
+                .stream()
+                .map(deepThoughtReceiver -> deepThoughtReceiver.getReceiver().getId())
+                .collect(Collectors.toSet());
+
+        List<DeepThoughtReceiver> deepThoughtReceivers = receivers.stream()
+                .filter(receiver -> !existingReceiverIds.contains(receiver.getId()))
+                .map(receiver -> DeepThoughtReceiver.builder()
+                        .deepThought(deepThought)
+                        .receiver(receiver)
+                        .build())
+                .toList();
+
+        return deepThoughtReceiverRepository.saveAll(deepThoughtReceivers).stream()
+                .map(DeepThoughtReceiver::getId)
+                .toList();
+    }
+
+    /**
+     * 다이어리에 수신자 등록
+     */
+    @Transactional
+    public List<Long> createDiaryReceivers(Long userId, CreateDiaryReceiverRequest request) {
+        Diary diary = diaryRepository.findByIdAndUserId(request.getDiaryId(), userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.DIARY_NOT_FOUND));
+
+        List<Receiver> receivers = findOwnedReceivers(userId, request.getReceiverIds());
+        Set<Long> existingReceiverIds = diaryReceiverRepository
+                .findByDiaryIdAndReceiverIdIn(diary.getId(), toReceiverIds(receivers))
+                .stream()
+                .map(diaryReceiver -> diaryReceiver.getReceiver().getId())
+                .collect(Collectors.toSet());
+
+        List<DiaryReceiver> diaryReceivers = receivers.stream()
+                .filter(receiver -> !existingReceiverIds.contains(receiver.getId()))
+                .map(receiver -> DiaryReceiver.builder()
+                        .diary(diary)
+                        .receiver(receiver)
+                        .build())
+                .toList();
+
+        return diaryReceiverRepository.saveAll(diaryReceivers).stream()
+                .map(DiaryReceiver::getId)
+                .toList();
+    }
+
+    /**
+     * 데일리 질문 답변에 수신자 등록
+     */
+    @Transactional
+    public List<Long> createUserDailyQuestionReceivers(Long userId, CreateUserDailyQuestionReceiverRequest request) {
+        UserDailyQuestion userDailyQuestion = userDailyQuestionRepository.findById(request.getUserDailyQuestionId())
+                .orElseThrow(() -> new CustomException(ErrorCode.DAILY_QUESTION_NOT_FOUND));
+
+        if (!userDailyQuestion.getUser().getId().equals(userId)) {
+            throw new CustomException(ErrorCode.NOT_ENOUGH_PERMISSION);
+        }
+
+        List<Receiver> receivers = findOwnedReceivers(userId, request.getReceiverIds());
+        Set<Long> existingReceiverIds = userDailyQuestionReceiverRepository
+                .findByUserDailyQuestionIdAndReceiverIdIn(userDailyQuestion.getId(), toReceiverIds(receivers))
+                .stream()
+                .map(userDailyQuestionReceiver -> userDailyQuestionReceiver.getReceiver().getId())
+                .collect(Collectors.toSet());
+
+        List<UserDailyQuestionReceiver> userDailyQuestionReceivers = receivers.stream()
+                .filter(receiver -> !existingReceiverIds.contains(receiver.getId()))
+                .map(receiver -> UserDailyQuestionReceiver.builder()
+                        .userDailyQuestion(userDailyQuestion)
+                        .receiver(receiver)
+                        .build())
+                .toList();
+
+        return userDailyQuestionReceiverRepository.saveAll(userDailyQuestionReceivers).stream()
+                .map(UserDailyQuestionReceiver::getId)
+                .toList();
+    }
+
+    /**
      * 수신자 ID 목록 정규화
      * - null 또는 빈 목록이면 예외를 발생시킨다.
      * - null 원소를 제거한다.
@@ -250,6 +356,24 @@ public class ReceivedService {
         }
 
         return uniqueReceiverIds;
+    }
+
+    private List<Receiver> findOwnedReceivers(Long userId, List<Long> receiverIds) {
+        List<Long> uniqueReceiverIds = normalizeReceiverIds(receiverIds);
+
+        List<Receiver> receivers = receiverRepository.findAllById(uniqueReceiverIds);
+        if (receivers.size() != uniqueReceiverIds.size()) {
+            throw new CustomException(ErrorCode.RECEIVER_NOT_FOUND);
+        }
+
+        validateReceiversOwnership(userId, receivers);
+        return receivers;
+    }
+
+    private List<Long> toReceiverIds(List<Receiver> receivers) {
+        return receivers.stream()
+                .map(Receiver::getId)
+                .toList();
     }
 
     /**

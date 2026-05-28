@@ -8,6 +8,7 @@ import com.afternote.domain.deepthought.model.DeepThoughtCategory;
 import com.afternote.domain.deepthought.repository.DeepThoughtCategoryRepository;
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
 import com.afternote.domain.mindrecord.emotion.event.DeepThoughtEmotionAnalysisRequestedEvent;
+import com.afternote.domain.receiver.repository.DeepThoughtReceiverRepository;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
@@ -32,6 +33,7 @@ public class DeepThoughtService {
     private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
     private final MindRecordHtmlSanitizer mindRecordHtmlSanitizer;
+    private final DeepThoughtReceiverRepository deepThoughtReceiverRepository;
 
     @Transactional
     public DeepThoughtResponse createDeepThought(Long userId, DeepThoughtCreateRequest request) {
@@ -114,6 +116,7 @@ public class DeepThoughtService {
     public void deleteDeepThought(Long userId, Long deepThoughtId) {
         DeepThought deepThought = deepThoughtRepository.findByIdAndUserId(deepThoughtId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DEEP_THOUGHT_NOT_FOUND));
+        deepThoughtReceiverRepository.deleteByDeepThoughtId(deepThoughtId);
         deepThoughtRepository.delete(deepThought);
     }
 

@@ -32,4 +32,43 @@ public class ReceivedController {
     ) {
         return ApiResponse.success(receivedService.createTimeLetterReceivers(userId, request));
     }
+
+    @Operation(
+            summary = "깊은 생각 수신자 등록",
+            description = "깊은 생각에 수신자를 등록합니다. 여러 수신자를 한 번에 등록할 수 있습니다."
+    )
+    @PostMapping("/deep-thought")
+    public ApiResponse<Void> createDeepThoughtReceivers(
+            @Parameter(hidden = true) @UserId Long userId,
+            @Valid @RequestBody CreateDeepThoughtReceiverRequest request
+    ) {
+        receivedService.createDeepThoughtReceivers(userId, request);
+        return ApiResponse.success(null);
+    }
+
+    @Operation(
+            summary = "다이어리 수신자 등록",
+            description = "다이어리에 수신자를 등록합니다. 여러 수신자를 한 번에 등록할 수 있습니다."
+    )
+    @PostMapping("/diary")
+    public ApiResponse<Void> createDiaryReceivers(
+            @Parameter(hidden = true) @UserId Long userId,
+            @Valid @RequestBody CreateDiaryReceiverRequest request
+    ) {
+        receivedService.createDiaryReceivers(userId, request);
+        return ApiResponse.success(null);
+    }
+
+    @Operation(
+            summary = "데일리 질문 수신자 등록",
+            description = "데일리 질문 답변에 수신자를 등록합니다. 여러 수신자를 한 번에 등록할 수 있습니다."
+    )
+    @PostMapping("/daily-question")
+    public ApiResponse<Void> createUserDailyQuestionReceivers(
+            @Parameter(hidden = true) @UserId Long userId,
+            @Valid @RequestBody CreateUserDailyQuestionReceiverRequest request
+    ) {
+        receivedService.createUserDailyQuestionReceivers(userId, request);
+        return ApiResponse.success(null);
+    }
 }

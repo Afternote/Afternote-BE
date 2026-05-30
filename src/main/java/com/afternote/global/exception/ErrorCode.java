@@ -201,7 +201,15 @@ public enum ErrorCode {
 
     // ======================================
     // 14. gemini api 관련 오류 (code: 2400 ~ 2499)
-    GEMINI_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 2400, "LLM API 가 실패하였습니다. 원인은 토큰 만료, 시간 초과 등이 있습니다.");
+    GEMINI_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 2400, "LLM API 가 실패하였습니다. 원인은 토큰 만료, 시간 초과 등이 있습니다."),
+
+    // ======================================
+    // 15. 앱 버전 관련 오류 (code: 2500 ~ 2599)
+    // ======================================
+    UNSUPPORTED_APP_PLATFORM(HttpStatus.BAD_REQUEST, 2500, "지원하지 않는 앱 플랫폼입니다."),
+    APP_VERSION_NOT_CONFIGURED(HttpStatus.INTERNAL_SERVER_ERROR, 2501, "앱 버전 정책이 설정되지 않았습니다."),
+    APP_VERSION_RELEASE_DUPLICATE(HttpStatus.CONFLICT, 2502, "이미 등록된 versionCode입니다."),
+    APP_VERSION_RELEASE_VERSION_CODE_NOT_GREATER(HttpStatus.BAD_REQUEST, 2503, "새 versionCode는 현재 최신보다 커야 합니다.");
 
     private final HttpStatus httpStatus;
     private final int code;

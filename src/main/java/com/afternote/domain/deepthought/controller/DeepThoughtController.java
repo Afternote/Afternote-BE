@@ -7,6 +7,7 @@ import com.afternote.domain.deepthought.dto.DeepThoughtCategoryUpdateRequest;
 import com.afternote.domain.deepthought.dto.DeepThoughtCreateRequest;
 import com.afternote.domain.deepthought.dto.DeepThoughtListResponse;
 import com.afternote.domain.deepthought.dto.DeepThoughtResponse;
+import com.afternote.domain.deepthought.dto.DeepThoughtUpdateRequest;
 import com.afternote.domain.deepthought.service.DeepThoughtCategoryService;
 import com.afternote.domain.deepthought.service.DeepThoughtService;
 import com.afternote.global.common.ApiResponse;
@@ -37,6 +38,16 @@ public class DeepThoughtController {
             @Valid @RequestBody DeepThoughtCreateRequest request
     ) {
         return ApiResponse.success(deepThoughtService.createDeepThought(userId, request));
+    }
+
+    @Operation(summary = "깊은 생각 수정", description = "깊은 생각을 수정합니다. tags/receiverIds는 null이면 변경하지 않고, 값이 오면 전체 교체합니다.")
+    @PatchMapping("/{deepThoughtId}")
+    public ApiResponse<DeepThoughtResponse> updateDeepThought(
+            @Parameter(hidden = true) @UserId Long userId,
+            @PathVariable Long deepThoughtId,
+            @RequestBody DeepThoughtUpdateRequest request
+    ) {
+        return ApiResponse.success(deepThoughtService.updateDeepThought(userId, deepThoughtId, request));
     }
 
     @Operation(summary = "깊은 생각 조회", description = "날짜/태그/카테고리 조건으로 깊은 생각을 조회합니다. draftOnly=true이면 임시저장만 반환합니다. "

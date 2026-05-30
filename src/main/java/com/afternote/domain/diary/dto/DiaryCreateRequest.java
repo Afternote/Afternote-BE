@@ -8,6 +8,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Schema(description = "다이어리 생성 요청")
 @Getter
 @NoArgsConstructor
@@ -30,4 +32,7 @@ public class DiaryCreateRequest {
 
     @Schema(description = "오늘의 기분", example = "HAPPY")
     private TodayMood todayMood;
+
+    @Schema(description = "수신자 ID 목록", example = "[1, 2]")
+    private List<Long> receiverIds;
 }

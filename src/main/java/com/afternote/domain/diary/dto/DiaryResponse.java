@@ -2,6 +2,7 @@ package com.afternote.domain.diary.dto;
 
 import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.model.TodayMood;
+import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.global.sanitizer.MindRecordHtmlSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -10,6 +11,7 @@ import lombok.Getter;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.Locale;
 
 @Schema(description = "다이어리 응답")
@@ -49,7 +51,14 @@ public class DiaryResponse {
     @Schema(description = "수정일 (yyyy.MM.dd E)", example = "2026.04.25 토")
     private String updatedAt;
 
+    @Schema(description = "수신자 목록")
+    private List<MindRecordReceiverSummaryResponse> receivers;
+
     public static DiaryResponse from(Diary diary) {
+        return from(diary, List.of());
+    }
+
+    public static DiaryResponse from(Diary diary, List<MindRecordReceiverSummaryResponse> receivers) {
         return DiaryResponse.builder()
                 .diaryId(diary.getId())
                 .title(diary.getTitle())
@@ -60,10 +69,20 @@ public class DiaryResponse {
                 .date(toLocalDate(diary.getCreatedAt()))
                 .createdAt(formatDate(diary.getCreatedAt()))
                 .updatedAt(formatDate(diary.getUpdatedAt()))
+                .receivers(receivers != null ? receivers : List.of())
                 .build();
     }
     
     public static DiaryResponse from(Diary diary, String emotion, TodayMood todayMood) {
+        return from(diary, emotion, todayMood, List.of());
+    }
+
+    public static DiaryResponse from(
+            Diary diary,
+            String emotion,
+            TodayMood todayMood,
+            List<MindRecordReceiverSummaryResponse> receivers
+    ) {
         return DiaryResponse.builder()
                 .diaryId(diary.getId())
                 .title(diary.getTitle())
@@ -75,6 +94,7 @@ public class DiaryResponse {
                 .date(toLocalDate(diary.getCreatedAt()))
                 .createdAt(formatDate(diary.getCreatedAt()))
                 .updatedAt(formatDate(diary.getUpdatedAt()))
+                .receivers(receivers != null ? receivers : List.of())
                 .build();
     }
 

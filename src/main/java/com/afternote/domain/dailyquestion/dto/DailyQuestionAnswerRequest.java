@@ -7,6 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.util.List;
+
 @Getter
 @NoArgsConstructor
 public class DailyQuestionAnswerRequest {
@@ -24,4 +26,7 @@ public class DailyQuestionAnswerRequest {
 
     @Schema(description = "임시저장 여부", example = "false")
     private Boolean isDraft;
+
+    @Schema(description = "수신자 ID 목록", example = "[1, 2]")
+    private List<Long> receiverIds;
 }

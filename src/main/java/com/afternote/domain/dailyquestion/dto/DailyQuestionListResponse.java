@@ -1,9 +1,12 @@
 package com.afternote.domain.dailyquestion.dto;
 
+import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.global.sanitizer.MindRecordHtmlSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
+
+import java.util.List;
 
 @Getter
 @Builder
@@ -23,4 +26,7 @@ public class DailyQuestionListResponse {
 
     @Schema(description = "이미지 URL", example = "https://s3.../image.jpg", nullable = true)
     private String imageUrl;
+
+    @Schema(description = "수신자 목록")
+    private List<MindRecordReceiverSummaryResponse> receivers;
 }

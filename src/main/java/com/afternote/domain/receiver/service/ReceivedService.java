@@ -50,6 +50,7 @@ public class ReceivedService {
     private final UserDailyQuestionRepository userDailyQuestionRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+    private final MindRecordReceiverService mindRecordReceiverService;
 
     private static final DateTimeFormatter KOREAN_DATE_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN);
@@ -250,22 +251,14 @@ public class ReceivedService {
         DeepThought deepThought = deepThoughtRepository.findByIdAndUserId(request.getDeepThoughtId(), userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DEEP_THOUGHT_NOT_FOUND));
 
-        List<Receiver> receivers = findOwnedReceivers(userId, request.getReceiverIds());
-        Set<Long> existingReceiverIds = deepThoughtReceiverRepository
-                .findByDeepThoughtIdAndReceiverIdIn(deepThought.getId(), toReceiverIds(receivers))
-                .stream()
-                .map(deepThoughtReceiver -> deepThoughtReceiver.getReceiver().getId())
-                .collect(Collectors.toSet());
+        mindRecordReceiverService.replaceDeepThoughtReceivers(
+                userId,
+                deepThought,
+                request.getReceiverIds(),
+                true
+        );
 
-        List<DeepThoughtReceiver> deepThoughtReceivers = receivers.stream()
-                .filter(receiver -> !existingReceiverIds.contains(receiver.getId()))
-                .map(receiver -> DeepThoughtReceiver.builder()
-                        .deepThought(deepThought)
-                        .receiver(receiver)
-                        .build())
-                .toList();
-
-        return deepThoughtReceiverRepository.saveAll(deepThoughtReceivers).stream()
+        return deepThoughtReceiverRepository.findByDeepThoughtIdIn(List.of(deepThought.getId())).stream()
                 .map(DeepThoughtReceiver::getId)
                 .toList();
     }
@@ -278,22 +271,14 @@ public class ReceivedService {
         Diary diary = diaryRepository.findByIdAndUserId(request.getDiaryId(), userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DIARY_NOT_FOUND));
 
-        List<Receiver> receivers = findOwnedReceivers(userId, request.getReceiverIds());
-        Set<Long> existingReceiverIds = diaryReceiverRepository
-                .findByDiaryIdAndReceiverIdIn(diary.getId(), toReceiverIds(receivers))
-                .stream()
-                .map(diaryReceiver -> diaryReceiver.getReceiver().getId())
-                .collect(Collectors.toSet());
+        mindRecordReceiverService.replaceDiaryReceivers(
+                userId,
+                diary,
+                request.getReceiverIds(),
+                true
+        );
 
-        List<DiaryReceiver> diaryReceivers = receivers.stream()
-                .filter(receiver -> !existingReceiverIds.contains(receiver.getId()))
-                .map(receiver -> DiaryReceiver.builder()
-                        .diary(diary)
-                        .receiver(receiver)
-                        .build())
-                .toList();
-
-        return diaryReceiverRepository.saveAll(diaryReceivers).stream()
+        return diaryReceiverRepository.findByDiaryIdIn(List.of(diary.getId())).stream()
                 .map(DiaryReceiver::getId)
                 .toList();
     }
@@ -310,22 +295,14 @@ public class ReceivedService {
             throw new CustomException(ErrorCode.NOT_ENOUGH_PERMISSION);
         }
 
-        List<Receiver> receivers = findOwnedReceivers(userId, request.getReceiverIds());
-        Set<Long> existingReceiverIds = userDailyQuestionReceiverRepository
-                .findByUserDailyQuestionIdAndReceiverIdIn(userDailyQuestion.getId(), toReceiverIds(receivers))
-                .stream()
-                .map(userDailyQuestionReceiver -> userDailyQuestionReceiver.getReceiver().getId())
-                .collect(Collectors.toSet());
+        mindRecordReceiverService.replaceUserDailyQuestionReceivers(
+                userId,
+                userDailyQuestion,
+                request.getReceiverIds(),
+                true
+        );
 
-        List<UserDailyQuestionReceiver> userDailyQuestionReceivers = receivers.stream()
-                .filter(receiver -> !existingReceiverIds.contains(receiver.getId()))
-                .map(receiver -> UserDailyQuestionReceiver.builder()
-                        .userDailyQuestion(userDailyQuestion)
-                        .receiver(receiver)
-                        .build())
-                .toList();
-
-        return userDailyQuestionReceiverRepository.saveAll(userDailyQuestionReceivers).stream()
+        return userDailyQuestionReceiverRepository.findByUserDailyQuestionIdIn(List.of(userDailyQuestion.getId())).stream()
                 .map(UserDailyQuestionReceiver::getId)
                 .toList();
     }
@@ -352,24 +329,6 @@ public class ReceivedService {
         }
 
         return uniqueReceiverIds;
-    }
-
-    private List<Receiver> findOwnedReceivers(Long userId, List<Long> receiverIds) {
-        List<Long> uniqueReceiverIds = normalizeReceiverIds(receiverIds);
-
-        List<Receiver> receivers = receiverRepository.findAllById(uniqueReceiverIds);
-        if (receivers.size() != uniqueReceiverIds.size()) {
-            throw new CustomException(ErrorCode.RECEIVER_NOT_FOUND);
-        }
-
-        validateReceiversOwnership(userId, receivers);
-        return receivers;
-    }
-
-    private List<Long> toReceiverIds(List<Receiver> receivers) {
-        return receivers.stream()
-                .map(Receiver::getId)
-                .toList();
     }
 
     /**

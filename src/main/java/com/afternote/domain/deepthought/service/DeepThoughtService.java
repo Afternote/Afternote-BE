@@ -3,6 +3,7 @@ package com.afternote.domain.deepthought.service;
 import com.afternote.domain.deepthought.dto.DeepThoughtCreateRequest;
 import com.afternote.domain.deepthought.dto.DeepThoughtListResponse;
 import com.afternote.domain.deepthought.dto.DeepThoughtResponse;
+import com.afternote.domain.deepthought.dto.DeepThoughtUpdateRequest;
 import com.afternote.domain.deepthought.model.DeepThought;
 import com.afternote.domain.deepthought.model.DeepThoughtCategory;
 import com.afternote.domain.deepthought.repository.DeepThoughtCategoryRepository;
@@ -67,6 +68,44 @@ public class DeepThoughtService {
                 Boolean.FALSE.equals(saved.getIsDraft())
         );
         return DeepThoughtResponse.from(saved, receivers);
+    }
+
+    @Transactional
+    public DeepThoughtResponse updateDeepThought(Long userId, Long deepThoughtId, DeepThoughtUpdateRequest request) {
+        DeepThought deepThought = deepThoughtRepository.findByIdAndUserId(deepThoughtId, userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.DEEP_THOUGHT_NOT_FOUND));
+
+        DeepThoughtCategory category = null;
+        if (request.getCategory() != null) {
+            category = getCategory(userId, request.getCategory());
+        }
+
+        deepThought.update(
+                request.getTitle(),
+                request.getContent() != null ? mindRecordHtmlSanitizer.sanitize(request.getContent()) : null,
+                request.getIsDraft(),
+                request.getImageUrl(),
+                category,
+                request.getTags()
+        );
+
+        if (Boolean.FALSE.equals(deepThought.getIsDraft())) {
+            eventPublisher.publishEvent(new DeepThoughtEmotionAnalysisRequestedEvent(userId, deepThought.getId()));
+        }
+
+        List<MindRecordReceiverSummaryResponse> receivers;
+        if (request.getReceiverIds() != null) {
+            receivers = mindRecordReceiverService.replaceDeepThoughtReceivers(
+                    userId,
+                    deepThought,
+                    request.getReceiverIds(),
+                    Boolean.FALSE.equals(deepThought.getIsDraft())
+            );
+        } else {
+            receivers = mindRecordReceiverService.getDeepThoughtReceivers(deepThought.getId());
+        }
+
+        return DeepThoughtResponse.from(deepThought, receivers);
     }
 
     private DeepThoughtCategory getCategory(Long userId, String categoryTitle) {

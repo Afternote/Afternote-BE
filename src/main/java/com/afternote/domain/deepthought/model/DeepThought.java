@@ -75,4 +75,37 @@ public class DeepThought extends BaseEntity {
     public String getCategoryTitle() {
         return category != null ? category.getTitle() : null;
     }
+
+    public void update(
+            String title,
+            String content,
+            Boolean isDraft,
+            String imageUrl,
+            DeepThoughtCategory category,
+            List<String> tags
+    ) {
+        if (title != null) {
+            this.title = title;
+        }
+        if (content != null) {
+            this.content = content;
+        }
+        if (isDraft != null) {
+            this.isDraft = isDraft;
+        }
+        if (imageUrl != null) {
+            this.imageUrl = imageUrl;
+        }
+        if (category != null) {
+            this.category = category;
+        }
+        if (tags != null) {
+            this.tags.clear();
+            tags.stream()
+                    .filter(tag -> tag != null && !tag.isBlank())
+                    .map(String::trim)
+                    .distinct()
+                    .forEach(this::addTag);
+        }
+    }
 }

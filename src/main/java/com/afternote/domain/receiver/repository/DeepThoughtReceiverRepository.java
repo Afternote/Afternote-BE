@@ -15,6 +15,13 @@ public interface DeepThoughtReceiverRepository extends JpaRepository<DeepThought
 
     List<DeepThoughtReceiver> findByDeepThoughtIdAndReceiverIdIn(Long deepThoughtId, List<Long> receiverIds);
 
+    @Query("""
+        SELECT dtr FROM DeepThoughtReceiver dtr
+        JOIN FETCH dtr.receiver
+        WHERE dtr.deepThought.id IN :deepThoughtIds
+    """)
+    List<DeepThoughtReceiver> findByDeepThoughtIdIn(@Param("deepThoughtIds") List<Long> deepThoughtIds);
+
     void deleteByDeepThoughtId(Long deepThoughtId);
 
     @Query("""

@@ -8,7 +8,9 @@ import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.model.TodayMood;
 import com.afternote.domain.diary.repository.DiaryRepository;
 import com.afternote.domain.mindrecord.emotion.event.DiaryEmotionAnalysisRequestedEvent;
+import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.domain.receiver.repository.DiaryReceiverRepository;
+import com.afternote.domain.receiver.service.MindRecordReceiverService;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
@@ -38,6 +40,7 @@ public class DiaryService {
     private final UserRepository userRepository;
     private final MindRecordHtmlSanitizer mindRecordHtmlSanitizer;
     private final DiaryReceiverRepository diaryReceiverRepository;
+    private final MindRecordReceiverService mindRecordReceiverService;
 
     @Transactional
     public DiaryResponse createDiary(Long userId, DiaryCreateRequest request) {
@@ -58,7 +61,13 @@ public class DiaryService {
             eventPublisher.publishEvent(new DiaryEmotionAnalysisRequestedEvent(userId, saved.getId()));
         }
 
-        return DiaryResponse.from(saved);
+        List<MindRecordReceiverSummaryResponse> receivers = mindRecordReceiverService.replaceDiaryReceivers(
+                userId,
+                saved,
+                request.getReceiverIds(),
+                Boolean.FALSE.equals(saved.getIsDraft())
+        );
+        return DiaryResponse.from(saved, receivers);
     }
 
     public DiaryListResponse getDiariesByMonth(Long userId, YearMonth yearMonth, Boolean draftOnly) {
@@ -69,8 +78,15 @@ public class DiaryService {
                 ? diaryRepository.findByUserIdAndIsDraftTrueAndCreatedAtBetweenOrderByCreatedAtDesc(userId, monthStart, monthEnd)
                 : diaryRepository.findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, monthStart, monthEnd);
 
+        List<Long> diaryIds = diaries.stream().map(Diary::getId).toList();
+        Map<Long, List<MindRecordReceiverSummaryResponse>> receiversMap =
+                mindRecordReceiverService.getDiaryReceiversMap(diaryIds);
+
         List<DiaryResponse> responseList = diaries.stream()
-                .map(DiaryResponse::from)
+                .map(diary -> DiaryResponse.from(
+                        diary,
+                        receiversMap.getOrDefault(diary.getId(), List.of())
+                ))
                 .toList();
 
         long monthDiaryCount = diaryRepository.countByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
@@ -114,7 +130,19 @@ public class DiaryService {
             eventPublisher.publishEvent(new DiaryEmotionAnalysisRequestedEvent(userId, diary.getId()));
         }
 
-        return DiaryResponse.from(diary);
+        List<MindRecordReceiverSummaryResponse> receivers;
+        if (request.getReceiverIds() != null) {
+            receivers = mindRecordReceiverService.replaceDiaryReceivers(
+                    userId,
+                    diary,
+                    request.getReceiverIds(),
+                    Boolean.FALSE.equals(diary.getIsDraft())
+            );
+        } else {
+            receivers = mindRecordReceiverService.getDiaryReceivers(diary.getId());
+        }
+
+        return DiaryResponse.from(diary, receivers);
     }
 
     @Transactional

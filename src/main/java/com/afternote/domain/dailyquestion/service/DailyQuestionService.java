@@ -6,7 +6,9 @@ import com.afternote.domain.dailyquestion.model.UserDailyQuestion;
 import com.afternote.domain.dailyquestion.repository.DailyQuestionRepository;
 import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
 import com.afternote.domain.mindrecord.emotion.event.DailyQuestionEmotionAnalysisRequestedEvent;
+import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.domain.receiver.repository.UserDailyQuestionReceiverRepository;
+import com.afternote.domain.receiver.service.MindRecordReceiverService;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
@@ -21,6 +23,7 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
@@ -35,6 +38,7 @@ public class DailyQuestionService {
     private final UserRepository userRepository;
     private final MindRecordHtmlSanitizer mindRecordHtmlSanitizer;
     private final UserDailyQuestionReceiverRepository userDailyQuestionReceiverRepository;
+    private final MindRecordReceiverService mindRecordReceiverService;
 
     @Transactional
     public DailyQuestionTodayResponse getTodayQuestion(Long userId) {
@@ -78,6 +82,7 @@ public class DailyQuestionService {
                 .day(userDailyQuestion.getDailyQuestion().getId())
                 .content(userDailyQuestion.getDailyQuestion().getContent())
                 .isAnswered(userDailyQuestion.isAnswered())
+                .receivers(mindRecordReceiverService.getUserDailyQuestionReceivers(userDailyQuestion.getId()))
                 .build();
     }
 
@@ -108,12 +113,14 @@ public class DailyQuestionService {
             eventPublisher.publishEvent(new DailyQuestionEmotionAnalysisRequestedEvent(userId, userDailyQuestion.getId()));
         }
 
-        return DailyQuestionAnswerResponse.builder()
-                .userDailyQuestionId(userDailyQuestion.getId())
-                .content(userDailyQuestion.getContent())
-                .imageUrl(userDailyQuestion.getImageUrl())
-                .isDraft(userDailyQuestion.isDraft())
-                .build();
+        List<MindRecordReceiverSummaryResponse> receivers = mindRecordReceiverService.replaceUserDailyQuestionReceivers(
+                userId,
+                userDailyQuestion,
+                request.getReceiverIds(),
+                !userDailyQuestion.isDraft()
+        );
+
+        return toAnswerResponse(userDailyQuestion, receivers);
     }
 
     @Transactional
@@ -138,12 +145,19 @@ public class DailyQuestionService {
             }
         }
 
-        return DailyQuestionAnswerResponse.builder()
-                .userDailyQuestionId(userDailyQuestion.getId())
-                .content(userDailyQuestion.getContent())
-                .imageUrl(userDailyQuestion.getImageUrl())
-                .isDraft(userDailyQuestion.isDraft())
-                .build();
+        List<MindRecordReceiverSummaryResponse> receivers;
+        if (request.getReceiverIds() != null) {
+            receivers = mindRecordReceiverService.replaceUserDailyQuestionReceivers(
+                    userId,
+                    userDailyQuestion,
+                    request.getReceiverIds(),
+                    !userDailyQuestion.isDraft()
+            );
+        } else {
+            receivers = mindRecordReceiverService.getUserDailyQuestionReceivers(userDailyQuestion.getId());
+        }
+
+        return toAnswerResponse(userDailyQuestion, receivers);
     }
 
     @Transactional(readOnly = true)
@@ -157,6 +171,10 @@ public class DailyQuestionService {
 
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN);
 
+        List<Long> userDailyQuestionIds = questions.stream().map(UserDailyQuestion::getId).toList();
+        Map<Long, List<MindRecordReceiverSummaryResponse>> receiversMap =
+                mindRecordReceiverService.getUserDailyQuestionReceiversMap(userDailyQuestionIds);
+
         return questions.stream()
                 .filter(q -> Boolean.TRUE.equals(draftOnly) ? q.isDraft() : q.isAnswered())
                 .map(q -> DailyQuestionListResponse.builder()
@@ -165,8 +183,22 @@ public class DailyQuestionService {
                         .content(q.getContent())
                         .createdAt(q.getCreatedAt() != null ? q.getCreatedAt().format(formatter) : null)
                         .imageUrl(q.getImageUrl())
+                        .receivers(receiversMap.getOrDefault(q.getId(), List.of()))
                         .build())
                 .collect(Collectors.toList());
+    }
+
+    private DailyQuestionAnswerResponse toAnswerResponse(
+            UserDailyQuestion userDailyQuestion,
+            List<MindRecordReceiverSummaryResponse> receivers
+    ) {
+        return DailyQuestionAnswerResponse.builder()
+                .userDailyQuestionId(userDailyQuestion.getId())
+                .content(userDailyQuestion.getContent())
+                .imageUrl(userDailyQuestion.getImageUrl())
+                .isDraft(userDailyQuestion.isDraft())
+                .receivers(receivers)
+                .build();
     }
 
     @Transactional

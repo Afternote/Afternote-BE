@@ -35,4 +35,7 @@ public class DeepThoughtCreateRequest {
 
     @Schema(description = "태그 목록", example = "[\"성장\", \"회고\"]")
     private List<String> tags;
+
+    @Schema(description = "수신자 ID 목록", example = "[1, 2]")
+    private List<Long> receiverIds;
 }

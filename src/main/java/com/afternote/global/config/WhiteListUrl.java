@@ -20,7 +20,10 @@ public enum WhiteListUrl {
     AUTH_REISSUE("/auth/reissue"),
 
     // 수신자 인증
-    RECEIVER_AUTH("/api/receiver-auth/**");
+    RECEIVER_AUTH("/api/receiver-auth/**"),
+
+    // 앱 버전 확인 (스플래시)
+    APP_VERSION("/api/v1/app/version");
 
     private final String url;
 

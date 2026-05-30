@@ -22,17 +22,17 @@ public class AdminAccountInitializer implements ApplicationRunner {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    @Value("${ADMIN_EMAIL:admin@afternote.com}")
+    @Value("${ADMIN_EMAIL:}")
     private String adminEmail;
 
-    @Value("${ADMIN_PASSWORD:admin1234}")
+    @Value("${ADMIN_PASSWORD:}")
     private String adminPassword;
 
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
         if (adminEmail == null || adminEmail.isBlank() || adminPassword == null || adminPassword.isBlank()) {
-            log.info("Admin account environment variables (ADMIN_EMAIL, ADMIN_PASSWORD) not set. Skipping admin account initialization.");
+            log.info("ADMIN_EMAIL 또는 ADMIN_PASSWORD 환경 변수가 없어 Admin 계정 초기화를 건너뜁니다.");
             return;
         }
 

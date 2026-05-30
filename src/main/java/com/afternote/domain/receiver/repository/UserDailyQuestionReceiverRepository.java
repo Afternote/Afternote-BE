@@ -14,6 +14,15 @@ public interface UserDailyQuestionReceiverRepository extends JpaRepository<UserD
 
     List<UserDailyQuestionReceiver> findByUserDailyQuestionIdAndReceiverIdIn(Long userDailyQuestionId, List<Long> receiverIds);
 
+    @Query("""
+        SELECT udqr FROM UserDailyQuestionReceiver udqr
+        JOIN FETCH udqr.receiver
+        WHERE udqr.userDailyQuestion.id IN :userDailyQuestionIds
+    """)
+    List<UserDailyQuestionReceiver> findByUserDailyQuestionIdIn(
+            @Param("userDailyQuestionIds") List<Long> userDailyQuestionIds
+    );
+
     void deleteByUserDailyQuestionId(Long userDailyQuestionId);
 
     @Query("""

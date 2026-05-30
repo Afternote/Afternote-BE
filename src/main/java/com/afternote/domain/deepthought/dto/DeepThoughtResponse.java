@@ -1,6 +1,7 @@
 package com.afternote.domain.deepthought.dto;
 
 import com.afternote.domain.deepthought.model.DeepThought;
+import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.global.sanitizer.MindRecordHtmlSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -46,7 +47,14 @@ public class DeepThoughtResponse {
     @Schema(description = "수정일 (yyyy.MM.dd E)", example = "2026.04.25 토")
     private String updatedAt;
 
+    @Schema(description = "수신자 목록")
+    private List<MindRecordReceiverSummaryResponse> receivers;
+
     public static DeepThoughtResponse from(DeepThought deepThought) {
+        return from(deepThought, List.of());
+    }
+
+    public static DeepThoughtResponse from(DeepThought deepThought, List<MindRecordReceiverSummaryResponse> receivers) {
         return DeepThoughtResponse.builder()
                 .deepThoughtId(deepThought.getId())
                 .title(deepThought.getTitle())
@@ -63,6 +71,7 @@ public class DeepThoughtResponse {
                         .toList())
                 .createdAt(formatDate(deepThought.getCreatedAt()))
                 .updatedAt(formatDate(deepThought.getUpdatedAt()))
+                .receivers(receivers != null ? receivers : List.of())
                 .build();
     }
 

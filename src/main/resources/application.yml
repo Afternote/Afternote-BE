@@ -61,10 +61,18 @@ logging:
     org.springframework.web: INFO
     org.hibernate.SQL: INFO
 
+# Admin 계정 (서버 기동 시 1회). 운영/로컬 모두 환경 변수로만 설정합니다.
+# ADMIN_EMAIL, ADMIN_PASSWORD — 둘 다 있을 때만 LOCAL Admin 계정 생성 또는 기존 유저를 ADMIN으로 승격
 app:
   auth-code:
     email:
       enabled: true
+  version:
+    seed:
+      android:
+        version-code: ${APP_ANDROID_SEED_VERSION_CODE:10001}
+        version-name: ${APP_ANDROID_SEED_VERSION_NAME:1.0.0}
+        store-url: ${APP_ANDROID_STORE_URL:}
 
 cloud:
   aws:

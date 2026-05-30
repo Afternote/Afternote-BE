@@ -14,6 +14,13 @@ public interface DiaryReceiverRepository extends JpaRepository<DiaryReceiver, Lo
 
     List<DiaryReceiver> findByDiaryIdAndReceiverIdIn(Long diaryId, List<Long> receiverIds);
 
+    @Query("""
+        SELECT dr FROM DiaryReceiver dr
+        JOIN FETCH dr.receiver
+        WHERE dr.diary.id IN :diaryIds
+    """)
+    List<DiaryReceiver> findByDiaryIdIn(@Param("diaryIds") List<Long> diaryIds);
+
     void deleteByDiaryId(Long diaryId);
 
     @Query("""

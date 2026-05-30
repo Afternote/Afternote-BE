@@ -214,6 +214,9 @@ JWT_SECRET=...
 CHACHA20_SECRET_KEY=...
 SERVER_PORT=8080
 CORS_ALLOWED_ORIGINS=http://localhost:3000,http://localhost:5173
+ADMIN_EMAIL=your-admin@example.com
+ADMIN_PASSWORD=your-secure-password
+APP_ANDROID_STORE_URL=https://play.google.com/store/apps/details?id=your.package
 ```
 
 3. IntelliJ에서 애플리케이션을 직접 실행합니다.

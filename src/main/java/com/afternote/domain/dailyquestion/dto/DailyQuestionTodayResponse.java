@@ -1,8 +1,11 @@
 package com.afternote.domain.dailyquestion.dto;
 
+import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
+
+import java.util.List;
 
 @Getter
 @Builder
@@ -18,4 +21,7 @@ public class DailyQuestionTodayResponse {
 
     @Schema(description = "답변 여부", example = "true")
     private boolean isAnswered;
+
+    @Schema(description = "수신자 목록")
+    private List<MindRecordReceiverSummaryResponse> receivers;
 }

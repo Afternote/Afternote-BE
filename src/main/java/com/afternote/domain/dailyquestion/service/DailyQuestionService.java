@@ -13,7 +13,7 @@ import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
-import com.afternote.global.sanitizer.MindRecordHtmlSanitizer;
+import com.afternote.global.sanitizer.MindRecordContentMediaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -36,7 +36,7 @@ public class DailyQuestionService {
     private final DailyQuestionRepository dailyQuestionRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
-    private final MindRecordHtmlSanitizer mindRecordHtmlSanitizer;
+    private final MindRecordContentMediaService mindRecordContentMediaService;
     private final UserDailyQuestionReceiverRepository userDailyQuestionReceiverRepository;
     private final MindRecordReceiverService mindRecordReceiverService;
 
@@ -107,8 +107,7 @@ public class DailyQuestionService {
 
         boolean isDraft = request.getIsDraft() != null ? request.getIsDraft() : false;
         userDailyQuestion.updateAnswer(
-                mindRecordHtmlSanitizer.sanitize(request.getContent()),
-                request.getImageUrl(),
+                mindRecordContentMediaService.prepareContentForSave(userId, request.getContent()),
                 isDraft
         );
         if (!userDailyQuestion.isDraft()) {
@@ -134,12 +133,11 @@ public class DailyQuestionService {
             throw new CustomException(ErrorCode.NOT_ENOUGH_PERMISSION);
         }
 
-        if (request.getContent() != null || request.getImageUrl() != null || request.getIsDraft() != null) {
+        if (request.getContent() != null || request.getIsDraft() != null) {
             userDailyQuestion.updateAnswer(
                     request.getContent() != null
-                            ? mindRecordHtmlSanitizer.sanitize(request.getContent())
+                            ? mindRecordContentMediaService.prepareContentForSave(userId, request.getContent())
                             : userDailyQuestion.getContent(),
-                    request.getImageUrl() != null ? request.getImageUrl() : userDailyQuestion.getImageUrl(),
                     request.getIsDraft() != null ? request.getIsDraft() : userDailyQuestion.isDraft()
             );
             if (!userDailyQuestion.isDraft()) {
@@ -184,7 +182,6 @@ public class DailyQuestionService {
                         .title(q.getDailyQuestion().getContent())
                         .content(q.getContent())
                         .createdAt(q.getCreatedAt() != null ? q.getCreatedAt().format(formatter) : null)
-                        .imageUrl(q.getImageUrl())
                         .isDraft(q.isDraft())
                         .receivers(receiversMap.getOrDefault(q.getId(), List.of()))
                         .build())
@@ -198,7 +195,6 @@ public class DailyQuestionService {
         return DailyQuestionAnswerResponse.builder()
                 .userDailyQuestionId(userDailyQuestion.getId())
                 .content(userDailyQuestion.getContent())
-                .imageUrl(userDailyQuestion.getImageUrl())
                 .isDraft(userDailyQuestion.isDraft())
                 .receivers(receivers)
                 .build();

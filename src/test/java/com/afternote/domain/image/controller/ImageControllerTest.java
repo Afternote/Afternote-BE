@@ -47,7 +47,7 @@ class ImageControllerTest {
     @Test
     @DisplayName("Presigned URL 생성 API 성공")
     void getPresignedUrl_Success() throws Exception {
-        given(s3Service.generatePresignedUrl("profiles", "jpg")).willReturn(null);
+        given(s3Service.generatePresignedUrl("profiles", "jpg", USER_ID)).willReturn(null);
 
         mockMvc.perform(post("/api/v1/files/presigned-url")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
@@ -55,7 +55,7 @@ class ImageControllerTest {
                         .content("{\"directory\":\"profiles\",\"extension\":\"jpg\"}"))
                 .andExpect(status().isOk());
 
-        verify(s3Service).generatePresignedUrl("profiles", "jpg");
+        verify(s3Service).generatePresignedUrl("profiles", "jpg", USER_ID);
     }
 
     @Test

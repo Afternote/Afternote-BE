@@ -27,9 +27,6 @@ public class DiaryCreateRequest {
     @NotNull(message = "isDraft 값은 필수입니다.")
     private Boolean isDraft;
 
-    @Schema(description = "이미지 URL", example = "https://example.com/image.jpg")
-    private String imageUrl;
-
     @Schema(description = "오늘의 기분", example = "HAPPY")
     private TodayMood todayMood;
 

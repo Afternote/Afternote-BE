@@ -16,7 +16,7 @@ import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
-import com.afternote.global.sanitizer.MindRecordHtmlSanitizer;
+import com.afternote.global.sanitizer.MindRecordContentMediaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -36,7 +36,7 @@ public class DeepThoughtService {
     private final DeepThoughtRepository deepThoughtRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
-    private final MindRecordHtmlSanitizer mindRecordHtmlSanitizer;
+    private final MindRecordContentMediaService mindRecordContentMediaService;
     private final DeepThoughtReceiverRepository deepThoughtReceiverRepository;
     private final MindRecordReceiverService mindRecordReceiverService;
 
@@ -49,9 +49,8 @@ public class DeepThoughtService {
         DeepThought deepThought = DeepThought.create(
                 user,
                 request.getTitle(),
-                mindRecordHtmlSanitizer.sanitize(request.getContent()),
+                mindRecordContentMediaService.prepareContentForSave(userId, request.getContent()),
                 request.getIsDraft(),
-                request.getImageUrl(),
                 category,
                 request.getTags()
         );
@@ -82,9 +81,10 @@ public class DeepThoughtService {
 
         deepThought.update(
                 request.getTitle(),
-                request.getContent() != null ? mindRecordHtmlSanitizer.sanitize(request.getContent()) : null,
+                request.getContent() != null
+                        ? mindRecordContentMediaService.prepareContentForSave(userId, request.getContent())
+                        : null,
                 request.getIsDraft(),
-                request.getImageUrl(),
                 category,
                 request.getTags()
         );

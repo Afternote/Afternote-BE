@@ -21,9 +21,6 @@ public class DailyQuestionAnswerRequest {
     @NotBlank(message = "답변 내용은 필수입니다.")
     private String content;
 
-    @Schema(description = "이미지 URL", example = "https://s3.../image.jpg", nullable = true)
-    private String imageUrl;
-
     @Schema(description = "임시저장 여부", example = "false")
     private Boolean isDraft;
 

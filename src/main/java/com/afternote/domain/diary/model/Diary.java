@@ -36,18 +36,17 @@ public class Diary extends BaseEntity {
     @Column(name = "today_mood", length = 20, nullable = false)
     private TodayMood todayMood;
 
-    public static Diary create(User user, String title, String content, Boolean isDraft, String imageUrl, TodayMood todayMood) {
+    public static Diary create(User user, String title, String content, Boolean isDraft, TodayMood todayMood) {
         Diary diary = new Diary();
         diary.user = user;
         diary.title = title;
         diary.content = content;
         diary.isDraft = isDraft;
-        diary.imageUrl = imageUrl;
         diary.todayMood = todayMood;
         return diary;
     }
 
-    public void update(String title, String content, Boolean isDraft, String imageUrl, TodayMood todayMood) {
+    public void update(String title, String content, Boolean isDraft, TodayMood todayMood) {
         if (title != null) {
             this.title = title;
         }
@@ -56,9 +55,6 @@ public class Diary extends BaseEntity {
         }
         if (isDraft != null) {
             this.isDraft = isDraft;
-        }
-        if (imageUrl != null) {
-            this.imageUrl = imageUrl;
         }
         if (todayMood != null) {
             this.todayMood = todayMood;

@@ -7,10 +7,14 @@ public final class MindRecordHtmlSchema {
 
     public static final String CONTENT =
             "본문 HTML 조각(UTF-8). WebView 등에 그대로 렌더링 가능한 수준의 태그·스타일이며, "
-                    + "저장 시 서버에서 XSS 완화를 위해 sanitize 된다.";
+                    + "저장 시 서버에서 XSS 완화를 위해 sanitize 된다. "
+                    + "허용 태그 예: h1~h3, p, div, em/i, u, s/del, strong/b, span, br, "
+                    + "a[href], img[src|alt|width|height|style].";
 
     public static final String CONTENT_EXAMPLE =
-            "<p style=\"text-align:center\"><strong>오늘</strong>은 좋은 날이에요.</p>";
+            "<p style=\"text-align:center\"><strong>오늘</strong>은 "
+                    + "<a href=\"https://example.com\">좋은</a> 날이에요.</p>"
+                    + "<p><img src=\"https://example.com/photo.jpg\" alt=\"사진\" /></p>";
 
     private MindRecordHtmlSchema() {
     }

@@ -65,7 +65,7 @@ public class DiaryService {
                 userId,
                 saved,
                 request.getReceiverIds(),
-                Boolean.FALSE.equals(saved.getIsDraft())
+                false
         );
         return DiaryResponse.from(saved, receivers);
     }
@@ -136,7 +136,7 @@ public class DiaryService {
                     userId,
                     diary,
                     request.getReceiverIds(),
-                    Boolean.FALSE.equals(diary.getIsDraft())
+                    false
             );
         } else {
             receivers = mindRecordReceiverService.getDiaryReceivers(diary.getId());

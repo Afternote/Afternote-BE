@@ -119,7 +119,7 @@ public class DailyQuestionService {
                 userId,
                 userDailyQuestion,
                 request.getReceiverIds(),
-                !userDailyQuestion.isDraft()
+                false
         );
 
         return toAnswerResponse(userDailyQuestion, receivers);
@@ -153,7 +153,7 @@ public class DailyQuestionService {
                     userId,
                     userDailyQuestion,
                     request.getReceiverIds(),
-                    !userDailyQuestion.isDraft()
+                    false
             );
         } else {
             receivers = mindRecordReceiverService.getUserDailyQuestionReceivers(userDailyQuestion.getId());

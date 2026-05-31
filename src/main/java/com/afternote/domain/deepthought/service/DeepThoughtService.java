@@ -65,7 +65,7 @@ public class DeepThoughtService {
                 userId,
                 saved,
                 request.getReceiverIds(),
-                Boolean.FALSE.equals(saved.getIsDraft())
+                false
         );
         return DeepThoughtResponse.from(saved, receivers);
     }
@@ -99,7 +99,7 @@ public class DeepThoughtService {
                     userId,
                     deepThought,
                     request.getReceiverIds(),
-                    Boolean.FALSE.equals(deepThought.getIsDraft())
+                    false
             );
         } else {
             receivers = mindRecordReceiverService.getDeepThoughtReceivers(deepThought.getId());

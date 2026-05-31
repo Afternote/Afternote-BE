@@ -82,6 +82,7 @@ public class DailyQuestionService {
                 .day(userDailyQuestion.getDailyQuestion().getId())
                 .content(userDailyQuestion.getDailyQuestion().getContent())
                 .isAnswered(userDailyQuestion.isAnswered())
+                .isDraft(userDailyQuestion.isDraft())
                 .receivers(mindRecordReceiverService.getUserDailyQuestionReceivers(userDailyQuestion.getId()))
                 .build();
     }
@@ -100,14 +101,15 @@ public class DailyQuestionService {
             throw new CustomException(ErrorCode.DAILY_QUESTION_DATE_MISMATCH);
         }
 
-        if (userDailyQuestion.isAnswered()) {
+        if (userDailyQuestion.isAnswered() && !userDailyQuestion.isDraft()) {
             throw new CustomException(ErrorCode.DAILY_QUESTION_ALREADY_ANSWERED);
         }
 
+        boolean isDraft = request.getIsDraft() != null ? request.getIsDraft() : false;
         userDailyQuestion.updateAnswer(
                 mindRecordHtmlSanitizer.sanitize(request.getContent()),
                 request.getImageUrl(),
-                request.getIsDraft() != null ? request.getIsDraft() : false
+                isDraft
         );
         if (!userDailyQuestion.isDraft()) {
             eventPublisher.publishEvent(new DailyQuestionEmotionAnalysisRequestedEvent(userId, userDailyQuestion.getId()));
@@ -176,13 +178,14 @@ public class DailyQuestionService {
                 mindRecordReceiverService.getUserDailyQuestionReceiversMap(userDailyQuestionIds);
 
         return questions.stream()
-                .filter(q -> Boolean.TRUE.equals(draftOnly) ? q.isDraft() : q.isAnswered())
+                .filter(q -> Boolean.TRUE.equals(draftOnly) ? q.isDraft() : !q.isDraft())
                 .map(q -> DailyQuestionListResponse.builder()
                         .userDailyQuestionId(q.getId())
                         .title(q.getDailyQuestion().getContent())
                         .content(q.getContent())
                         .createdAt(q.getCreatedAt() != null ? q.getCreatedAt().format(formatter) : null)
                         .imageUrl(q.getImageUrl())
+                        .isDraft(q.isDraft())
                         .receivers(receiversMap.getOrDefault(q.getId(), List.of()))
                         .build())
                 .collect(Collectors.toList());

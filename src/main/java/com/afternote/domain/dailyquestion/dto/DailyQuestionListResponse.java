@@ -27,6 +27,9 @@ public class DailyQuestionListResponse {
     @Schema(description = "이미지 URL", example = "https://s3.../image.jpg", nullable = true)
     private String imageUrl;
 
+    @Schema(description = "임시저장 여부", example = "false")
+    private boolean isDraft;
+
     @Schema(description = "수신자 목록")
     private List<MindRecordReceiverSummaryResponse> receivers;
 }

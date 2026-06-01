@@ -22,6 +22,8 @@ import java.util.Collections;
 @RequiredArgsConstructor
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
+    public static final String ACCESS_TOKEN_EXPIRES_IN_ATTRIBUTE = "accessTokenExpiresIn";
+
     private final JwtTokenProvider jwtTokenProvider;
 
     @Override
@@ -38,6 +40,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             // 4. Request Attribute에 userId 저장 (컨트롤러에서 @AuthUser로 접근 가능)
             request.setAttribute(UserIdArgumentResolver.USER_ID_ATTRIBUTE, userId);
+            request.setAttribute(
+                    ACCESS_TOKEN_EXPIRES_IN_ATTRIBUTE,
+                    jwtTokenProvider.getRemainingExpirationSeconds(token)
+            );
 
             // 5. 유저 정보를 임시로 만들어서 SecurityContext에 넣어주기 (로그인 인정)
             // (권한은 일단 USER로 통일. 실제로는 DB에서 조회해서 넣을 수도 있음)

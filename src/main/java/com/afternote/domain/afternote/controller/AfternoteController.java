@@ -7,6 +7,7 @@ import com.afternote.domain.afternote.dto.AfternotedetailResponse;
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import com.afternote.domain.afternote.service.AfternoteService;
 import com.afternote.global.common.ApiResponse;
+import com.afternote.global.common.IncludeAccessTokenExpiresIn;
 import com.afternote.global.resolver.UserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +24,7 @@ public class AfternoteController {
 
     private final AfternoteService afternoteService;
 
+    @IncludeAccessTokenExpiresIn
     @Operation(
             summary = "애프터노트 목록 조회 API",
             description = "애프터노트 목록을 가져옵니다. param으로 category와 page, size를 보내주시면 됩니다."

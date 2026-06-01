@@ -30,7 +30,7 @@ public class ImageController {
             @Valid @RequestBody PresignedUrlRequest request
     ) {
         return ApiResponse.success(
-                s3Service.generatePresignedUrl(request.getDirectory(), request.getExtension())
+                s3Service.generatePresignedUrl(request.getDirectory(), request.getExtension(), userId)
         );
     }
 }

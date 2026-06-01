@@ -1,5 +1,4 @@
 package com.afternote.domain.appversion.service;
-
 import com.afternote.domain.admin.service.AdminService;
 import com.afternote.domain.appversion.dto.AppVersionReleaseRegisterRequest;
 import com.afternote.domain.appversion.model.AppPlatform;

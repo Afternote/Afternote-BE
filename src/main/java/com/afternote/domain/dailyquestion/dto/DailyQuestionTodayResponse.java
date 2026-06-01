@@ -22,6 +22,9 @@ public class DailyQuestionTodayResponse {
     @Schema(description = "답변 여부", example = "true")
     private boolean isAnswered;
 
+    @Schema(description = "임시저장 여부", example = "false")
+    private boolean isDraft;
+
     @Schema(description = "수신자 목록")
     private List<MindRecordReceiverSummaryResponse> receivers;
 }

@@ -17,8 +17,7 @@ public class SignupRequest {
     private String email;
 
     @Schema(description = "비밀번호", example = "password123!")
-    @Pattern(regexp = "^(?=.*[A-Za-z])(?=.*\\d)(?=.*[@$!%*#?&])[A-Za-z\\d@$!%*#?&]{8,20}$",
-            message = "비밀번호는 8~20자의 영문 대소문자, 숫자, 특수문자를 포함해야 합니다.")
+    @Pattern(regexp = PasswordValidation.REGEX, message = PasswordValidation.MESSAGE)
     @NotBlank(message = "비밀번호를 입력해주세요.")
     private String password;
 

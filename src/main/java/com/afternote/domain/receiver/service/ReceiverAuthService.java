@@ -110,7 +110,7 @@ public class ReceiverAuthService {
 
     public PresignedUrlResponse generatePresignedUrl(String authCode, String extension) {
         findReceiverByAuthCode(authCode);
-        return s3Service.generatePresignedUrl("documents", extension);
+        return s3Service.generatePresignedUrl("documents", extension, null);
     }
 
     public DeliveryVerificationResponse getDeliveryVerificationStatus(String authCode) {

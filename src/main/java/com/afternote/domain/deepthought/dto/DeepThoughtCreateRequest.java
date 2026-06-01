@@ -26,9 +26,6 @@ public class DeepThoughtCreateRequest {
     @NotNull(message = "임시저장 여부는 필수입니다.")
     private Boolean isDraft;
 
-    @Schema(description = "이미지 URL", example = "https://s3.../image.jpg", nullable = true)
-    private String imageUrl;
-
     @Schema(description = "카테고리", example = "나의 가치관")
     @NotBlank(message = "카테고리는 필수입니다.")
     private String category;

@@ -3,6 +3,7 @@ package com.afternote.domain.dailyquestion.controller;
 import com.afternote.domain.dailyquestion.dto.*;
 import com.afternote.domain.dailyquestion.service.DailyQuestionService;
 import com.afternote.global.common.ApiResponse;
+import com.afternote.global.common.IncludeAccessTokenExpiresIn;
 import com.afternote.global.resolver.UserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -50,6 +51,7 @@ public class DailyQuestionController {
         return ApiResponse.success(dailyQuestionService.updateAnswer(userId, userDailyQuestionId, request));
     }
 
+    @IncludeAccessTokenExpiresIn
     @Operation(summary = "데일리 질문 목록 조회", description = "특정 날짜 혹은 전체 답변 목록을 최신순으로 조회합니다. draftOnly=true이면 임시저장 답변만, 그렇지 않으면 제출 완료(비임시) 답변만 반환합니다.")
     @GetMapping
     public ApiResponse<List<DailyQuestionListResponse>> getDailyQuestions(

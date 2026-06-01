@@ -571,7 +571,6 @@ public class ReceivedService {
                 .createdAt(userDailyQuestion.getCreatedAt() != null
                         ? userDailyQuestion.getCreatedAt().format(KOREAN_DATE_FORMATTER)
                         : null)
-                .imageUrl(userDailyQuestion.getImageUrl())
                 .build();
     }
 }

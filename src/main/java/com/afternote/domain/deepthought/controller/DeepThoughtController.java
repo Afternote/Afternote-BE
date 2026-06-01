@@ -11,6 +11,7 @@ import com.afternote.domain.deepthought.dto.DeepThoughtUpdateRequest;
 import com.afternote.domain.deepthought.service.DeepThoughtCategoryService;
 import com.afternote.domain.deepthought.service.DeepThoughtService;
 import com.afternote.global.common.ApiResponse;
+import com.afternote.global.common.IncludeAccessTokenExpiresIn;
 import com.afternote.global.resolver.UserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -50,6 +51,7 @@ public class DeepThoughtController {
         return ApiResponse.success(deepThoughtService.updateDeepThought(userId, deepThoughtId, request));
     }
 
+    @IncludeAccessTokenExpiresIn
     @Operation(summary = "깊은 생각 조회", description = "날짜/태그/카테고리 조건으로 깊은 생각을 조회합니다. draftOnly=true이면 임시저장만 반환합니다. "
             + "응답의 tagCounts에는 동일한 날짜·카테고리·draftOnly 범위에서 태그별 글 개수가 포함되며, 목록 필터용 tag 검색어는 집계에 반영하지 않습니다.")
     @GetMapping
@@ -82,6 +84,7 @@ public class DeepThoughtController {
         return ApiResponse.success(null);
     }
 
+    @IncludeAccessTokenExpiresIn
     @Operation(summary = "카테고리 조회", description = "유저의 깊은 생각 카테고리 목록을 조회합니다.")
     @GetMapping("/categories")
     public ApiResponse<DeepThoughtCategoryListResponse> getCategories(

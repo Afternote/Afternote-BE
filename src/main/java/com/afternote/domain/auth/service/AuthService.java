@@ -136,14 +136,83 @@ public class AuthService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
         }
-        emailService.sendCode(request.getEmail());
+        emailService.sendCode(request.getEmail(), EmailVerificationPurpose.SIGNUP);
     }
 
     @Transactional
     public void emailVerify(EmailVerifyRequest request) {
-        if(!emailService.verifyCode(request.getEmail(), request.getCertificateCode())){
+        if (!emailService.verifyCode(
+                request.getEmail(),
+                request.getCertificateCode(),
+                EmailVerificationPurpose.SIGNUP
+        )) {
             throw new CustomException(ErrorCode.INVALID_EMAIL_VERIFICATION);
         }
+    }
+
+    @Transactional
+    public void findSendCode(FindSendCodeRequest request) {
+        findActiveLocalUserForRecovery(request.getEmail());
+        emailService.sendCode(request.getEmail(), EmailVerificationPurpose.FIND);
+    }
+
+    @Transactional
+    public EmailFindResponse findEmail(EmailFindRequest request) {
+        User user = findActiveLocalUserForRecovery(request.getEmail());
+
+        if (!emailService.verifyAndDeleteCode(
+                request.getEmail(),
+                request.getCertificateCode(),
+                EmailVerificationPurpose.FIND
+        )) {
+            throw new CustomException(ErrorCode.INVALID_EMAIL_VERIFICATION);
+        }
+
+        return EmailFindResponse.from(user.getName(), user.getEmail());
+    }
+
+    @Transactional
+    public void findPassword(PasswordFindRequest request) {
+        if (!request.getNewPassword().equals(request.getConfirmPassword())) {
+            throw new CustomException(ErrorCode.PASSWORD_CONFIRM_MISMATCH);
+        }
+
+        User user = findActiveLocalUserForRecovery(request.getEmail());
+
+        if (!emailService.verifyAndDeleteCode(
+                request.getEmail(),
+                request.getCertificateCode(),
+                EmailVerificationPurpose.FIND
+        )) {
+            throw new CustomException(ErrorCode.INVALID_EMAIL_VERIFICATION);
+        }
+
+        if (passwordEncoder.matches(request.getNewPassword(), user.getPassword())) {
+            throw new CustomException(ErrorCode.NEWPASSWORD_MATCH);
+        }
+
+        user.updatePassword(passwordEncoder.encode(request.getNewPassword()));
+    }
+
+    private User findActiveUserForAccountRecovery(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new CustomException(ErrorCode.EMAIL_NOT_REGISTERED));
+
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new CustomException(ErrorCode.EMAIL_NOT_REGISTERED);
+        }
+
+        return user;
+    }
+
+    private User findActiveLocalUserForRecovery(String email) {
+        User user = findActiveUserForAccountRecovery(email);
+
+        if (user.getPassword() == null) {
+            throw new CustomException(ErrorCode.SOCIAL_LOGIN_USER);
+        }
+
+        return user;
     }
 
     /**

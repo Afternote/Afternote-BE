@@ -127,7 +127,6 @@ class DiaryControllerTest {
                 .title("title")
                 .content("content")
                 .isDraft(false)
-                .imageUrl("https://example.com/a.jpg")
                 .emotion("happy")
             .todayMood(TodayMood.HAPPY)
                 .createdAt(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN)))

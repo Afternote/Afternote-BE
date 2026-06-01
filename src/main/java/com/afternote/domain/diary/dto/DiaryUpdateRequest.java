@@ -22,9 +22,6 @@ public class DiaryUpdateRequest {
     @Schema(description = "임시저장 여부", example = "true")
     private Boolean isDraft;
 
-    @Schema(description = "이미지 URL", example = "https://example.com/updated-image.jpg")
-    private String imageUrl;
-
     @Schema(description = "오늘의 기분", example = "SOSO")
     private TodayMood todayMood;
 

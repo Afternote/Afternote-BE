@@ -13,7 +13,7 @@ import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
-import com.afternote.global.sanitizer.MindRecordHtmlSanitizer;
+import com.afternote.global.sanitizer.MindRecordContentMediaService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -36,7 +36,7 @@ public class DailyQuestionService {
     private final DailyQuestionRepository dailyQuestionRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
-    private final MindRecordHtmlSanitizer mindRecordHtmlSanitizer;
+    private final MindRecordContentMediaService mindRecordContentMediaService;
     private final UserDailyQuestionReceiverRepository userDailyQuestionReceiverRepository;
     private final MindRecordReceiverService mindRecordReceiverService;
 
@@ -82,6 +82,7 @@ public class DailyQuestionService {
                 .day(userDailyQuestion.getDailyQuestion().getId())
                 .content(userDailyQuestion.getDailyQuestion().getContent())
                 .isAnswered(userDailyQuestion.isAnswered())
+                .isDraft(userDailyQuestion.isDraft())
                 .receivers(mindRecordReceiverService.getUserDailyQuestionReceivers(userDailyQuestion.getId()))
                 .build();
     }
@@ -100,14 +101,14 @@ public class DailyQuestionService {
             throw new CustomException(ErrorCode.DAILY_QUESTION_DATE_MISMATCH);
         }
 
-        if (userDailyQuestion.isAnswered()) {
+        if (userDailyQuestion.isAnswered() && !userDailyQuestion.isDraft()) {
             throw new CustomException(ErrorCode.DAILY_QUESTION_ALREADY_ANSWERED);
         }
 
+        boolean isDraft = request.getIsDraft() != null ? request.getIsDraft() : false;
         userDailyQuestion.updateAnswer(
-                mindRecordHtmlSanitizer.sanitize(request.getContent()),
-                request.getImageUrl(),
-                request.getIsDraft() != null ? request.getIsDraft() : false
+                mindRecordContentMediaService.prepareContentForSave(userId, request.getContent()),
+                isDraft
         );
         if (!userDailyQuestion.isDraft()) {
             eventPublisher.publishEvent(new DailyQuestionEmotionAnalysisRequestedEvent(userId, userDailyQuestion.getId()));
@@ -117,7 +118,7 @@ public class DailyQuestionService {
                 userId,
                 userDailyQuestion,
                 request.getReceiverIds(),
-                !userDailyQuestion.isDraft()
+                false
         );
 
         return toAnswerResponse(userDailyQuestion, receivers);
@@ -132,12 +133,11 @@ public class DailyQuestionService {
             throw new CustomException(ErrorCode.NOT_ENOUGH_PERMISSION);
         }
 
-        if (request.getContent() != null || request.getImageUrl() != null || request.getIsDraft() != null) {
+        if (request.getContent() != null || request.getIsDraft() != null) {
             userDailyQuestion.updateAnswer(
                     request.getContent() != null
-                            ? mindRecordHtmlSanitizer.sanitize(request.getContent())
+                            ? mindRecordContentMediaService.prepareContentForSave(userId, request.getContent())
                             : userDailyQuestion.getContent(),
-                    request.getImageUrl() != null ? request.getImageUrl() : userDailyQuestion.getImageUrl(),
                     request.getIsDraft() != null ? request.getIsDraft() : userDailyQuestion.isDraft()
             );
             if (!userDailyQuestion.isDraft()) {
@@ -151,7 +151,7 @@ public class DailyQuestionService {
                     userId,
                     userDailyQuestion,
                     request.getReceiverIds(),
-                    !userDailyQuestion.isDraft()
+                    false
             );
         } else {
             receivers = mindRecordReceiverService.getUserDailyQuestionReceivers(userDailyQuestion.getId());
@@ -176,13 +176,13 @@ public class DailyQuestionService {
                 mindRecordReceiverService.getUserDailyQuestionReceiversMap(userDailyQuestionIds);
 
         return questions.stream()
-                .filter(q -> Boolean.TRUE.equals(draftOnly) ? q.isDraft() : q.isAnswered())
+                .filter(q -> Boolean.TRUE.equals(draftOnly) ? q.isDraft() : !q.isDraft())
                 .map(q -> DailyQuestionListResponse.builder()
                         .userDailyQuestionId(q.getId())
                         .title(q.getDailyQuestion().getContent())
                         .content(q.getContent())
                         .createdAt(q.getCreatedAt() != null ? q.getCreatedAt().format(formatter) : null)
-                        .imageUrl(q.getImageUrl())
+                        .isDraft(q.isDraft())
                         .receivers(receiversMap.getOrDefault(q.getId(), List.of()))
                         .build())
                 .collect(Collectors.toList());
@@ -195,7 +195,6 @@ public class DailyQuestionService {
         return DailyQuestionAnswerResponse.builder()
                 .userDailyQuestionId(userDailyQuestion.getId())
                 .content(userDailyQuestion.getContent())
-                .imageUrl(userDailyQuestion.getImageUrl())
                 .isDraft(userDailyQuestion.isDraft())
                 .receivers(receivers)
                 .build();

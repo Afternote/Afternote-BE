@@ -24,8 +24,8 @@ public class DailyQuestionListResponse {
     @Schema(description = "생성일시 (yyyy.MM.dd E 포맷)", example = "2023.10.12 목")
     private String createdAt;
 
-    @Schema(description = "이미지 URL", example = "https://s3.../image.jpg", nullable = true)
-    private String imageUrl;
+    @Schema(description = "임시저장 여부", example = "false")
+    private boolean isDraft;
 
     @Schema(description = "수신자 목록")
     private List<MindRecordReceiverSummaryResponse> receivers;

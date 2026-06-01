@@ -33,9 +33,6 @@ public class DiaryResponse {
     @Schema(description = "임시저장 여부")
     private Boolean isDraft;
 
-    @Schema(description = "이미지 URL")
-    private String imageUrl;
-
     @Schema(description = "감정")
     private String emotion;
 
@@ -64,7 +61,6 @@ public class DiaryResponse {
                 .title(diary.getTitle())
                 .content(diary.getContent())
                 .isDraft(diary.getIsDraft())
-                .imageUrl(diary.getImageUrl())
                 .todayMood(diary.getTodayMood())
                 .date(toLocalDate(diary.getCreatedAt()))
                 .createdAt(formatDate(diary.getCreatedAt()))
@@ -88,7 +84,6 @@ public class DiaryResponse {
                 .title(diary.getTitle())
                 .content(diary.getContent())
                 .isDraft(diary.getIsDraft())
-                .imageUrl(diary.getImageUrl())
                 .emotion(emotion)
                 .todayMood(todayMood)
                 .date(toLocalDate(diary.getCreatedAt()))

@@ -49,7 +49,6 @@ public class UserDailyQuestion extends BaseEntity {
             LocalDate questionDate,
             boolean isAnswered,
             String content,
-            String imageUrl,
             boolean isDraft
     ) {
         this.user = user;
@@ -57,13 +56,11 @@ public class UserDailyQuestion extends BaseEntity {
         this.questionDate = questionDate;
         this.isAnswered = isAnswered;
         this.content = content;
-        this.imageUrl = imageUrl;
         this.isDraft = isDraft;
     }
 
-    public void updateAnswer(String content, String imageUrl, boolean isDraft) {
+    public void updateAnswer(String content, boolean isDraft) {
         this.content = content;
-        this.imageUrl = imageUrl;
         this.isDraft = isDraft;
         this.isAnswered = !isDraft;
     }

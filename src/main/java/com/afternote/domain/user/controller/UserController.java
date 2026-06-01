@@ -3,6 +3,7 @@ package com.afternote.domain.user.controller;
 import com.afternote.domain.user.dto.*;
 import com.afternote.domain.user.service.UserService;
 import com.afternote.global.common.ApiResponse;
+import com.afternote.global.common.IncludeAccessTokenExpiresIn;
 import com.afternote.global.resolver.UserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -124,6 +125,7 @@ public class UserController {
         );
     }
 
+    @IncludeAccessTokenExpiresIn
     @Operation(
             summary = "수신인 목록 조회 API",
             description = "로그인한 사용자가 등록한 수신인 목록을 조회합니다."

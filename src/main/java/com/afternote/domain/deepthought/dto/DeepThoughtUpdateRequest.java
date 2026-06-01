@@ -21,9 +21,6 @@ public class DeepThoughtUpdateRequest {
     @Schema(description = "임시저장 여부", example = "true")
     private Boolean isDraft;
 
-    @Schema(description = "이미지 URL", example = "https://s3.../image.jpg", nullable = true)
-    private String imageUrl;
-
     @Schema(description = "카테고리", example = "나의 가치관")
     private String category;
 

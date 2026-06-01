@@ -32,9 +32,6 @@ public class DeepThoughtResponse {
     @Schema(description = "임시저장 여부", example = "false")
     private Boolean isDraft;
 
-    @Schema(description = "이미지 URL", nullable = true, example = "https://s3.../image.jpg")
-    private String imageUrl;
-
     @Schema(description = "카테고리", example = "나의 가치관")
     private String category;
 
@@ -60,7 +57,6 @@ public class DeepThoughtResponse {
                 .title(deepThought.getTitle())
                 .content(deepThought.getContent())
                 .isDraft(deepThought.getIsDraft())
-                .imageUrl(deepThought.getImageUrl())
                 .category(deepThought.getCategoryTitle())
                 .tags(deepThought.getTags().stream()
                         .map(tag -> tag.getTitle())

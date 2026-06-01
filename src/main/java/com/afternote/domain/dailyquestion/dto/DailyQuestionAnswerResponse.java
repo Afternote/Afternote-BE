@@ -17,9 +17,6 @@ public class DailyQuestionAnswerResponse {
     @Schema(description = MindRecordHtmlSchema.CONTENT, example = MindRecordHtmlSchema.CONTENT_EXAMPLE)
     private String content;
 
-    @Schema(description = "이미지 URL", example = "https://s3.../image.jpg", nullable = true)
-    private String imageUrl;
-
     @Schema(description = "임시저장 여부", example = "false")
     private boolean isDraft;
 

@@ -47,7 +47,6 @@ public class DeepThought extends BaseEntity {
             String title,
             String content,
             Boolean isDraft,
-            String imageUrl,
             DeepThoughtCategory category,
             List<String> tags
     ) {
@@ -56,7 +55,6 @@ public class DeepThought extends BaseEntity {
         record.title = title;
         record.content = content;
         record.isDraft = isDraft;
-        record.imageUrl = imageUrl;
         record.category = category;
         if (tags != null) {
             tags.stream()
@@ -80,7 +78,6 @@ public class DeepThought extends BaseEntity {
             String title,
             String content,
             Boolean isDraft,
-            String imageUrl,
             DeepThoughtCategory category,
             List<String> tags
     ) {
@@ -92,9 +89,6 @@ public class DeepThought extends BaseEntity {
         }
         if (isDraft != null) {
             this.isDraft = isDraft;
-        }
-        if (imageUrl != null) {
-            this.imageUrl = imageUrl;
         }
         if (category != null) {
             this.category = category;

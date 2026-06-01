@@ -85,6 +85,42 @@ public class AuthController {
     }
 
     @Operation(
+            summary = "아이디/비밀번호 찾기 인증번호 발송 API",
+            description = "로컬(이메일) 계정의 아이디/비밀번호 찾기용 인증번호를 발송합니다."
+    )
+    @PostMapping("/find/send/code")
+    public ApiResponse<Object> findSendCode(
+            @Valid @RequestBody FindSendCodeRequest findSendCodeRequest
+    ) {
+        authService.findSendCode(findSendCodeRequest);
+        return ApiResponse.success(null);
+    }
+
+    @Operation(
+            summary = "아이디(이메일) 찾기 API",
+            description = "이메일과 인증번호를 검증한 뒤 아이디(이메일)를 반환합니다."
+    )
+    @PostMapping("/email/find")
+    public ApiResponse<EmailFindResponse> findEmail(
+            @Valid @RequestBody EmailFindRequest emailFindRequest
+    ) {
+        EmailFindResponse response = authService.findEmail(emailFindRequest);
+        return ApiResponse.success(response);
+    }
+
+    @Operation(
+            summary = "비밀번호 찾기 API",
+            description = "이메일·인증번호·새 비밀번호를 검증한 뒤 비밀번호를 재설정합니다."
+    )
+    @PostMapping("/password/find")
+    public ApiResponse<Object> findPassword(
+            @Valid @RequestBody PasswordFindRequest passwordFindRequest
+    ) {
+        authService.findPassword(passwordFindRequest);
+        return ApiResponse.success(null);
+    }
+
+    @Operation(
         summary = "통합 소셜 로그인 API 🎯", 
         description = """
             모든 소셜 로그인 제공자를 통합한 API입니다.

@@ -18,6 +18,9 @@ public enum WhiteListUrl {
     AUTH_SIGNUP("/auth/sign-up"),
     AUTH_LOGIN("/auth/login"),
     AUTH_REISSUE("/auth/reissue"),
+    AUTH_FIND_SEND_CODE("/auth/find/send/code"),
+    AUTH_EMAIL_FIND("/auth/email/find"),
+    AUTH_PASSWORD_FIND("/auth/password/find"),
 
     // 수신자 인증
     RECEIVER_AUTH("/api/receiver-auth/**"),

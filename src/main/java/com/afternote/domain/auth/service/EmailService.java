@@ -25,24 +25,21 @@ public class EmailService {
     private static final long MAX_SENDS_PER_HOUR = 5L;
 
     private final JavaMailSender javaMailSender;
-    private final RedisTemplate<String, String> redisTemplate; // 이미 설정해둔 RedisTemplate 사용
-    
+    private final RedisTemplate<String, String> redisTemplate;
+
     @Value("${spring.mail.username}")
     private String senderEmail;
 
-    // 1. 인증번호 전송 로직
-    public void sendCode(String toEmail) {
-        String cooldownKey = COOLDOWN_KEY_PREFIX + toEmail;
+    public void sendCode(String toEmail, EmailVerificationPurpose purpose) {
+        String cooldownKey = COOLDOWN_KEY_PREFIX + purpose.name() + ":" + toEmail;
         String hourlyKey = HOURLY_COUNT_KEY_PREFIX + toEmail;
 
-        // 시간당 발송 한도 체크 (한도 초과 시 쿨다운 락도 잡지 않음)
         String currentCountStr = redisTemplate.opsForValue().get(hourlyKey);
         long currentCount = currentCountStr == null ? 0L : Long.parseLong(currentCountStr);
         if (currentCount >= MAX_SENDS_PER_HOUR) {
             throw new CustomException(ErrorCode.EMAIL_SEND_LIMIT_EXCEEDED);
         }
 
-        // 재전송 쿨다운 (setIfAbsent로 원자적 체크 & 락)
         Boolean acquired = redisTemplate.opsForValue()
                 .setIfAbsent(cooldownKey, "1", RESEND_COOLDOWN);
         if (Boolean.FALSE.equals(acquired)) {
@@ -50,6 +47,7 @@ public class EmailService {
         }
 
         String authCode = createCode();
+        String codeKey = buildCodeKey(toEmail, purpose);
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
@@ -60,13 +58,11 @@ public class EmailService {
         try {
             javaMailSender.send(message);
         } catch (RuntimeException e) {
-            // 메일 전송 실패 시 쿨다운 즉시 해제 (사용자 즉시 재시도 허용)
             redisTemplate.delete(cooldownKey);
             throw e;
         }
 
-        // 발송 성공 시에만 인증코드 저장 + 시간당 카운트 증가
-        redisTemplate.opsForValue().set(CODE_KEY_PREFIX + toEmail, authCode, 3, TimeUnit.MINUTES);
+        redisTemplate.opsForValue().set(codeKey, authCode, 3, TimeUnit.MINUTES);
 
         Long newCount = redisTemplate.opsForValue().increment(hourlyKey);
         if (newCount != null && newCount == 1L) {
@@ -74,15 +70,27 @@ public class EmailService {
         }
     }
 
-    // 2. 인증번호 검증 로직
-    public boolean verifyCode(String email, String inputCode) {
-        String redisCode = redisTemplate.opsForValue().get(CODE_KEY_PREFIX + email);
-
-        // 코드가 존재하고, 입력한 코드와 일치하면 true
+    public boolean verifyCode(String email, String inputCode, EmailVerificationPurpose purpose) {
+        String redisCode = redisTemplate.opsForValue().get(buildCodeKey(email, purpose));
         return redisCode != null && redisCode.equals(inputCode);
     }
 
-    // 6자리 랜덤 숫자 생성
+    public boolean verifyAndDeleteCode(String email, String inputCode, EmailVerificationPurpose purpose) {
+        String codeKey = buildCodeKey(email, purpose);
+        String redisCode = redisTemplate.opsForValue().get(codeKey);
+
+        if (redisCode == null || !redisCode.equals(inputCode)) {
+            return false;
+        }
+
+        redisTemplate.delete(codeKey);
+        return true;
+    }
+
+    private String buildCodeKey(String email, EmailVerificationPurpose purpose) {
+        return CODE_KEY_PREFIX + purpose.name() + ":" + email;
+    }
+
     private String createCode() {
         Random random = new Random();
         StringBuilder key = new StringBuilder();

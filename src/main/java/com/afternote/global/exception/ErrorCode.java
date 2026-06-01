@@ -62,7 +62,7 @@ public enum ErrorCode {
     PASSWORD_MISMATCH(HttpStatus.UNAUTHORIZED, 1202, "아이디 또는 비밀번호가 일치하지 않습니다."),
 
     // 비밀번호 형식 오류
-    INVALID_PASSWORD_FORMAT(HttpStatus.BAD_REQUEST, 1203, "비밀번호는 8자 이상, 영문/숫자/특수문자를 포함해야 합니다."),
+    INVALID_PASSWORD_FORMAT(HttpStatus.BAD_REQUEST, 1203, "비밀번호는 8~15자의 영문, 숫자, 특수문자를 포함해야 합니다."),
 
     // 닉네임 중복
     DUPLICATE_NAME(HttpStatus.CONFLICT, 1204, "이미 사용 중인 이름입니다."),
@@ -93,6 +93,12 @@ public enum ErrorCode {
 
     // 이메일 인증번호 시간당 발송 한도 초과
     EMAIL_SEND_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, 1217, "이메일 인증번호 발송 한도를 초과했습니다. 잠시 후 다시 시도해주세요."),
+
+    // 비밀번호 확인 불일치
+    PASSWORD_CONFIRM_MISMATCH(HttpStatus.BAD_REQUEST, 1218, "비밀번호 확인이 일치하지 않습니다."),
+
+    // 가입되지 않은 이메일
+    EMAIL_NOT_REGISTERED(HttpStatus.BAD_REQUEST, 1219, "가입되지 않은 이메일입니다."),
 
     // ======================================
     // 4. 타임레터 관련 오류 (code: 1300 ~ 1399)

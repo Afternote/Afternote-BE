@@ -1,5 +1,6 @@
 package com.afternote.domain.auth.controller;
 
+import com.afternote.domain.auth.dto.EmailFindResponse;
 import com.afternote.domain.auth.dto.LoginResponse;
 import com.afternote.domain.auth.dto.ReissueResponse;
 import com.afternote.domain.auth.dto.SocialLoginResponse;
@@ -238,6 +239,68 @@ class AuthControllerTest {
                 .andExpect(jsonPath("$.data.accessToken").value("social-access"));
 
         verify(authService).socialLogin(any());
+    }
+
+    @Test
+    @DisplayName("아이디/비밀번호 찾기 인증번호 발송 API")
+    void findSendCode_Success() throws Exception {
+        String requestBody = """
+                {
+                  "email": "test@test.com"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/auth/find/send/code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200));
+
+        verify(authService).findSendCode(any());
+    }
+
+    @Test
+    @DisplayName("아이디 찾기 API - 인증 성공")
+    void findEmail_Verify_Success() throws Exception {
+        given(authService.findEmail(any()))
+                .willReturn(EmailFindResponse.from("tester", "test@test.com"));
+
+        String requestBody = """
+                {
+                  "email": "test@test.com",
+                  "certificateCode": "123456"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/auth/email/find")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.email").value("test@test.com"))
+                .andExpect(jsonPath("$.data.name").value("tester"));
+
+        verify(authService).findEmail(any());
+    }
+
+    @Test
+    @DisplayName("비밀번호 찾기 API - 재설정 성공")
+    void findPassword_Reset_Success() throws Exception {
+        String requestBody = """
+                {
+                  "email": "test@test.com",
+                  "certificateCode": "123456",
+                  "newPassword": "NewPass1!",
+                  "confirmPassword": "NewPass1!"
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/auth/password/find")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200));
+
+        verify(authService).findPassword(any());
     }
 
     private static class UserIdTestArgumentResolver implements HandlerMethodArgumentResolver {

@@ -6,6 +6,7 @@ import com.afternote.domain.diary.dto.DiaryResponse;
 import com.afternote.domain.diary.dto.DiaryUpdateRequest;
 import com.afternote.domain.diary.service.DiaryService;
 import com.afternote.global.common.ApiResponse;
+import com.afternote.global.common.IncludeAccessTokenExpiresIn;
 import com.afternote.global.resolver.UserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -40,6 +41,7 @@ public class DiaryController {
         return ApiResponse.success(diaryService.createDiary(userId, request));
     }
 
+    @IncludeAccessTokenExpiresIn
     @Operation(summary = "Diary 월 단위 조회", description = "지정한 yyyy-MM 한 달의 다이어리 전체를 최신순으로 조회합니다. "
             + "캘린더형 화면은 응답을 날짜별로 그룹핑하여 셀에 표시하고, 카드형 화면은 그대로 그리드에 렌더하면 됩니다. "
             + "draftOnly=true이면 해당 달의 임시저장만 반환합니다. "

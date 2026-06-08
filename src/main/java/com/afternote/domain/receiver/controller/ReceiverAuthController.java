@@ -176,7 +176,7 @@ public class ReceiverAuthController {
 
     @Operation(
             summary = "사망확인 서류 제출",
-            description = "수신자가 인증 서류를 제출합니다."
+            description = "수신자가 인증 서류를 제출합니다. 사망진단서와 가족관계증명서 중 하나 이상 제출하면 됩니다."
     )
     @PostMapping("/delivery-verification")
     public ApiResponse<DeliveryVerificationResponse> submitDeliveryVerification(

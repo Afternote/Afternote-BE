@@ -105,7 +105,7 @@ public class ReceiverAuthService {
         Receiver receiver = findReceiverByAuthCode(authCode);
         User sender = userRepository.findById(receiver.getUserId())
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        return new ReceiverMessageResponse(sender.getName(), receiver.getMessage());
+        return new ReceiverMessageResponse(sender.getName(), receiver.getMessage(), receiver.getCreatedAt());
     }
 
     public PresignedUrlResponse generatePresignedUrl(String authCode, String extension) {

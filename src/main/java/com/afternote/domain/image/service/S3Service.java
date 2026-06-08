@@ -95,7 +95,7 @@ public class S3Service {
             PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
             String presignedUrl = presignedRequest.url().toString();
             String fileUrl = resolvePublicUrl(key);
-            log.debug("Generate staging presigned url for file {}", fileUrl);
+            log.debug("Generate presigned url for file {}", fileUrl);
             return PresignedUrlResponse.builder()
                     .presignedUrl(presignedUrl)
                     .fileKey(key)

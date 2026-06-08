@@ -13,9 +13,9 @@ public record DeliveryVerificationResponse(
         Long id,
         @Schema(description = "인증 상태", example = "PENDING")
         VerificationStatus status,
-        @Schema(description = "사망진단서 URL")
+        @Schema(description = "사망진단서 URL", nullable = true)
         String deathCertificateUrl,
-        @Schema(description = "가족관계증명서 URL")
+        @Schema(description = "가족관계증명서 URL", nullable = true)
         String familyRelationCertificateUrl,
         @Schema(description = "관리자 메모", nullable = true)
         String adminNote,

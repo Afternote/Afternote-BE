@@ -14,6 +14,7 @@ import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.util.List;
 
@@ -35,13 +36,23 @@ public class DeliveryVerificationService {
         User user = userRepository.findById(receiver.getUserId())
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        if (!s3Service.isManagedObjectKeyInDirectory(deathCertUrl, "documents")
-                || !s3Service.isManagedObjectKeyInDirectory(familyRelationCertUrl, "documents")) {
+        boolean hasDeathCert = StringUtils.hasText(deathCertUrl);
+        boolean hasFamilyCert = StringUtils.hasText(familyRelationCertUrl);
+
+        if (!hasDeathCert && !hasFamilyCert) {
             throw new CustomException(ErrorCode.INVALID_DELIVERY_CONDITION);
         }
 
-        String deathCertKey = s3Service.extractStorageKey(deathCertUrl);
-        String familyRelationCertKey = s3Service.extractStorageKey(familyRelationCertUrl);
+        if (hasDeathCert && !s3Service.isManagedObjectKeyInDirectory(deathCertUrl, "documents")) {
+            throw new CustomException(ErrorCode.INVALID_DELIVERY_CONDITION);
+        }
+
+        if (hasFamilyCert && !s3Service.isManagedObjectKeyInDirectory(familyRelationCertUrl, "documents")) {
+            throw new CustomException(ErrorCode.INVALID_DELIVERY_CONDITION);
+        }
+
+        String deathCertKey = hasDeathCert ? s3Service.extractStorageKey(deathCertUrl) : null;
+        String familyRelationCertKey = hasFamilyCert ? s3Service.extractStorageKey(familyRelationCertUrl) : null;
 
         if (deliveryVerificationRepository.existsByUserIdAndReceiverIdAndStatus(
                 user.getId(), receiver.getId(), VerificationStatus.PENDING)) {

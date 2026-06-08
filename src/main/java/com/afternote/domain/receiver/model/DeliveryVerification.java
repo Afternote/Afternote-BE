@@ -22,10 +22,10 @@ public class DeliveryVerification extends BaseEntity {
     @Column(nullable = false)
     private Long receiverId;
 
-    @Column(nullable = false)
+    @Column
     private String deathCertificateUrl;
 
-    @Column(nullable = false)
+    @Column
     private String familyRelationCertificateUrl;
 
     @Enumerated(EnumType.STRING)

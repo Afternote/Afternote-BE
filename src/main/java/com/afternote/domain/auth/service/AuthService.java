@@ -65,7 +65,11 @@ public class AuthService {
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
         tokenService.saveToken(refreshToken, user.getId());
 
-        return LoginResponse.builder().accessToken(accessToken).refreshToken(refreshToken).build();
+        return LoginResponse.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .expiresIn(jwtTokenProvider.getAccessTokenExpirationSeconds())
+                .build();
     }
 
     @Transactional
@@ -95,6 +99,7 @@ public class AuthService {
         return ReissueResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
+                .expiresIn(jwtTokenProvider.getAccessTokenExpirationSeconds())
                 .build();
     }
 
@@ -254,6 +259,7 @@ public class AuthService {
         return SocialLoginResponse.builder()
                 .accessToken(accessToken)
                 .refreshToken(refreshToken)
+                .expiresIn(jwtTokenProvider.getAccessTokenExpirationSeconds())
                 .isNewUser(isNewUser)
                 .build();
     }

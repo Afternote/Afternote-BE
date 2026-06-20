@@ -21,6 +21,9 @@ public class SocialLoginResponse {
     @Schema(description = "리프레시 토큰", example = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...")
     private String refreshToken;
     
+    @Schema(description = "액세스 토큰 유효 시간(초)", example = "3600")
+    private long expiresIn;
+    
     @Schema(description = "신규 회원 여부", example = "false")
     private boolean isNewUser;
 }

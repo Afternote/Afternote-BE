@@ -7,7 +7,6 @@ import com.afternote.domain.timeletter.dto.response.TimeLetterListResponse;
 import com.afternote.domain.timeletter.dto.response.TimeLetterResponse;
 import com.afternote.domain.timeletter.service.TimeLetterService;
 import com.afternote.global.common.ApiResponse;
-import com.afternote.global.common.IncludeAccessTokenExpiresIn;
 import com.afternote.global.resolver.UserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -24,7 +23,6 @@ public class TimeLetterController {
 
     private final TimeLetterService timeLetterService;
 
-    @IncludeAccessTokenExpiresIn
     @Operation(summary = "타임레터 전체 조회", description = "정식 등록된(SCHEDULED) 타임레터 전체를 조회합니다.")
     @GetMapping
     public ApiResponse<TimeLetterListResponse> getTimeLetters(
@@ -48,7 +46,6 @@ public class TimeLetterController {
         return ApiResponse.success(timeLetterService.createTimeLetter(userId, request));
     }
 
-    @IncludeAccessTokenExpiresIn
     @Operation(summary = "임시저장 전체 조회", description = "임시저장된(DRAFT) 타임레터 전체를 조회합니다.")
     @GetMapping("/temporary")
     public ApiResponse<TimeLetterListResponse> getTemporaryTimeLetters(

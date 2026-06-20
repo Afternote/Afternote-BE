@@ -20,12 +20,8 @@ class JwtTokenProviderTest {
     }
 
     @Test
-    @DisplayName("Access Token 남은 만료 시간(초)을 반환한다")
-    void getRemainingExpirationSeconds() {
-        String accessToken = jwtTokenProvider.generateAccessToken(1L);
-
-        long expiresIn = jwtTokenProvider.getRemainingExpirationSeconds(accessToken);
-
-        assertThat(expiresIn).isBetween(3590L, 3600L);
+    @DisplayName("Access Token 유효 시간(초)을 반환한다")
+    void getAccessTokenExpirationSeconds() {
+        assertThat(jwtTokenProvider.getAccessTokenExpirationSeconds()).isEqualTo(3600L);
     }
 }

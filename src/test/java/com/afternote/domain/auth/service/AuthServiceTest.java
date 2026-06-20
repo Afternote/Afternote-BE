@@ -131,11 +131,13 @@ class AuthServiceTest {
         given(passwordEncoder.matches("Password1!", "encoded")).willReturn(true);
         given(jwtTokenProvider.generateAccessToken(10L)).willReturn("access");
         given(jwtTokenProvider.generateRefreshToken(10L)).willReturn("refresh");
+        given(jwtTokenProvider.getAccessTokenExpirationSeconds()).willReturn(3600L);
 
         LoginResponse response = authService.login(request);
 
         assertThat(response.getAccessToken()).isEqualTo("access");
         assertThat(response.getRefreshToken()).isEqualTo("refresh");
+        assertThat(response.getExpiresIn()).isEqualTo(3600L);
         verify(tokenService).saveToken("refresh", 10L);
     }
 
@@ -162,11 +164,13 @@ class AuthServiceTest {
         given(tokenService.getUserIdAndDelete("oldRt")).willReturn(11L);
         given(jwtTokenProvider.generateAccessToken(11L)).willReturn("newAccess");
         given(jwtTokenProvider.generateRefreshToken(11L)).willReturn("newRt");
+        given(jwtTokenProvider.getAccessTokenExpirationSeconds()).willReturn(3600L);
 
         ReissueResponse response = authService.reissue(request);
 
         assertThat(response.getAccessToken()).isEqualTo("newAccess");
         assertThat(response.getRefreshToken()).isEqualTo("newRt");
+        assertThat(response.getExpiresIn()).isEqualTo(3600L);
         verify(tokenService).saveToken("newRt", 11L);
     }
 
@@ -257,11 +261,13 @@ class AuthServiceTest {
         });
         given(jwtTokenProvider.generateAccessToken(77L)).willReturn("social-access");
         given(jwtTokenProvider.generateRefreshToken(77L)).willReturn("social-refresh");
+        given(jwtTokenProvider.getAccessTokenExpirationSeconds()).willReturn(3600L);
 
         SocialLoginResponse response = authService.socialLogin(request);
 
         assertThat(response.isNewUser()).isTrue();
         assertThat(response.getAccessToken()).isEqualTo("social-access");
+        assertThat(response.getExpiresIn()).isEqualTo(3600L);
         verify(tokenService).saveToken("social-refresh", 77L);
     }
 
@@ -293,12 +299,14 @@ class AuthServiceTest {
         given(userRepository.findByEmail("existing@test.com")).willReturn(Optional.of(existingUser));
         given(jwtTokenProvider.generateAccessToken(88L)).willReturn("existing-access");
         given(jwtTokenProvider.generateRefreshToken(88L)).willReturn("existing-refresh");
+        given(jwtTokenProvider.getAccessTokenExpirationSeconds()).willReturn(3600L);
 
         SocialLoginResponse response = authService.socialLogin(request);
 
         assertThat(response.isNewUser()).isFalse();
         assertThat(response.getAccessToken()).isEqualTo("existing-access");
         assertThat(response.getRefreshToken()).isEqualTo("existing-refresh");
+        assertThat(response.getExpiresIn()).isEqualTo(3600L);
         verify(userRepository, org.mockito.Mockito.never()).save(any(User.class));
         verify(tokenService).saveToken("existing-refresh", 88L);
     }

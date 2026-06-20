@@ -1,7 +1,6 @@
 package com.afternote.global.common;
 
 import com.afternote.global.exception.ErrorCode;
-import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
@@ -16,16 +15,9 @@ public class ApiResponse<T> {
     private String message;
     private T data;
 
-    @JsonInclude(JsonInclude.Include.NON_NULL)
-    private Long expiresIn;
-
     // 성공 시 (200 OK)
     public static <T> ApiResponse<T> success(T data) {
-        return new ApiResponse<>(HttpStatus.OK.value(), 200, "성공", data, null);
-    }
-
-    public ApiResponse<T> withExpiresIn(Long expiresIn) {
-        return new ApiResponse<>(status, code, message, data, expiresIn);
+        return new ApiResponse<>(HttpStatus.OK.value(), 200, "성공", data);
     }
 
     // ★ 핵심: ErrorCode를 받아서 자동으로 채워주는 메서드
@@ -34,13 +26,12 @@ public class ApiResponse<T> {
                 errorCode.getHttpStatus().value(),
                 errorCode.getCode(),
                 errorCode.getMessage(),
-                null,
                 null
         );
     }
 
     // 예외적인 에러 메시지를 직접 넣어야 할 때
     public static ApiResponse<Void> error(int status, int code, String message) {
-        return new ApiResponse<>(status, code, message, null, null);
+        return new ApiResponse<>(status, code, message, null);
     }
 }

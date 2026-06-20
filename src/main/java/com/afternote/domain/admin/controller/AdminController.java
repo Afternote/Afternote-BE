@@ -4,7 +4,6 @@ import com.afternote.domain.admin.dto.AdminVerificationActionRequest;
 import com.afternote.domain.admin.dto.AdminVerificationResponse;
 import com.afternote.domain.admin.service.AdminService;
 import com.afternote.global.common.ApiResponse;
-import com.afternote.global.common.IncludeAccessTokenExpiresIn;
 import com.afternote.global.resolver.UserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -22,7 +21,6 @@ public class AdminController {
 
     private final AdminService adminService;
 
-    @IncludeAccessTokenExpiresIn
     @Operation(
             summary = "대기 중인 인증 요청 목록 조회",
             description = """

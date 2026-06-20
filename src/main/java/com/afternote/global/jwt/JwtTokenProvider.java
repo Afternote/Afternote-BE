@@ -71,14 +71,9 @@ public class JwtTokenProvider {
     }
 
     /**
-     * @return Access Token 만료까지 남은 시간(초). 이미 만료된 경우 0.
+     * @return 새로 발급하는 Access Token의 유효 시간(초)
      */
-    public long getRemainingExpirationSeconds(String token) {
-        Date expiration = Jwts.parser().verifyWith(key).build()
-                .parseSignedClaims(token)
-                .getPayload()
-                .getExpiration();
-        long remainingMs = expiration.getTime() - System.currentTimeMillis();
-        return Math.max(0, remainingMs / 1000);
+    public long getAccessTokenExpirationSeconds() {
+        return accessTokenExpirationMs / 1000;
     }
 }

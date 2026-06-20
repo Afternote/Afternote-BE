@@ -82,7 +82,11 @@ class AuthControllerTest {
     @DisplayName("로그인 API 성공")
     void login_Success() throws Exception {
         given(authService.login(any()))
-                .willReturn(LoginResponse.builder().accessToken("access").refreshToken("refresh").build());
+                .willReturn(LoginResponse.builder()
+                        .accessToken("access")
+                        .refreshToken("refresh")
+                        .expiresIn(3600L)
+                        .build());
 
         String requestBody = """
                 {
@@ -96,7 +100,8 @@ class AuthControllerTest {
                         .content(requestBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
-                .andExpect(jsonPath("$.data.accessToken").value("access"));
+                .andExpect(jsonPath("$.data.accessToken").value("access"))
+                .andExpect(jsonPath("$.data.expiresIn").value(3600));
 
         verify(authService).login(any());
     }
@@ -121,7 +126,11 @@ class AuthControllerTest {
     @DisplayName("토큰 재발급 API 성공")
     void reissue_Success() throws Exception {
         given(authService.reissue(any()))
-                .willReturn(ReissueResponse.builder().accessToken("new-access").refreshToken("new-refresh").build());
+                .willReturn(ReissueResponse.builder()
+                        .accessToken("new-access")
+                        .refreshToken("new-refresh")
+                        .expiresIn(3600L)
+                        .build());
 
         String requestBody = """
                 {
@@ -133,7 +142,8 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.accessToken").value("new-access"));
+                .andExpect(jsonPath("$.data.accessToken").value("new-access"))
+                .andExpect(jsonPath("$.data.expiresIn").value(3600));
 
         verify(authService).reissue(any());
     }
@@ -221,6 +231,7 @@ class AuthControllerTest {
                 .willReturn(SocialLoginResponse.builder()
                         .accessToken("social-access")
                         .refreshToken("social-refresh")
+                        .expiresIn(3600L)
                         .isNewUser(false)
                         .build());
 
@@ -236,7 +247,8 @@ class AuthControllerTest {
                         .content(requestBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
-                .andExpect(jsonPath("$.data.accessToken").value("social-access"));
+                .andExpect(jsonPath("$.data.accessToken").value("social-access"))
+                .andExpect(jsonPath("$.data.expiresIn").value(3600));
 
         verify(authService).socialLogin(any());
     }

@@ -16,5 +16,7 @@ public class LoginResponse {
     @Schema(description = "액세스 토큰" ,example = "safasfskldfjasdkgwr34tklgfdldfsdckl...")
     private String accessToken;
 
+    @Schema(description = "액세스 토큰 유효 시간(초)", example = "3600")
+    private long expiresIn;
 
 }

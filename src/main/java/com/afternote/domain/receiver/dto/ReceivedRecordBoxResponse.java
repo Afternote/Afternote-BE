@@ -46,7 +46,8 @@ public record ReceivedRecordBoxResponse(
             Receiver receiver,
             User sender,
             DeliveryVerification verification,
-            ReceivedRecordStatus recordStatus
+            ReceivedRecordStatus recordStatus,
+            boolean anyConditionFulfilled
     ) {
         String verificationStatus = verification != null
                 ? verification.getStatus().name()
@@ -68,15 +69,15 @@ public record ReceivedRecordBoxResponse(
                 receiver.getName(),
                 receiver.getRelation(),
                 recordStatus,
-                determineViewStatus(sender, verification),
+                determineViewStatus(anyConditionFulfilled, verification),
                 verificationStatus,
                 requestedAt,
                 approvedAt
         );
     }
 
-    private static String determineViewStatus(User sender, DeliveryVerification verification) {
-        if (sender.isDeliveryConditionMet()) {
+    private static String determineViewStatus(boolean anyConditionFulfilled, DeliveryVerification verification) {
+        if (anyConditionFulfilled) {
             return "VIEWABLE";
         }
 

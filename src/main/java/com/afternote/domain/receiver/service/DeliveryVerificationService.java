@@ -27,6 +27,7 @@ public class DeliveryVerificationService {
     private final ReceiverRepository receiverRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
+    private final com.afternote.domain.delivery.service.DeliveryConditionService deliveryConditionService;
 
     @Transactional
     public DeliveryVerification submitVerification(String authCode, String deathCertUrl, String familyRelationCertUrl) {
@@ -100,9 +101,9 @@ public class DeliveryVerificationService {
 
         verification.approve(adminNote);
 
-        User user = userRepository.findById(verification.getUserId())
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        user.fulfillCondition();
+        // 해당 (발신자, 수신자)에 설정된 RECEIVER_REQUEST 조건들을 충족 처리한다.
+        deliveryConditionService.fulfillByReceiverRequest(
+                verification.getUserId(), verification.getReceiverId());
 
         return verification;
     }

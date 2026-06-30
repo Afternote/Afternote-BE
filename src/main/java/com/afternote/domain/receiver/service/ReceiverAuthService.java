@@ -1,5 +1,6 @@
 package com.afternote.domain.receiver.service;
 
+import com.afternote.domain.delivery.service.DeliveryConditionService;
 import com.afternote.domain.image.dto.PresignedUrlResponse;
 import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.receiver.dto.*;
@@ -50,6 +51,7 @@ public class ReceiverAuthService {
     private final AuthCodeMessageService authCodeMessageService;
     private final StringRedisTemplate stringRedisTemplate;
     private final DeliveryVerificationRepository deliveryVerificationRepository;
+    private final DeliveryConditionService deliveryConditionService;
     private final TimeLetterReceiverRepository timeLetterReceiverRepository;
     private final AfternoteReceiverRepository afternoteReceiverRepository;
     private final DiaryReceiverRepository diaryReceiverRepository;
@@ -65,26 +67,22 @@ public class ReceiverAuthService {
 
     public ReceivedTimeLetterListResponse getTimeLettersByAuthCode(String authCode) {
         Receiver receiver = findReceiverByAuthCode(authCode);
-        validateDeliveryCondition(receiver);
         return receivedService.getTimeLetters(receiver.getId());
     }
 
     public ReceivedAfternoteListResponse getAfternotesByAuthCode(String authCode) {
         Receiver receiver = findReceiverByAuthCode(authCode);
-        validateDeliveryCondition(receiver);
         return receivedService.getAfternotes(receiver.getId());
     }
 
     @Transactional
     public ReceivedTimeLetterResponse getTimeLetterByAuthCode(String authCode, Long timeLetterReceiverId) {
         Receiver receiver = findReceiverByAuthCode(authCode);
-        validateDeliveryCondition(receiver);
         return receivedService.getTimeLetter(receiver.getId(), timeLetterReceiverId);
     }
 
     public ReceivedAfternoteDetailResponse getAfternoteByAuthCode(String authCode, Long afternoteId) {
         Receiver receiver = findReceiverByAuthCode(authCode);
-        validateDeliveryCondition(receiver);
         return receivedService.getAfternote(receiver.getId(), afternoteId);
     }
 
@@ -127,15 +125,6 @@ public class ReceiverAuthService {
         }
         return receiverRepository.findByAuthCode(authCode.toLowerCase())
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_AUTH_CODE));
-    }
-
-    private void validateDeliveryCondition(Receiver receiver) {
-        User sender = userRepository.findById(receiver.getUserId())
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-        if (!sender.isDeliveryConditionMet()) {
-            throw new CustomException(ErrorCode.DELIVERY_CONDITION_NOT_MET);
-        }
     }
 
     public void sendEmailAuthCode(String email) {
@@ -267,7 +256,8 @@ public class ReceiverAuthService {
                 .orElse(null);
 
         ReceivedRecordStatus recordStatus = determineRecordStatus(targetReceiver.getId());
-        return ReceivedRecordBoxResponse.from(targetReceiver, sender, verification, recordStatus);    }
+        boolean anyFulfilled = deliveryConditionService.hasAnyFulfilled(targetReceiver.getId());
+        return ReceivedRecordBoxResponse.from(targetReceiver, sender, verification, recordStatus, anyFulfilled);    }
 
     private ReceivedRecordBoxResponse toReceivedRecordBoxResponse(
             Receiver receiver,
@@ -287,7 +277,8 @@ public class ReceiverAuthService {
                 .orElse(null);
 
         ReceivedRecordStatus recordStatus = determineRecordStatus(receiver.getId());
-        return ReceivedRecordBoxResponse.from(receiver, sender, verification, recordStatus);
+        boolean anyFulfilled = deliveryConditionService.hasAnyFulfilled(receiver.getId());
+        return ReceivedRecordBoxResponse.from(receiver, sender, verification, recordStatus, anyFulfilled);
     }
 
     private ReceivedRecordStatus determineRecordStatus(Long receiverId) {
@@ -311,7 +302,6 @@ public class ReceiverAuthService {
             LocalDate endDate
     ) {
         Receiver receiver = findReceiverByAuthCode(authCode);
-        validateDeliveryCondition(receiver);
 
         return receivedService.getReceivedDiaries(
                 receiver.getId(),
@@ -330,7 +320,6 @@ public class ReceiverAuthService {
             LocalDate endDate
     ) {
         Receiver receiver = findReceiverByAuthCode(authCode);
-        validateDeliveryCondition(receiver);
 
         return receivedService.getReceivedDeepThoughts(
                 receiver.getId(),
@@ -349,7 +338,6 @@ public class ReceiverAuthService {
             LocalDate endDate
     ) {
         Receiver receiver = findReceiverByAuthCode(authCode);
-        validateDeliveryCondition(receiver);
 
         return receivedService.getReceivedDailyQuestions(
                 receiver.getId(),

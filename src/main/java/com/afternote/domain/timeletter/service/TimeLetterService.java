@@ -12,6 +12,7 @@ import com.afternote.domain.timeletter.dto.response.TimeLetterResponse;
 import com.afternote.domain.timeletter.model.TimeLetter;
 import com.afternote.domain.timeletter.model.TimeLetterBlock;
 import com.afternote.domain.timeletter.model.TimeLetterBlockType;
+import com.afternote.domain.timeletter.model.TimeLetterDeliveryMode;
 import com.afternote.domain.timeletter.model.TimeLetterStatus;
 import com.afternote.domain.timeletter.repository.TimeLetterRepository;
 import com.afternote.domain.user.model.User;
@@ -90,18 +91,26 @@ public class TimeLetterService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
+        // 콘텐츠 작성은 활동으로 간주하여 미사용 타이머를 리셋한다.
+        user.touchActivity();
+
+        TimeLetterDeliveryMode deliveryMode = request.getDeliveryMode() != null
+                ? request.getDeliveryMode()
+                : TimeLetterDeliveryMode.DATE;
+
         // 수신자 ID는 DRAFT/SCHEDULED 모두 필수
         List<Long> receiverIds = normalizeReceiverIds(request.getReceiverIds());
 
         // 본문 블록 형식 검증
         validateBlocks(request.getBlocks());
 
-        // 정식 등록 상태라면 제목, 본문, 발송 예정 시간을 필수로 검증
+        // 정식 등록 상태라면 제목, 본문, (DATE 모드는) 발송 예정 시간을 필수로 검증
         if (request.getStatus() == TimeLetterStatus.SCHEDULED) {
             validateForScheduled(
                     request.getTitle(),
                     request.getSendAt(),
-                    hasContentBlock(request.getBlocks())
+                    hasContentBlock(request.getBlocks()),
+                    deliveryMode
             );
         }
 
@@ -109,8 +118,9 @@ public class TimeLetterService {
         TimeLetter timeLetter = TimeLetter.builder()
                 .user(user)
                 .title(request.getTitle())
-                .sendAt(request.getSendAt())
+                .sendAt(deliveryMode == TimeLetterDeliveryMode.POST_DEATH ? null : request.getSendAt())
                 .status(request.getStatus())
+                .deliveryMode(deliveryMode)
                 .build();
 
         // 요청으로 받은 blocks를 TimeLetterBlock 엔티티로 변환 후 연결
@@ -236,9 +246,14 @@ public class TimeLetterService {
                 ? request.getTitle()
                 : timeLetter.getTitle();
 
-        LocalDateTime newSendAt = request.getSendAt() != null
-                ? request.getSendAt()
-                : timeLetter.getSendAt();
+        TimeLetterDeliveryMode newDeliveryMode = request.getDeliveryMode() != null
+                ? request.getDeliveryMode()
+                : timeLetter.getDeliveryMode();
+
+        // POST_DEATH 모드는 발송일을 사용하지 않으므로 sendAt을 비운다.
+        LocalDateTime newSendAt = newDeliveryMode == TimeLetterDeliveryMode.POST_DEATH
+                ? null
+                : (request.getSendAt() != null ? request.getSendAt() : timeLetter.getSendAt());
 
         // blocks가 요청에 포함되면 요청 blocks 기준으로, 없으면 기존 blocks 기준으로 본문 존재 여부 확인
         boolean hasContent = request.getBlocks() != null
@@ -247,12 +262,12 @@ public class TimeLetterService {
 
         // 정식 등록 상태라면 필수값과 수신자 등록 여부를 검증
         if (newStatus == TimeLetterStatus.SCHEDULED) {
-            validateForScheduled(newTitle, newSendAt, hasContent);
+            validateForScheduled(newTitle, newSendAt, hasContent, newDeliveryMode);
             validateReceiversRegistered(timeLetterId);
         }
 
         // 타임레터 기본 정보 수정
-        timeLetter.update(newTitle, newSendAt, newStatus);
+        timeLetter.update(newTitle, newSendAt, newStatus, newDeliveryMode);
 
         // blocks가 요청에 포함된 경우에만 기존 블록을 새 블록으로 교체한다.
         if (request.getBlocks() != null) {
@@ -307,7 +322,16 @@ public class TimeLetterService {
      * - 정식 등록 상태에서는 제목, 본문, 발송 예정 시간이 모두 필요하다.
      * - 발송 예정 시간은 현재 시간 이후여야 한다.
      */
-    private void validateForScheduled(String title, LocalDateTime sendAt, boolean hasContent) {
+    private void validateForScheduled(String title, LocalDateTime sendAt, boolean hasContent,
+                                      TimeLetterDeliveryMode deliveryMode) {
+        // POST_DEATH 모드는 발송일이 없으므로 제목/본문만 검증한다.
+        if (deliveryMode == TimeLetterDeliveryMode.POST_DEATH) {
+            if (title == null || title.isBlank() || !hasContent) {
+                throw new CustomException(ErrorCode.TIME_LETTER_REQUIRED_FIELDS);
+            }
+            return;
+        }
+
         if (title == null || title.isBlank() || sendAt == null || !hasContent) {
             throw new CustomException(ErrorCode.TIME_LETTER_REQUIRED_FIELDS);
         }

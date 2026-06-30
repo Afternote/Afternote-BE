@@ -9,6 +9,8 @@ import com.afternote.domain.deepthought.dto.DeepThoughtResponse;
 import com.afternote.domain.deepthought.dto.DeepThoughtTagCountResponse;
 import com.afternote.domain.deepthought.model.DeepThought;
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
+import com.afternote.domain.delivery.model.DeliveryContentType;
+import com.afternote.domain.delivery.service.DeliveryConditionService;
 import com.afternote.domain.diary.dto.DiaryResponse;
 import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.repository.DiaryRepository;
@@ -51,6 +53,7 @@ public class ReceivedService {
     private final UserRepository userRepository;
     private final S3Service s3Service;
     private final MindRecordReceiverService mindRecordReceiverService;
+    private final DeliveryConditionService deliveryConditionService;
 
     private static final DateTimeFormatter KOREAN_DATE_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN);
@@ -61,12 +64,15 @@ public class ReceivedService {
      * - TimeLetter 내부의 blocks를 기준으로 본문을 응답한다.
      */
     public ReceivedTimeLetterListResponse getTimeLetters(Long receiverId) {
-        validateReceiver(receiverId);
+        // 타임레터는 DATE 모드는 날짜 기반(조건 무관), POST_DEATH 모드만 사후 조건으로 게이팅한다.
+        boolean postDeathFulfilled =
+                deliveryConditionService.isFulfilled(receiverId, DeliveryContentType.TIME_LETTER);
 
         List<TimeLetterReceiver> timeLetterReceivers =
                 timeLetterReceiverRepository.findByReceiverIdWithTimeLetter(receiverId);
 
         List<ReceivedTimeLetterResponse> responses = timeLetterReceivers.stream()
+                .filter(tlr -> !tlr.getTimeLetter().isPostDeath() || postDeathFulfilled)
                 .map(tlr -> ReceivedTimeLetterResponse.from(
                         tlr,
                         s3Service::generateGetPresignedUrl
@@ -84,15 +90,19 @@ public class ReceivedService {
      */
     @Transactional
     public ReceivedTimeLetterResponse getTimeLetter(Long receiverId, Long timeLetterReceiverId) {
-        validateReceiver(receiverId);
-
         TimeLetterReceiver timeLetterReceiver = timeLetterReceiverRepository
                 .findByIdAndReceiverIdWithTimeLetter(timeLetterReceiverId, receiverId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TIME_LETTER_NOT_FOUND));
 
-        // 발송 예정 시간이 지났을 때만 읽음 처리
-        if (timeLetterReceiver.getTimeLetter().getSendAt() != null
-                && !timeLetterReceiver.getTimeLetter().getSendAt().isAfter(LocalDateTime.now())) {
+        TimeLetter timeLetter = timeLetterReceiver.getTimeLetter();
+
+        if (timeLetter.isPostDeath()) {
+            // 사후 전달 타임레터는 전달 조건이 충족되어야 열람 가능
+            deliveryConditionService.requireFulfilled(receiverId, DeliveryContentType.TIME_LETTER);
+            timeLetterReceiver.markAsRead();
+        } else if (timeLetter.getSendAt() != null
+                && !timeLetter.getSendAt().isAfter(LocalDateTime.now())) {
+            // 발송 예정 시간이 지났을 때만 읽음 처리
             timeLetterReceiver.markAsRead();
         }
 
@@ -106,7 +116,7 @@ public class ReceivedService {
      * 수신자가 받은 애프터노트 목록 조회
      */
     public ReceivedAfternoteListResponse getAfternotes(Long receiverId) {
-        validateReceiver(receiverId);
+        deliveryConditionService.requireFulfilled(receiverId, DeliveryContentType.AFTERNOTE);
 
         List<AfternoteReceiver> afternoteReceivers =
                 afternoteReceiverRepository.findByReceiverIdWithAfternote(receiverId);
@@ -134,6 +144,8 @@ public class ReceivedService {
      * 수신한 애프터노트 상세 조회
      */
     public ReceivedAfternoteDetailResponse getAfternote(Long receiverId, Long afternoteId) {
+        deliveryConditionService.requireFulfilled(receiverId, DeliveryContentType.AFTERNOTE);
+
         AfternoteReceiver afternoteReceiver = afternoteReceiverRepository
                 .findByAfternoteIdAndReceiverIdWithAfternote(afternoteId, receiverId)
                 .orElseThrow(() -> new CustomException(ErrorCode.AFTERNOTE_NOT_FOUND));
@@ -226,7 +238,8 @@ public class ReceivedService {
                 ? deliveredAt
                 : timeLetter.getSendAt();
 
-        if (effectiveDeliveredAt == null) {
+        // POST_DEATH 모드는 발송일이 없으므로 deliveredAt이 null이어도 허용한다.
+        if (effectiveDeliveredAt == null && !timeLetter.isPostDeath()) {
             throw new CustomException(ErrorCode.TIME_LETTER_REQUIRED_FIELDS);
         }
 
@@ -344,22 +357,6 @@ public class ReceivedService {
     }
 
     /**
-     * 수신자 존재 여부 및 배달 조건 검증
-     * - receiverId가 존재하는지 확인한다.
-     * - 해당 수신자를 등록한 발신자의 배달 조건이 충족되었는지 확인한다.
-     */
-    private void validateReceiver(Long receiverId) {
-        Receiver receiver = receiverRepository.findById(receiverId)
-                .orElseThrow(() -> new CustomException(ErrorCode.RECEIVER_NOT_FOUND));
-
-        User sender = userRepository.findById(receiver.getUserId())
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-
-        if (!sender.isDeliveryConditionMet()) {
-            throw new CustomException(ErrorCode.DELIVERY_CONDITION_NOT_MET);
-        }
-    }
-    /**
      * 수신자가 받은 일기 목록 조회
      * - 수신자 ID 기준으로 DiaryReceiver 목록을 조회한다.
      * - 임시저장이 아닌 정식 등록 일기만 반환한다.
@@ -372,8 +369,8 @@ public class ReceivedService {
             LocalDate startDate,
             LocalDate endDate
     ) {
-        // 수신자 존재 여부 및 배달 조건 검증
-        validateReceiver(receiverId);
+        // 사후 전달 조건 검증 (다이어리)
+        deliveryConditionService.requireFulfilled(receiverId, DeliveryContentType.DIARY);
 
         // 날짜 조건을 LocalDateTime 범위로 변환
         LocalDateTime start = toStartDateTime(startDate);
@@ -409,8 +406,8 @@ public class ReceivedService {
             LocalDate startDate,
             LocalDate endDate
     ) {
-        // 수신자 존재 여부 및 배달 조건 검증
-        validateReceiver(receiverId);
+        // 사후 전달 조건 검증 (딥쏘트)
+        deliveryConditionService.requireFulfilled(receiverId, DeliveryContentType.DEEP_THOUGHT);
 
         // 날짜 조건을 LocalDateTime 범위로 변환
         LocalDateTime start = toStartDateTime(startDate);
@@ -461,8 +458,8 @@ public class ReceivedService {
             LocalDate startDate,
             LocalDate endDate
     ) {
-        // 수신자 존재 여부 및 배달 조건 검증
-        validateReceiver(receiverId);
+        // 사후 전달 조건 검증 (데일리 질문)
+        deliveryConditionService.requireFulfilled(receiverId, DeliveryContentType.DAILY_QUESTION);
 
         // 날짜 조건을 LocalDateTime 범위로 변환
         LocalDateTime start = toStartDateTime(startDate);

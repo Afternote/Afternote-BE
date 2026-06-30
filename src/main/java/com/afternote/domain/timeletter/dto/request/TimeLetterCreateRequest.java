@@ -1,5 +1,6 @@
 package com.afternote.domain.timeletter.dto.request;
 
+import com.afternote.domain.timeletter.model.TimeLetterDeliveryMode;
 import com.afternote.domain.timeletter.model.TimeLetterStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
@@ -19,8 +20,11 @@ public class TimeLetterCreateRequest {
     @Schema(description = "제목", example = "미래의 나에게")
     private String title;
 
-    @Schema(description = "발송 예정 시간", example = "2025-12-31T23:59:59")
+    @Schema(description = "발송 예정 시간 (DATE 모드에서만 사용)", example = "2025-12-31T23:59:59")
     private LocalDateTime sendAt;
+
+    @Schema(description = "전달 방식 (DATE: 날짜 기반, POST_DEATH: 사후 전달). 미지정 시 DATE", example = "DATE")
+    private TimeLetterDeliveryMode deliveryMode;
 
     @Schema(description = "상태 (DRAFT: 임시저장, SCHEDULED: 정식등록)")
     @NotNull(message = "상태를 입력해주세요.")

@@ -46,6 +46,7 @@ public class DiaryService {
     public DiaryResponse createDiary(Long userId, DiaryCreateRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        user.touchActivity();
 
         Diary diary = Diary.create(
                 user,

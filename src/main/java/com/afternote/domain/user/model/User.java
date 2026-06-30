@@ -8,7 +8,6 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Optional;
@@ -69,18 +68,9 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private UserRole role;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private DeliveryConditionType deliveryConditionType;
-
-    @Column
-    private Integer inactivityPeriodDays;
-
-    @Column
-    private LocalDate specificDate;
-
-    @Column(nullable = false)
-    private boolean conditionFulfilled;
+    // 마지막 활동 시각 (앱 실행/로그인/콘텐츠 작성 시 갱신). 미사용 자동 전달 판단 기준.
+    @Column(name = "last_active_at")
+    private LocalDateTime lastActiveAt;
 
     @Column(nullable = false)
     private boolean timeLetterPushEnabled;
@@ -105,8 +95,7 @@ public class User extends BaseEntity {
         this.profileImageUrl = profileImageUrl;
         this.status = status;
         this.role = UserRole.USER;
-        this.deliveryConditionType = DeliveryConditionType.NONE;
-        this.conditionFulfilled = true;
+        this.lastActiveAt = LocalDateTime.now();
 
         // 첫 번째 provider 등록
         addProvider(provider, null);
@@ -143,53 +132,13 @@ public class User extends BaseEntity {
         }
     }
 
-    public void updateDeliveryCondition(DeliveryConditionType conditionType, Integer inactivityPeriodDays, LocalDate specificDate) {
-        if (conditionType == null) {
-            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
-        }
-
-        this.deliveryConditionType = conditionType;
-
-        switch (conditionType) {
-            case NONE -> {
-                this.inactivityPeriodDays = null;
-                this.specificDate = null;
-                this.conditionFulfilled = true;
-            }
-            case INACTIVITY -> {
-                if (inactivityPeriodDays == null || inactivityPeriodDays <= 0) {
-                    throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
-                }
-                this.inactivityPeriodDays = inactivityPeriodDays;
-                this.specificDate = null;
-                this.conditionFulfilled = false;
-            }
-            case SPECIFIC_DATE -> {
-                if (specificDate == null) {
-                    throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
-                }
-                this.inactivityPeriodDays = null;
-                this.specificDate = specificDate;
-                this.conditionFulfilled = false;
-            }
-        }
+    /**
+     * 사용자의 마지막 활동 시각을 현재 시각으로 갱신한다.
+     * - 앱 실행/로그인/콘텐츠 작성 시 호출되어 미사용 자동 전달 타이머를 리셋한다.
+     */
+    public void touchActivity() {
+        this.lastActiveAt = LocalDateTime.now();
     }
-
-    public void fulfillCondition() {
-        this.conditionFulfilled = true;
-    }
-
-    public boolean isDeliveryConditionMet() {
-        return switch (this.deliveryConditionType) {
-            case NONE -> true;
-            case INACTIVITY -> this.inactivityPeriodDays != null
-                    && this.getUpdatedAt() != null
-                    && this.getUpdatedAt().isBefore(LocalDateTime.now().minusDays(this.inactivityPeriodDays));
-            case SPECIFIC_DATE -> this.specificDate != null && !LocalDate.now().isBefore(this.specificDate);
-        };
-    }
-
-
 
     /**
      * 새로운 provider를 사용자에게 연동

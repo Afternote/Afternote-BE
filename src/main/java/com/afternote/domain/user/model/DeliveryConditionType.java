@@ -2,12 +2,10 @@ package com.afternote.domain.user.model;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
-@Schema(description = "전달 조건 타입 - 콘텐츠가 수신자에게 전달되는 조건을 지정합니다.")
+@Schema(description = "사후 전달 조건 타입")
 public enum DeliveryConditionType {
-    @Schema(description = "조건 없음 - 즉시 열람 가능")
-    NONE,
-    @Schema(description = "비활동 감지 - 지정한 기간 동안 로그인하지 않으면 전달")
+    @Schema(description = "미사용 자동 전달 - 지정한 기간 동안 활동이 없으면 본인확인 후 전달")
     INACTIVITY,
-    @Schema(description = "특정 날짜 - 지정한 날짜가 지나면 전달")
-    SPECIFIC_DATE
+    @Schema(description = "수신자 요청 - 수신자가 서류 제출 후 운영자 승인 시 전달")
+    RECEIVER_REQUEST
 }

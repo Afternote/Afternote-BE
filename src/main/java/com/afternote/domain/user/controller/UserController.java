@@ -180,26 +180,15 @@ public class UserController {
     }
 
     @Operation(
-            summary = "전달 조건 조회 API",
-            description = "로그인한 사용자의 전달 조건 설정을 조회합니다."
+            summary = "활동 기록(ping) API",
+            description = "앱 실행 등 사용자 활동을 기록하여 미사용 자동 전달 타이머를 갱신합니다."
     )
-    @GetMapping("/delivery-condition")
-    public ApiResponse<DeliveryConditionResponse> getDeliveryCondition(
+    @PostMapping("/me/activity")
+    public ApiResponse<Void> recordActivity(
             @Parameter(hidden = true) @UserId Long userId
     ) {
-        return ApiResponse.success(userService.getDeliveryCondition(userId));
-    }
-
-    @Operation(
-            summary = "전달 조건 수정 API",
-            description = "로그인한 사용자의 전달 조건을 설정하거나 변경합니다."
-    )
-    @PatchMapping("/delivery-condition")
-    public ApiResponse<DeliveryConditionResponse> updateDeliveryCondition(
-            @Parameter(hidden = true) @UserId Long userId,
-            @Valid @RequestBody DeliveryConditionRequest request
-    ) {
-        return ApiResponse.success(userService.updateDeliveryCondition(userId, request));
+        userService.recordActivity(userId);
+        return ApiResponse.success(null);
     }
 
     @Operation(

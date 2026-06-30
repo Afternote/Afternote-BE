@@ -105,6 +105,8 @@ public class DailyQuestionService {
             throw new CustomException(ErrorCode.DAILY_QUESTION_ALREADY_ANSWERED);
         }
 
+        userDailyQuestion.getUser().touchActivity();
+
         boolean isDraft = request.getIsDraft() != null ? request.getIsDraft() : false;
         userDailyQuestion.updateAnswer(
                 mindRecordContentMediaService.prepareContentForSave(userId, request.getContent()),

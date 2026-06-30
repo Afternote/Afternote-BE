@@ -10,7 +10,6 @@ import com.afternote.domain.receiver.repository.ReceiverRepository;
 import com.afternote.domain.receiver.repository.UserReceiverRepository;
 import com.afternote.domain.user.dto.*;
 import com.afternote.domain.user.model.AuthProvider;
-import com.afternote.domain.user.model.DeliveryConditionType;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserProvider;
 import com.afternote.domain.user.repository.UserProviderRepository;
@@ -181,23 +180,10 @@ public class UserService {
         );
     }
 
-    public DeliveryConditionResponse getDeliveryCondition(Long userId) {
-        User user = findUserById(userId);
-        return DeliveryConditionResponse.from(user);
-    }
-
     @Transactional
-    public DeliveryConditionResponse updateDeliveryCondition(Long userId, DeliveryConditionRequest request) {
+    public void recordActivity(Long userId) {
         User user = findUserById(userId);
-        DeliveryConditionType previousConditionType = user.getDeliveryConditionType();
-
-        user.updateDeliveryCondition(
-                request.getConditionType(),
-                request.getInactivityPeriodDays(),
-                request.getSpecificDate()
-        );
-
-        return DeliveryConditionResponse.from(user);
+        user.touchActivity();
     }
 
     @Transactional

@@ -198,6 +198,7 @@ public class AfternoteService {
         // 사용자 조회
         com.afternote.domain.user.model.User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        user.touchActivity();
         
         // sortOrder 자동 계산 (해당 사용자의 최대값 + 1)
         Integer nextSortOrder = afternoteRepository.findMaxSortOrderByUserId(userId)

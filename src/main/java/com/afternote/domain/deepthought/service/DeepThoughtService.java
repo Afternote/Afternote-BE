@@ -44,6 +44,7 @@ public class DeepThoughtService {
     public DeepThoughtResponse createDeepThought(Long userId, DeepThoughtCreateRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        user.touchActivity();
         DeepThoughtCategory category = getCategory(userId, request.getCategory());
 
         DeepThought deepThought = DeepThought.create(

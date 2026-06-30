@@ -44,29 +44,43 @@ public class TimeLetter extends BaseEntity {
     @Column(nullable = false)
     private TimeLetterStatus status = TimeLetterStatus.DRAFT;
 
+    // 전달 방식 (DATE: 날짜 기반, POST_DEATH: 사후 전달)
+    // 기존 행 호환을 위해 DB 기본값 DATE를 둔다.
+    @Enumerated(EnumType.STRING)
+    @Column(name = "delivery_mode", nullable = false, columnDefinition = "varchar(20) default 'DATE'")
+    private TimeLetterDeliveryMode deliveryMode = TimeLetterDeliveryMode.DATE;
+
     // 본문 블록 목록
     @OneToMany(mappedBy = "timeLetter", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("blockOrder ASC")
     private final List<TimeLetterBlock> blocks = new ArrayList<>();
 
     @Builder
-    public TimeLetter(User user, String title, LocalDateTime sendAt, TimeLetterStatus status) {
+    public TimeLetter(User user, String title, LocalDateTime sendAt, TimeLetterStatus status,
+                      TimeLetterDeliveryMode deliveryMode) {
         this.user = user;
         this.title = title;
         this.sendAt = sendAt;
         this.status = status != null ? status : TimeLetterStatus.DRAFT;
+        this.deliveryMode = deliveryMode != null ? deliveryMode : TimeLetterDeliveryMode.DATE;
+    }
+
+    public boolean isPostDeath() {
+        return this.deliveryMode == TimeLetterDeliveryMode.POST_DEATH;
     }
 
     public List<TimeLetterBlock> getBlocks() {
         return Collections.unmodifiableList(blocks);
     }
 
-    public void update(String title, LocalDateTime sendAt, TimeLetterStatus status) {
+    public void update(String title, LocalDateTime sendAt, TimeLetterStatus status,
+                       TimeLetterDeliveryMode deliveryMode) {
         validateModifiable();
 
         if (title != null) this.title = title;
         if (sendAt != null) this.sendAt = sendAt;
         if (status != null) this.status = status;
+        if (deliveryMode != null) this.deliveryMode = deliveryMode;
     }
 
     public void replaceBlocks(List<TimeLetterBlock> newBlocks) {

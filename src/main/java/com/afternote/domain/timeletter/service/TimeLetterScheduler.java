@@ -26,7 +26,11 @@ public class TimeLetterScheduler {
     @Transactional
     public void updateScheduledToSent() {
         List<TimeLetter> letters = timeLetterRepository
-                .findByStatusAndSendAtBefore(TimeLetterStatus.SCHEDULED, LocalDateTime.now());
+                .findByStatusAndSendAtBefore(TimeLetterStatus.SCHEDULED, LocalDateTime.now())
+                .stream()
+                // POST_DEATH 모드는 날짜가 아닌 사후 조건으로 전달되므로 제외한다.
+                .filter(letter -> !letter.isPostDeath())
+                .toList();
 
         if (!letters.isEmpty()) {
             letters.forEach(TimeLetter::markAsSent);

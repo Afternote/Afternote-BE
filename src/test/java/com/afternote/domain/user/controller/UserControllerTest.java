@@ -174,28 +174,13 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("전달 조건 조회 API 성공")
-    void getDeliveryCondition_Success() throws Exception {
-        given(userService.getDeliveryCondition(USER_ID)).willReturn(null);
-
-        mockMvc.perform(get("/api/v1/users/delivery-condition").requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
+    @DisplayName("활동 기록(ping) API 성공")
+    void recordActivity_Success() throws Exception {
+        mockMvc.perform(post("/api/v1/users/me/activity")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
                 .andExpect(status().isOk());
 
-        verify(userService).getDeliveryCondition(USER_ID);
-    }
-
-    @Test
-    @DisplayName("전달 조건 수정 API 성공")
-    void updateDeliveryCondition_Success() throws Exception {
-        given(userService.updateDeliveryCondition(eq(USER_ID), any())).willReturn(null);
-
-        mockMvc.perform(patch("/api/v1/users/delivery-condition")
-                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"conditionType\":\"INACTIVITY\",\"inactivityPeriodDays\":365}"))
-                .andExpect(status().isOk());
-
-        verify(userService).updateDeliveryCondition(eq(USER_ID), any());
+        verify(userService).recordActivity(USER_ID);
     }
 
     @Test

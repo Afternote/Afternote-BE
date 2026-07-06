@@ -7,9 +7,11 @@ import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.Map;
 
@@ -24,7 +26,7 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class KakaoLoginService implements SocialLoginService {
     
-    private final RestTemplate restTemplate;
+    private final WebClient webClient;
     
     // application.yml에서 설정값을 가져옵니다
     // kakao.api.user-info-url: https://kapi.kakao.com/v2/user/me
@@ -36,25 +38,15 @@ public class KakaoLoginService implements SocialLoginService {
         try {
             log.debug("🔍 카카오 사용자 정보 조회 시작 - Token: {}...", accessToken.substring(0, Math.min(20, accessToken.length())));
             
-            // 1. 카카오 API에 사용자 정보 요청
-            HttpHeaders headers = new HttpHeaders();
-            headers.set("Authorization", "Bearer " + accessToken);
-            headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
-            
-            HttpEntity<String> entity = new HttpEntity<>(headers);
-            
             log.debug("📤 카카오 API 호출: {}", kakaoUserInfoUrl);
-            ResponseEntity<Map> response = restTemplate.exchange(
-                kakaoUserInfoUrl,
-                HttpMethod.GET,
-                entity,
-                Map.class
-            );
+            Map<String, Object> responseBody = webClient.get()
+                    .uri(kakaoUserInfoUrl)
+                    .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                    .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_FORM_URLENCODED_VALUE)
+                    .retrieve()
+                    .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
+                    .block();
             
-            log.debug("📥 카카오 API 응답 상태: {}", response.getStatusCode());
-            
-            // 2. 카카오 API 응답 파싱
-            Map<String, Object> responseBody = response.getBody();
             log.debug("📦 응답 Body: {}", responseBody);
             
             if (responseBody == null || responseBody.isEmpty()) {
@@ -85,7 +77,6 @@ public class KakaoLoginService implements SocialLoginService {
             String profileImageUrl = (String) profile.get("profile_image_url");
             log.debug("✅ 사용자 정보 추출 완료 - 닉네임: {}", nickname);
             
-            // 3. 공통 형식인 SocialUserInfo로 변환
             return SocialUserInfo.builder()
                     .providerId(providerId)
                     .email(email)

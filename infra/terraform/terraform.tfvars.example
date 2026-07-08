@@ -1,0 +1,28 @@
+# Copy to terraform.tfvars and fill in YOUR values (terraform.tfvars is gitignored)
+#
+#   cp terraform.tfvars.example terraform.tfvars
+
+aws_region    = "ap-northeast-2"
+project_name  = "afternote"
+environment   = "dev"
+
+# AWS Console → EC2 → Instance ID
+ec2_instance_id = "i-xxxxxxxxxxxxxxxxx"
+
+# AWS Console → RDS → DB identifier
+rds_instance_id = "your-rds-identifier"
+
+# SNS alert email
+alert_email = "you@example.com"
+
+# EC2 deploy path (default: ec2-user ~/deploy)
+deploy_path = "/home/ec2-user/deploy"
+ec2_user    = "ec2-user"
+
+# Existing Elastic IP allocation ID (eipalloc-xxx), or "" to create new
+existing_eip_allocation_id = ""
+
+# off 03:00 KST, on 12:00 KST
+stop_schedule     = "cron(0 3 * * ? *)"
+start_schedule    = "cron(0 12 * * ? *)"
+schedule_timezone = "Asia/Seoul"

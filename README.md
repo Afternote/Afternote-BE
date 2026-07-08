@@ -242,6 +242,19 @@ docker compose --env-file .env.production up -d
 > 배포 스택 구성: `nginx + spring + redis + certbot`  
 > DB는 Docker 컨테이너가 아닌 AWS RDS를 사용합니다.
 
+#### 3) EC2/RDS 비용 절감 스케줄 (Terraform)
+
+개발 off-hours(03:00~12:00 KST)에 EC2·RDS 자동 Stop/Start + Elastic IP 고정.
+
+**설정 방법·채워야 할 값**: [`infra/terraform/README.md`](infra/terraform/README.md)
+
+```bash
+cd infra/terraform
+cp terraform.tfvars.example terraform.tfvars   # ec2_instance_id, rds_instance_id, alert_email 입력
+terraform init && terraform apply
+terraform output elastic_ip   # 도메인 A 레cord + GitHub EC2_HOST 1회 설정
+```
+
 ### 실행 방법
 
 로컬 인프라(DB/Redis) 실행:

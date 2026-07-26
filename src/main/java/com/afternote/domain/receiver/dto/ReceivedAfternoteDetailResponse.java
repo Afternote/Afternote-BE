@@ -2,7 +2,6 @@ package com.afternote.domain.receiver.dto;
 
 import com.afternote.domain.afternote.model.*;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -11,72 +10,96 @@ import java.util.List;
 import java.util.function.Function;
 
 @Schema(description = "수신한 애프터노트 상세 응답")
-@Getter
 @Builder
-@AllArgsConstructor
-public class ReceivedAfternoteDetailResponse {
+public record ReceivedAfternoteDetailResponse(
+        @Schema(description = "애프터노트 ID", example = "1")
+        @Getter
+        Long id,
 
-    @Schema(description = "애프터노트 ID", example = "1")
-    private Long id;
+        @Schema(description = "카테고리", example = "PLAYLIST")
+        @Getter
+        AfternoteCategoryType category,
 
-    @Schema(description = "카테고리", example = "PLAYLIST")
-    private AfternoteCategoryType category;
+        @Schema(description = "제목", example = "내 아들에게")
+        @Getter
+        String title,
 
-    @Schema(description = "제목", example = "내 아들에게")
-    private String title;
+        @Schema(description = "체크리스트 (SOCIAL/GALLERY 전용)")
+        @Getter
+        List<String> actions,
 
-    @Schema(description = "체크리스트 (SOCIAL/GALLERY 전용)")
-    private List<String> actions;
+        @Schema(description = "남기는 메시지")
+        @Getter
+        String leaveMessage,
 
-    @Schema(description = "남기는 메시지")
-    private String leaveMessage;
+        @Schema(description = "발신자 이름", example = "김철수")
+        @Getter
+        String senderName,
 
-    @Schema(description = "발신자 이름", example = "김철수")
-    private String senderName;
+        @Schema(description = "작성 시간")
+        @Getter
+        LocalDateTime createdAt,
 
-    @Schema(description = "작성 시간")
-    private LocalDateTime createdAt;
+        @Schema(description = "플레이리스트 정보 (PLAYLIST 전용)")
+        @Getter
+        PlaylistInfo playlist
+) {
 
-    @Schema(description = "플레이리스트 정보 (PLAYLIST 전용)")
-    private PlaylistInfo playlist;
 
-    @Getter
+
+
+
+
+
+
+
     @Builder
-    @AllArgsConstructor
-    public static class PlaylistInfo {
-        @Schema(description = "분위기 설명")
-        private String atmosphere;
+    public static record PlaylistInfo(
+            @Schema(description = "분위기 설명")
+            @Getter
+            String atmosphere,
 
-        @Schema(description = "노래 목록")
-        private List<SongInfo> songs;
+            @Schema(description = "노래 목록")
+            @Getter
+            List<SongInfo> songs,
 
-        @Schema(description = "추모 영상")
-        private MemorialVideoInfo memorialVideo;
+            @Schema(description = "추모 영상")
+            @Getter
+            MemorialVideoInfo memorialVideo
+    ) {
+
+
     }
 
-    @Getter
     @Builder
-    @AllArgsConstructor
-    public static class SongInfo {
-        @Schema(description = "곡 제목")
-        private String title;
+    public static record SongInfo(
+            @Schema(description = "곡 제목")
+            @Getter
+            String title,
 
-        @Schema(description = "아티스트")
-        private String artist;
+            @Schema(description = "아티스트")
+            @Getter
+            String artist,
 
-        @Schema(description = "커버 이미지 URL")
-        private String coverUrl;
+            @Schema(description = "커버 이미지 URL")
+            @Getter
+            String coverUrl
+    ) {
+
+
     }
 
-    @Getter
     @Builder
-    @AllArgsConstructor
-    public static class MemorialVideoInfo {
-        @Schema(description = "영상 URL")
-        private String videoUrl;
+    public static record MemorialVideoInfo(
+            @Schema(description = "영상 URL")
+            @Getter
+            String videoUrl,
 
-        @Schema(description = "썸네일 URL")
-        private String thumbnailUrl;
+            @Schema(description = "썸네일 URL")
+            @Getter
+            String thumbnailUrl
+    ) {
+
     }
 
     public static ReceivedAfternoteDetailResponse fromSocial(Afternote afternote, String senderName) {

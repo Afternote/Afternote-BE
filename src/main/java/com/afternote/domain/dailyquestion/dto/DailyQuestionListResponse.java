@@ -8,25 +8,35 @@ import lombok.Getter;
 
 import java.util.List;
 
-@Getter
 @Builder
-public class DailyQuestionListResponse {
+public record DailyQuestionListResponse(
+        @Schema(description = "유저 데일리 질문(답변) ID", example = "10")
+        @Getter
+        Long userDailyQuestionId,
 
-    @Schema(description = "유저 데일리 질문(답변) ID", example = "10")
-    private Long userDailyQuestionId;
+        @Schema(description = "질문 제목(내용)", example = "오늘 가장 감사했던 일은 무엇인가요?")
+        @Getter
+        String title,
 
-    @Schema(description = "질문 제목(내용)", example = "오늘 가장 감사했던 일은 무엇인가요?")
-    private String title;
+        @Schema(description = MindRecordHtmlSchema.CONTENT, example = MindRecordHtmlSchema.CONTENT_EXAMPLE)
+        @Getter
+        String content,
 
-    @Schema(description = MindRecordHtmlSchema.CONTENT, example = MindRecordHtmlSchema.CONTENT_EXAMPLE)
-    private String content;
+        @Schema(description = "생성일시 (yyyy.MM.dd E 포맷)", example = "2023.10.12 목")
+        @Getter
+        String createdAt,
 
-    @Schema(description = "생성일시 (yyyy.MM.dd E 포맷)", example = "2023.10.12 목")
-    private String createdAt;
+        @Schema(description = "임시저장 여부", example = "false")
+        boolean isDraft,
 
-    @Schema(description = "임시저장 여부", example = "false")
-    private boolean isDraft;
+        @Schema(description = "수신자 목록")
+        @Getter
+        List<MindRecordReceiverSummaryResponse> receivers
+) {
 
-    @Schema(description = "수신자 목록")
-    private List<MindRecordReceiverSummaryResponse> receivers;
+
+
+
+
+
 }

@@ -7,15 +7,18 @@ import lombok.Getter;
 import java.util.List;
 
 @Schema(description = "타임레터 목록 응답")
-@Getter
 @Builder
-public class TimeLetterListResponse {
+public record TimeLetterListResponse(
+        @Schema(description = "타임레터 목록")
+        @Getter
+        List<TimeLetterResponse> timeLetters,
 
-    @Schema(description = "타임레터 목록")
-    private List<TimeLetterResponse> timeLetters;
+        @Schema(description = "총 개수", example = "5")
+        @Getter
+        int totalCount
+) {
 
-    @Schema(description = "총 개수", example = "5")
-    private int totalCount;
+
 
     public static TimeLetterListResponse from(List<TimeLetterResponse> timeLetters) {
         return TimeLetterListResponse.builder()

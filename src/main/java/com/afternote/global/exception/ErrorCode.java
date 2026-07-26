@@ -15,6 +15,7 @@ public enum ErrorCode {
     LOGIN_REQUIRED(HttpStatus.UNAUTHORIZED, 1001, "인증이 필요합니다. 로그인해주세요."),
     NOT_ENOUGH_PERMISSION(HttpStatus.FORBIDDEN, 1002, "권한이 부족합니다."),
     ENDPOINT_NOT_FOUND(HttpStatus.NOT_FOUND, 1003, "존재하지 않는 엔드포인트입니다."),
+    INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 1004, "서버 내부 오류가 발생했습니다."),
 
     // ======================================
     // 2. 토큰 관련 오류 (code: 1100 ~ 1199)

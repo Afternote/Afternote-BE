@@ -1,6 +1,7 @@
 package com.afternote.global.exception;
 
 import com.afternote.global.common.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -8,6 +9,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
@@ -44,12 +46,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(400, 400, "요청 파라미터 형식이 올바르지 않습니다."));
     }
 
-    // 5. 그 외 예상치 못한 에러 (NullPointer 등)
+    // 5. 그 외 예상치 못한 에러 — 상세는 로그에만, 응답은 일반 메시지
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
+        log.error("Unhandled exception", e);
+        ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
         return ResponseEntity
-                .status(500)
-                .body(ApiResponse.error(500, 500, "서버 내부 오류: " + e.getMessage()));
+                .status(errorCode.getHttpStatus())
+                .body(ApiResponse.error(errorCode));
     }
 
 }

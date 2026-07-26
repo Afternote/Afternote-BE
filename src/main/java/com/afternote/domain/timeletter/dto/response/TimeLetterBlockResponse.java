@@ -8,17 +8,28 @@ import lombok.Getter;
 
 import java.util.function.Function;
 
-@Getter
 @Builder
 @Schema(description = "타임레터 본문 블록 응답")
-public class TimeLetterBlockResponse {
+public record TimeLetterBlockResponse(
+        @Getter
+        Long id,
 
-    private Long id;
-    private TimeLetterBlockType blockType;
-    private Integer blockOrder;
-    private String textContent;
-    private String url;
-    private String mimeType;
+        @Getter
+        TimeLetterBlockType blockType,
+
+        @Getter
+        Integer blockOrder,
+
+        @Getter
+        String textContent,
+
+        @Getter
+        String url,
+
+        @Getter
+        String mimeType
+) {
+
 
     public static TimeLetterBlockResponse from(
             TimeLetterBlock block,

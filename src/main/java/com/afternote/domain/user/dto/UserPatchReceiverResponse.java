@@ -5,24 +5,33 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 
-@Getter
 @Builder
-public class UserPatchReceiverResponse {
+public record UserPatchReceiverResponse(
+        @Schema(description = "수신인 ID", example = "1")
+        @Getter
+        Long receiverId,
 
-    @Schema(description = "수신인 ID", example = "1")
-    private Long receiverId;
+        @Schema(description = "이름", example = "김소희")
+        @Getter
+        String name,
 
-    @Schema(description = "이름", example = "김소희")
-    private String name;
+        @Schema(description = "전화번호", example = "010-1234-5678")
+        @Getter
+        String phone,
 
-    @Schema(description = "전화번호", example = "010-1234-5678")
-    private String phone;
+        @Schema(description = "관계", example = "DAUGHTER")
+        @Getter
+        String relation,
 
-    @Schema(description = "관계", example = "DAUGHTER")
-    private String relation;
+        @Schema(description = "이메일", example = "sohee@example.com")
+        @Getter
+        String email
+) {
 
-    @Schema(description = "이메일", example = "sohee@example.com")
-    private String email;
+
+
+
+
 
 
     public static UserPatchReceiverResponse from(Receiver receiver) {

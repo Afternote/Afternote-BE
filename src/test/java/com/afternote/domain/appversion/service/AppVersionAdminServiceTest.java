@@ -12,7 +12,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
 
@@ -70,10 +69,11 @@ class AppVersionAdminServiceTest {
     }
 
     private static AppVersionReleaseRegisterRequest request(int versionCode) {
-        AppVersionReleaseRegisterRequest request = new AppVersionReleaseRegisterRequest();
-        ReflectionTestUtils.setField(request, "platform", AppPlatform.ANDROID);
-        ReflectionTestUtils.setField(request, "versionCode", versionCode);
-        ReflectionTestUtils.setField(request, "storeUrl", "https://play.google.com/app");
-        return request;
+        return new AppVersionReleaseRegisterRequest(
+                AppPlatform.ANDROID,
+                versionCode,
+                null,
+                "https://play.google.com/app"
+        );
     }
 }

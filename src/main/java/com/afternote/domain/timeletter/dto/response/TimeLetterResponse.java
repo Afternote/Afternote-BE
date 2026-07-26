@@ -10,20 +10,33 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Function;
 
-@Getter
 @Builder
 @Schema(description = "타임레터 응답")
-public class TimeLetterResponse {
+public record TimeLetterResponse(
+        @Getter
+        Long id,
 
-    private Long id;
-    private String title;
-    private LocalDateTime sendAt;
-    private LocalDateTime deliveredAt;
-    private String status;
+        @Getter
+        String title,
 
-    private List<TimeLetterBlockResponse> blocks;
+        @Getter
+        LocalDateTime sendAt,
 
-    private List<Long> receiverIds;
+        @Getter
+        LocalDateTime deliveredAt,
+
+        @Getter
+        String status,
+
+        @Getter
+        List<TimeLetterBlockResponse> blocks,
+
+        @Getter
+        List<Long> receiverIds
+) {
+
+
+
 
     public static TimeLetterResponse from(
             TimeLetter timeLetter,

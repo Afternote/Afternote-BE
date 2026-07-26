@@ -5,7 +5,6 @@ import com.afternote.domain.timeletter.dto.response.TimeLetterBlockResponse;
 import com.afternote.domain.timeletter.model.TimeLetter;
 import com.afternote.domain.timeletter.model.TimeLetterStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -14,40 +13,58 @@ import java.util.List;
 import java.util.function.Function;
 
 @Schema(description = "수신한 타임레터 응답")
-@Getter
 @Builder
-@AllArgsConstructor
-public class ReceivedTimeLetterResponse {
+public record ReceivedTimeLetterResponse(
+        @Schema(description = "타임레터 ID", example = "1")
+        @Getter
+        Long id,
 
-    @Schema(description = "타임레터 ID", example = "1")
-    private Long id;
+        @Schema(description = "수신 타임레터 ID (상세 조회 시 사용)", example = "1")
+        @Getter
+        Long timeLetterReceiverId,
 
-    @Schema(description = "수신 타임레터 ID (상세 조회 시 사용)", example = "1")
-    private Long timeLetterReceiverId;
+        @Schema(description = "제목", example = "미래의 나에게")
+        @Getter
+        String title,
 
-    @Schema(description = "제목", example = "미래의 나에게")
-    private String title;
+        @Schema(description = "본문 블록 목록")
+        @Getter
+        List<TimeLetterBlockResponse> blocks,
 
-    @Schema(description = "본문 블록 목록")
-    private List<TimeLetterBlockResponse> blocks;
+        @Schema(description = "발송 예정 시간")
+        @Getter
+        LocalDateTime sendAt,
 
-    @Schema(description = "발송 예정 시간")
-    private LocalDateTime sendAt;
+        @Schema(description = "상태")
+        @Getter
+        TimeLetterStatus status,
 
-    @Schema(description = "상태")
-    private TimeLetterStatus status;
+        @Schema(description = "발신자 이름", example = "김철수")
+        @Getter
+        String senderName,
 
-    @Schema(description = "발신자 이름", example = "김철수")
-    private String senderName;
+        @Schema(description = "배달 시간")
+        @Getter
+        LocalDateTime deliveredAt,
 
-    @Schema(description = "배달 시간")
-    private LocalDateTime deliveredAt;
+        @Schema(description = "작성 시간")
+        @Getter
+        LocalDateTime createdAt,
 
-    @Schema(description = "작성 시간")
-    private LocalDateTime createdAt;
+        @Schema(description = "읽음 여부")
+        @Getter
+        Boolean isRead
+) {
 
-    @Schema(description = "읽음 여부")
-    private Boolean isRead;
+
+
+
+
+
+
+
+
+
 
     public static ReceivedTimeLetterResponse from(TimeLetterReceiver timeLetterReceiver) {
         return from(timeLetterReceiver, null);

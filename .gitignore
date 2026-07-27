@@ -52,5 +52,8 @@ out/
 *.sqlite
 db_data/
 
+### Contract test venv ###
+.contract-venv/
+
 ### certbot (인증서 폴더)
 data/

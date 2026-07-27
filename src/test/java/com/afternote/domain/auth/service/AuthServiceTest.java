@@ -68,6 +68,19 @@ class AuthServiceTest {
     }
 
     @Test
+    @DisplayName("회원가입 실패 - 이메일 미인증")
+    void signup_EmailNotVerified_Fail() {
+        SignupRequest request = org.mockito.Mockito.mock(SignupRequest.class);
+        given(request.getEmail()).willReturn("test@test.com");
+        given(userRepository.existsByEmail("test@test.com")).willReturn(false);
+        given(emailService.consumeVerified("test@test.com", EmailVerificationPurpose.SIGNUP)).willReturn(false);
+
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.EMAIL_NOT_VERIFIED));
+    }
+
+    @Test
     @DisplayName("회원가입 성공")
     void signup_Success() {
         SignupRequest request = org.mockito.Mockito.mock(SignupRequest.class);
@@ -76,6 +89,7 @@ class AuthServiceTest {
         given(request.getName()).willReturn("tester");
 
         given(userRepository.existsByEmail("test@test.com")).willReturn(false);
+        given(emailService.consumeVerified("test@test.com", EmailVerificationPurpose.SIGNUP)).willReturn(true);
         given(passwordEncoder.encode("Password1!")).willReturn("encoded");
         given(userRepository.save(any(User.class))).willAnswer(invocation -> {
             User u = invocation.getArgument(0);
@@ -87,6 +101,7 @@ class AuthServiceTest {
 
         assertThat(user.getId()).isEqualTo(1L);
         assertThat(user.getEmail()).isEqualTo("test@test.com");
+        verify(emailService).consumeVerified("test@test.com", EmailVerificationPurpose.SIGNUP);
         verify(tokenService, org.mockito.Mockito.never()).saveToken(any(), any());
     }
 
@@ -230,11 +245,24 @@ class AuthServiceTest {
         EmailVerifyRequest request = org.mockito.Mockito.mock(EmailVerifyRequest.class);
         given(request.getEmail()).willReturn("test@test.com");
         given(request.getCertificateCode()).willReturn("111111");
-        given(emailService.verifyCode("test@test.com", "111111", EmailVerificationPurpose.SIGNUP)).willReturn(false);
+        given(emailService.verifyAndDeleteCode("test@test.com", "111111", EmailVerificationPurpose.SIGNUP)).willReturn(false);
 
         assertThatThrownBy(() -> authService.emailVerify(request))
                 .isInstanceOf(CustomException.class)
                 .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.INVALID_EMAIL_VERIFICATION));
+    }
+
+    @Test
+    @DisplayName("이메일 인증 성공 - 가입용 인증 완료 플래그 저장")
+    void emailVerify_Success() {
+        EmailVerifyRequest request = org.mockito.Mockito.mock(EmailVerifyRequest.class);
+        given(request.getEmail()).willReturn("test@test.com");
+        given(request.getCertificateCode()).willReturn("123456");
+        given(emailService.verifyAndDeleteCode("test@test.com", "123456", EmailVerificationPurpose.SIGNUP)).willReturn(true);
+
+        authService.emailVerify(request);
+
+        verify(emailService).markVerified("test@test.com", EmailVerificationPurpose.SIGNUP);
     }
 
     @Test

@@ -18,10 +18,12 @@ import java.util.concurrent.TimeUnit;
 public class EmailService {
 
     private static final String CODE_KEY_PREFIX = "EMAIL:";
+    private static final String VERIFIED_KEY_PREFIX = "EMAIL_VERIFIED:";
     private static final String COOLDOWN_KEY_PREFIX = "EMAIL_COOLDOWN:";
     private static final String HOURLY_COUNT_KEY_PREFIX = "EMAIL_SEND_COUNT:";
     private static final Duration RESEND_COOLDOWN = Duration.ofSeconds(10);
     private static final Duration HOURLY_LIMIT_WINDOW = Duration.ofHours(1);
+    private static final Duration VERIFIED_TTL = Duration.ofMinutes(10);
     private static final long MAX_SENDS_PER_HOUR = 5L;
 
     private final JavaMailSender javaMailSender;
@@ -87,8 +89,30 @@ public class EmailService {
         return true;
     }
 
+    public void markVerified(String email, EmailVerificationPurpose purpose) {
+        redisTemplate.opsForValue().set(buildVerifiedKey(email, purpose), "1", VERIFIED_TTL);
+    }
+
+    /**
+     * 회원가입 등에서 이메일 인증 완료 여부를 소비한다.
+     * @return 인증 완료 상태가 있으면 true (플래그 삭제), 없으면 false
+     */
+    public boolean consumeVerified(String email, EmailVerificationPurpose purpose) {
+        String verifiedKey = buildVerifiedKey(email, purpose);
+        String value = redisTemplate.opsForValue().get(verifiedKey);
+        if (value == null) {
+            return false;
+        }
+        redisTemplate.delete(verifiedKey);
+        return true;
+    }
+
     private String buildCodeKey(String email, EmailVerificationPurpose purpose) {
         return CODE_KEY_PREFIX + purpose.name() + ":" + email;
+    }
+
+    private String buildVerifiedKey(String email, EmailVerificationPurpose purpose) {
+        return VERIFIED_KEY_PREFIX + purpose.name() + ":" + email;
     }
 
     private String createCode() {

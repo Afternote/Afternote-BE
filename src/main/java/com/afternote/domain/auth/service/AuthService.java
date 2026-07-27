@@ -36,6 +36,10 @@ public class AuthService {
             throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
         }
 
+        if (!emailService.consumeVerified(request.getEmail(), EmailVerificationPurpose.SIGNUP)) {
+            throw new CustomException(ErrorCode.EMAIL_NOT_VERIFIED);
+        }
+
         User user = User.builder()
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
@@ -146,13 +150,14 @@ public class AuthService {
 
     @Transactional
     public void emailVerify(EmailVerifyRequest request) {
-        if (!emailService.verifyCode(
+        if (!emailService.verifyAndDeleteCode(
                 request.getEmail(),
                 request.getCertificateCode(),
                 EmailVerificationPurpose.SIGNUP
         )) {
             throw new CustomException(ErrorCode.INVALID_EMAIL_VERIFICATION);
         }
+        emailService.markVerified(request.getEmail(), EmailVerificationPurpose.SIGNUP);
     }
 
     @Transactional

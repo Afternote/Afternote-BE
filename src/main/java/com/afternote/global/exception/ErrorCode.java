@@ -74,6 +74,7 @@ public enum ErrorCode {
     NEWPASSWORD_MATCH(HttpStatus.BAD_REQUEST, 1206, "새 비밀번호와 같습니다."),
 
     INVALID_EMAIL_VERIFICATION(HttpStatus.BAD_REQUEST, 1207, "인증번호가 유효하지 않습니다."),
+    EMAIL_NOT_VERIFIED(HttpStatus.BAD_REQUEST, 1220, "이메일 인증이 필요합니다."),
 
     // 소셜 로그인 실패
     SOCIAL_LOGIN_FAILED(HttpStatus.BAD_REQUEST, 1208, "소셜 로그인에 실패했습니다."),

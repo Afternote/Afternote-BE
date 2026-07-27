@@ -73,3 +73,38 @@ jobs:
             docker compose up -d --remove-orphans --pull always
             docker compose logs --tail=30 afternote-server
             docker image prune -f
+
+      # Secret: APP_BASE_URL = https://afternote.kro.kr  (trailing slash 없이)
+      - name: Smoke test
+        env:
+          BASE_URL: ${{ secrets.APP_BASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BASE_URL:-}" ]; then
+            echo "[ERROR] APP_BASE_URL secret is not set"
+            exit 1
+          fi
+          BASE_URL="${BASE_URL%/}"
+
+          echo "Waiting for server ready at ${BASE_URL} ..."
+          ready=0
+          for i in $(seq 1 30); do
+            if curl -sf "${BASE_URL}/v3/api-docs" | grep -q openapi; then
+              ready=1
+              break
+            fi
+            echo "retry ${i}/30 ..."
+            sleep 5
+          done
+          if [ "$ready" -ne 1 ]; then
+            echo "[ERROR] Smoke failed: /v3/api-docs not ready"
+            exit 1
+          fi
+
+          echo "Checking /v3/api-docs ..."
+          curl -sf "${BASE_URL}/v3/api-docs" | grep -q openapi
+
+          echo "Checking /api/v1/app/version ..."
+          curl -sf "${BASE_URL}/api/v1/app/version?platform=ANDROID&versionCode=10001" | grep -q '"status":200'
+
+          echo "Smoke OK"

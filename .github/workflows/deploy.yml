@@ -74,7 +74,6 @@ jobs:
             docker compose logs --tail=30 afternote-server
             docker image prune -f
 
-      # Secret: APP_BASE_URL = https://afternote.kro.kr  (trailing slash 없이)
       - name: Smoke test
         env:
           BASE_URL: ${{ secrets.APP_BASE_URL }}
@@ -108,3 +107,18 @@ jobs:
           curl -sf "${BASE_URL}/api/v1/app/version?platform=ANDROID&versionCode=10001" | grep -q '"status":200'
 
           echo "Smoke OK"
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Contract test
+        env:
+          BASE_URL: ${{ secrets.APP_BASE_URL }}
+          CONTRACT_TEST_EMAIL: ${{ secrets.CONTRACT_TEST_EMAIL }}
+          CONTRACT_TEST_PASSWORD: ${{ secrets.CONTRACT_TEST_PASSWORD }}
+        run: |
+          set -euo pipefail
+          chmod +x scripts/contract-test.sh
+          ./scripts/contract-test.sh

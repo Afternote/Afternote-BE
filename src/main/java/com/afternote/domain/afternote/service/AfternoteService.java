@@ -35,6 +35,10 @@ public class AfternoteService {
         if (page == null || page < 0 || size == null || size < 1) {
             throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
         }
+        // PageRequest offset(page * size)가 int 범위를 넘으면 IllegalArgumentException → 500 방지
+        if ((long) page * (long) size > Integer.MAX_VALUE) {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+        }
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Afternote> afternotePage;

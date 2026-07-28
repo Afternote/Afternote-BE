@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
@@ -37,10 +38,16 @@ public class AfternoteController {
             @RequestParam(required = false) AfternoteCategoryType category,
             
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")
-            @RequestParam(defaultValue = "0") @Min(value = 0, message = "page는 0 이상이어야 합니다.") int page,
+            @RequestParam(defaultValue = "0")
+            @Min(value = 0, message = "page는 0 이상이어야 합니다.")
+            @Max(value = 10_000, message = "page가 너무 큽니다.")
+            int page,
             
             @Parameter(description = "페이지 사이즈", example = "10")
-            @RequestParam(defaultValue = "10") @Min(value = 1, message = "size는 1 이상이어야 합니다.") int size
+            @RequestParam(defaultValue = "10")
+            @Min(value = 1, message = "size는 1 이상이어야 합니다.")
+            @Max(value = 100, message = "size는 100 이하여야 합니다.")
+            int size
     ) {
         AfternotePageResponse response = afternoteService.getAfternotes(userId, category, page, size);
         return ApiResponse.success(response);

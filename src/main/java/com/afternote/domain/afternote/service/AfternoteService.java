@@ -32,6 +32,10 @@ public class AfternoteService {
     private final S3Service s3Service;
 
     public AfternotePageResponse getAfternotes(Long userId, AfternoteCategoryType category, Integer page, Integer size) {
+        if (page == null || page < 0 || size == null || size < 1) {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+
         Pageable pageable = PageRequest.of(page, size);
         Page<Afternote> afternotePage;
         

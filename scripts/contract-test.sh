@@ -22,9 +22,10 @@ fi
 BASE_URL="${BASE_URL%/}"
 
 # prod 안전: GET만, 5xx만 실패 처리.
-# receiver-auth는 특수 헤더(X-Auth-Code) + 잘못된 path id에서 500이 나 1차 제외.
-# admin은 관리자 전용.
-EXCLUDE_PATH_REGEX="${CONTRACT_EXCLUDE_PATH_REGEX:-/api/v1/admin|/api/v1/receiver-auth}"
+# receiver-auth: 특수 헤더(X-Auth-Code) + 잘못된 path id 500
+# admin: 관리자 전용
+# mind-record: Gemini 외부 호출/쿼터로 timeout·불안정
+EXCLUDE_PATH_REGEX="${CONTRACT_EXCLUDE_PATH_REGEX:-/api/v1/admin|/api/v1/receiver-auth|/api/v1/mind-record}"
 MAX_EXAMPLES="${CONTRACT_MAX_EXAMPLES:-5}"
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"

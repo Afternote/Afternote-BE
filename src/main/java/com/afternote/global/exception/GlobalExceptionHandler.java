@@ -1,12 +1,17 @@
 package com.afternote.global.exception;
 
 import com.afternote.global.common.ApiResponse;
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.TypeMismatchException;
+import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 @Slf4j
@@ -30,6 +35,18 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(400, 400, errorMessage));
     }
 
+    // 2-1. @Validated + @Min/@Max 등 메서드 파라미터 검증
+    @ExceptionHandler({ConstraintViolationException.class, HandlerMethodValidationException.class})
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolationException(Exception e) {
+        String errorMessage = "요청 값이 올바르지 않습니다.";
+        if (e instanceof ConstraintViolationException cve && !cve.getConstraintViolations().isEmpty()) {
+            errorMessage = cve.getConstraintViolations().iterator().next().getMessage();
+        }
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.error(400, ErrorCode.INVALID_INPUT_VALUE.getCode(), errorMessage));
+    }
+
     // 3. JSON 파싱 에러 처리 (잘못된 형식의 요청)
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleJsonParseException(HttpMessageNotReadableException e) {
@@ -38,12 +55,17 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(400, 400, "잘못된 요청 형식입니다. JSON 데이터를 확인해주세요."));
     }
 
-    // 4. 경로 변수/쿼리 파라미터 타입 불일치 (예: id에 문자열 전달)
-    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ApiResponse<Void>> handleTypeMismatchException(MethodArgumentTypeMismatchException e) {
+    // 4. 경로 변수/쿼리 파라미터 타입 불일치·누락 (예: yearMonth=, page 문자열)
+    @ExceptionHandler({
+            MethodArgumentTypeMismatchException.class,
+            TypeMismatchException.class,
+            ConversionFailedException.class,
+            MissingServletRequestParameterException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatchException(Exception e) {
         return ResponseEntity
                 .badRequest()
-                .body(ApiResponse.error(400, 400, "요청 파라미터 형식이 올바르지 않습니다."));
+                .body(ApiResponse.error(400, ErrorCode.INVALID_INPUT_VALUE.getCode(), "요청 파라미터 형식이 올바르지 않습니다."));
     }
 
     // 5. 그 외 예상치 못한 에러 — 상세는 로그에만, 응답은 일반 메시지

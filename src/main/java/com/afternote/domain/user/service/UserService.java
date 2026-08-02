@@ -41,6 +41,7 @@ public class UserService {
     private final com.afternote.domain.auth.service.TokenService tokenService;
     private final SocialLoginFactory socialLoginFactory;
     private final UserProviderRepository userProviderRepository;
+    private final AccountWithdrawalService accountWithdrawalService;
 
     public UserResponse getMyProfile(Long userId) {
 
@@ -246,13 +247,7 @@ public class UserService {
 
     @Transactional
     public void deleteAccount(Long userId) {
-        User user = findUserById(userId);
-        
-        // 1. Redis에서 해당 유저의 모든 refresh token 삭제
-        tokenService.deleteAllUserTokens(userId);
-        
-        // 2. User 엔티티 삭제 (cascade로 providers도 자동 삭제됨)
-        userRepository.delete(user);
+        accountWithdrawalService.withdraw(userId);
     }
 
     private User findUserById(Long userId) {

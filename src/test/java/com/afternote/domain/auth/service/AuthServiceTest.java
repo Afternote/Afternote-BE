@@ -7,6 +7,7 @@ import com.afternote.domain.user.model.AuthProvider;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserStatus;
 import com.afternote.domain.user.repository.UserRepository;
+import com.afternote.domain.user.service.WithdrawalCooldownService;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import com.afternote.global.jwt.JwtTokenProvider;
@@ -26,6 +27,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.BDDMockito.willThrow;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -48,6 +50,9 @@ class AuthServiceTest {
 
     @Mock
     private EmailService emailService;
+
+    @Mock
+    private WithdrawalCooldownService withdrawalCooldownService;
 
     @Mock
     private SocialLoginFactory socialLoginFactory;
@@ -78,6 +83,21 @@ class AuthServiceTest {
         assertThatThrownBy(() -> authService.signup(request))
                 .isInstanceOf(CustomException.class)
                 .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.EMAIL_NOT_VERIFIED));
+    }
+
+    @Test
+    @DisplayName("이메일 인증번호 발송 실패 - 탈퇴 후 30일 쿨다운")
+    void emailSend_WithdrawalCooldown_Fail() {
+        EmailSendRequest request = org.mockito.Mockito.mock(EmailSendRequest.class);
+        given(request.getEmail()).willReturn("gone@test.com");
+        given(userRepository.existsByEmail("gone@test.com")).willReturn(false);
+        willThrow(new CustomException(ErrorCode.WITHDRAWAL_COOLDOWN))
+                .given(withdrawalCooldownService).assertNotInCooldown("gone@test.com");
+
+        assertThatThrownBy(() -> authService.emailSend(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.WITHDRAWAL_COOLDOWN));
     }
 
     @Test

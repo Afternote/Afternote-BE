@@ -1,16 +1,25 @@
 package com.afternote.domain.auth.service;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
+
 import java.util.concurrent.TimeUnit;
 
 @Service
 public class TokenService {
 
-    private final RedisTemplate<String, Long> redisTemplate;
+    private static final String ACCESS_REVOKED_PREFIX = "AT:REVOKED:";
 
-    public TokenService(RedisTemplate<String, Long> redisTemplate) {
+    private final RedisTemplate<String, Long> redisTemplate;
+    private final long accessTokenExpirationMs;
+
+    public TokenService(
+            RedisTemplate<String, Long> redisTemplate,
+            @Value("${jwt.access-token-expiration}") long accessTokenExpirationMs
+    ) {
         this.redisTemplate = redisTemplate;
+        this.accessTokenExpirationMs = accessTokenExpirationMs;
     }
 
     // Refresh Token 저장 (예: 7일간 유효)
@@ -48,5 +57,22 @@ public class TokenService {
                 }
             }
         }
+    }
+
+    /**
+     * 탈퇴/강제 만료 시 accessToken 을 즉시 무효화한다.
+     * TTL 은 access token 최대 수명과 동일하게 둔다.
+     */
+    public void revokeUserAccess(Long userId) {
+        redisTemplate.opsForValue().set(
+                ACCESS_REVOKED_PREFIX + userId,
+                userId,
+                accessTokenExpirationMs,
+                TimeUnit.MILLISECONDS
+        );
+    }
+
+    public boolean isAccessRevoked(Long userId) {
+        return Boolean.TRUE.equals(redisTemplate.hasKey(ACCESS_REVOKED_PREFIX + userId));
     }
 }

@@ -9,10 +9,14 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
 public interface AfternoteRepository extends JpaRepository<Afternote, Long> {
+
+    @Query("SELECT a.id FROM Afternote a WHERE a.user.id = :userId")
+    List<Long> findIdsByUserId(@Param("userId") Long userId);
     
     // 전체 목록 페이징 조회
     @Query("SELECT a FROM Afternote a WHERE a.user.id = :userId ORDER BY a.createdAt DESC")

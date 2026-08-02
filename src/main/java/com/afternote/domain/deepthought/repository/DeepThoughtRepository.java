@@ -54,9 +54,16 @@ public interface DeepThoughtRepository extends JpaRepository<DeepThought, Long> 
 
     long countByUserId(Long userId);
 
+    @Query("SELECT dt.id FROM DeepThought dt WHERE dt.user.id = :userId")
+    List<Long> findIdsByUserId(@Param("userId") Long userId);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("UPDATE DeepThought dt SET dt.category = null WHERE dt.user.id = :userId AND dt.category.id = :categoryId")
     int clearCategoryByUserIdAndCategoryId(@Param("userId") Long userId, @Param("categoryId") Long categoryId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE DeepThought dt SET dt.category = null WHERE dt.user.id = :userId")
+    int clearCategoryByUserId(@Param("userId") Long userId);
 
     @Query(value = "SELECT * FROM deep_thought dt WHERE dt.user_id = :userId LIMIT 1 OFFSET :offset", nativeQuery = true)
     Optional<DeepThought> findByUserIdWithOffset(@Param("userId") Long userId, @Param("offset") int offset);

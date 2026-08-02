@@ -2,6 +2,7 @@ package com.afternote.domain.receiver.repository;
 
 import com.afternote.domain.receiver.model.UserDailyQuestionReceiver;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -24,6 +25,10 @@ public interface UserDailyQuestionReceiverRepository extends JpaRepository<UserD
     );
 
     void deleteByUserDailyQuestionId(Long userDailyQuestionId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM UserDailyQuestionReceiver udqr WHERE udqr.userDailyQuestion.id IN :ids")
+    void deleteByUserDailyQuestionIdIn(@Param("ids") List<Long> ids);
 
     @Query("""
         SELECT udqr FROM UserDailyQuestionReceiver udqr

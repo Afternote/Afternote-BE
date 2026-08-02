@@ -2,6 +2,7 @@ package com.afternote.domain.receiver.repository;
 
 import com.afternote.domain.afternote.model.AfternoteReceiver;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -30,4 +31,8 @@ public interface AfternoteReceiverRepository extends JpaRepository<AfternoteRece
             @Param("receiverId") Long receiverId);
 
     boolean existsByReceiverId(Long receiverId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM AfternoteReceiver ar WHERE ar.afternote.id IN :afternoteIds")
+    void deleteByAfternoteIdIn(@Param("afternoteIds") List<Long> afternoteIds);
 }

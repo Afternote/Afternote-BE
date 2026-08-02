@@ -17,4 +17,6 @@ public interface DeepThoughtCategoryRepository extends JpaRepository<DeepThought
     List<DeepThoughtCategory> findByUserIdOrderByIdAsc(Long userId);
 
     boolean existsByUserIdAndTitle(Long userId, String title);
+
+    void deleteByUser_Id(Long userId);
 }

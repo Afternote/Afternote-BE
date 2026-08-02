@@ -3,6 +3,7 @@ package com.afternote.domain.receiver.repository;
 import com.afternote.domain.deepthought.dto.DeepThoughtTagCountResponse;
 import com.afternote.domain.receiver.model.DeepThoughtReceiver;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -23,6 +24,10 @@ public interface DeepThoughtReceiverRepository extends JpaRepository<DeepThought
     List<DeepThoughtReceiver> findByDeepThoughtIdIn(@Param("deepThoughtIds") List<Long> deepThoughtIds);
 
     void deleteByDeepThoughtId(Long deepThoughtId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM DeepThoughtReceiver dtr WHERE dtr.deepThought.id IN :deepThoughtIds")
+    void deleteByDeepThoughtIdIn(@Param("deepThoughtIds") List<Long> deepThoughtIds);
 
     @Query("""
         SELECT DISTINCT dtr FROM DeepThoughtReceiver dtr

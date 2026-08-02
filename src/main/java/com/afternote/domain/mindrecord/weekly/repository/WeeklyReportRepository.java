@@ -14,4 +14,6 @@ public interface WeeklyReportRepository extends JpaRepository<WeeklyReport, Long
     List<WeeklyReport> findByUserIdOrderByEndDateDesc(Long userId);
 
     Optional<WeeklyReport> findByUserIdAndStartDate(Long userId, LocalDateTime startDate);
+
+    void deleteByUser_Id(Long userId);
 }

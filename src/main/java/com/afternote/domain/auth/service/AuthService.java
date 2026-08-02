@@ -8,6 +8,7 @@ import com.afternote.domain.user.model.AuthProvider;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserStatus;
 import com.afternote.domain.user.repository.UserRepository;
+import com.afternote.domain.user.service.WithdrawalCooldownService;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import com.afternote.global.jwt.JwtTokenProvider;
@@ -26,6 +27,7 @@ public class AuthService {
 
     private final TokenService tokenService;
     private final EmailService emailService;
+    private final WithdrawalCooldownService withdrawalCooldownService;
     
     // 🎯 핵심: SocialLoginFactory 주입
     private final SocialLoginFactory socialLoginFactory;
@@ -35,6 +37,7 @@ public class AuthService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
         }
+        withdrawalCooldownService.assertNotInCooldown(request.getEmail());
 
         if (!emailService.consumeVerified(request.getEmail(), EmailVerificationPurpose.SIGNUP)) {
             throw new CustomException(ErrorCode.EMAIL_NOT_VERIFIED);
@@ -145,6 +148,7 @@ public class AuthService {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
         }
+        withdrawalCooldownService.assertNotInCooldown(request.getEmail());
         return EmailSendResponse.of(
                 emailService.sendCode(request.getEmail(), EmailVerificationPurpose.SIGNUP)
         );
@@ -250,6 +254,7 @@ public class AuthService {
         boolean isNewUser = false;
         
         if (user == null) {
+            withdrawalCooldownService.assertNotInCooldown(socialUserInfo.getEmail());
             user = User.builder()
                     .email(socialUserInfo.getEmail())
                     .name(socialUserInfo.getName())

@@ -22,9 +22,6 @@ public class PlaylistValidationStrategy implements AfternoteCategoryValidationSt
         if (request.getActions() != null) {
             throw new CustomException(ErrorCode.INVALID_FIELD_FOR_PLAYLIST);
         }
-        if (request.getLeaveMessage() != null) {
-            throw new CustomException(ErrorCode.INVALID_FIELD_FOR_PLAYLIST);
-        }
 
         if (request.getPlaylist() == null) {
             throw new CustomException(ErrorCode.PLAYLIST_REQUIRED);
@@ -50,9 +47,6 @@ public class PlaylistValidationStrategy implements AfternoteCategoryValidationSt
             throw new CustomException(ErrorCode.INVALID_FIELD_FOR_PLAYLIST);
         }
         if (request.getActions() != null) {
-            throw new CustomException(ErrorCode.INVALID_FIELD_FOR_PLAYLIST);
-        }
-        if (request.getLeaveMessage() != null) {
             throw new CustomException(ErrorCode.INVALID_FIELD_FOR_PLAYLIST);
         }
 

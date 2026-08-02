@@ -3,6 +3,7 @@ package com.afternote.domain.afternote.service;
 import com.afternote.domain.afternote.dto.AfternoteCreateRequest;
 import com.afternote.domain.afternote.dto.AfternoteCreateResponse;
 import com.afternote.domain.afternote.dto.AfternotePageResponse;
+import com.afternote.domain.afternote.dto.LeaveMessageBlock;
 import com.afternote.domain.afternote.model.Afternote;
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import com.afternote.domain.afternote.repository.AfternoteRepository;
@@ -91,7 +92,9 @@ class AfternoteServiceTest {
         given(request.getCategory()).willReturn(AfternoteCategoryType.SOCIAL);
         given(request.getTitle()).willReturn("social");
         given(request.getActions()).willReturn(List.of("action1"));
-        given(request.getLeaveMessage()).willReturn("message");
+        given(request.getLeaveMessage()).willReturn(List.of(
+                LeaveMessageBlock.builder().title("t1").body("message").build()
+        ));
 
         User user = sampleUser(1L);
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
@@ -109,8 +112,38 @@ class AfternoteServiceTest {
         ArgumentCaptor<Afternote> captor = ArgumentCaptor.forClass(Afternote.class);
         verify(afternoteRepository).save(captor.capture());
         assertThat(captor.getValue().getSortOrder()).isEqualTo(3);
+        assertThat(captor.getValue().getLeaveMessage()).hasSize(1);
+        assertThat(captor.getValue().getLeaveMessage().get(0).getBody()).isEqualTo("message");
         verify(validator).validateCreateRequest(request);
         verify(relationService).saveRelationsByCategory(any(Afternote.class), eq(request));
+    }
+
+    @Test
+    @DisplayName("PLAYLIST 생성 시 leaveMessage 저장")
+    void createAfternote_Playlist_LeaveMessage_Saved() {
+        AfternoteCreateRequest request = org.mockito.Mockito.mock(AfternoteCreateRequest.class);
+        given(request.getCategory()).willReturn(AfternoteCategoryType.PLAYLIST);
+        given(request.getTitle()).willReturn("playlist");
+        given(request.getLeaveMessage()).willReturn(List.of(
+                LeaveMessageBlock.builder().title("남긴말").body("본문").build()
+        ));
+
+        User user = sampleUser(1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(afternoteRepository.findMaxSortOrderByUserId(1L)).willReturn(Optional.of(0));
+        given(afternoteRepository.save(any(Afternote.class))).willAnswer(invocation -> {
+            Afternote saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 101L);
+            return saved;
+        });
+
+        afternoteService.createAfternote(1L, request);
+
+        ArgumentCaptor<Afternote> captor = ArgumentCaptor.forClass(Afternote.class);
+        verify(afternoteRepository).save(captor.capture());
+        assertThat(captor.getValue().getLeaveMessage()).hasSize(1);
+        assertThat(captor.getValue().getLeaveMessage().get(0).getTitle()).isEqualTo("남긴말");
+        assertThat(captor.getValue().getActions()).isNullOrEmpty();
     }
 
     @Test
@@ -152,14 +185,18 @@ class AfternoteServiceTest {
                 .categoryType(AfternoteCategoryType.SOCIAL)
                 .title("before")
                 .sortOrder(1)
-                .leaveMessage("before-message")
+                .leaveMessage(new ArrayList<>(List.of(
+                        LeaveMessageBlock.builder().title("").body("before-message").build()
+                )))
             .actions(new ArrayList<>(List.of("a1")))
                 .build();
         ReflectionTestUtils.setField(afternote, "id", 10L);
 
         AfternoteCreateRequest request = org.mockito.Mockito.mock(AfternoteCreateRequest.class);
         given(request.getTitle()).willReturn("after");
-        given(request.getLeaveMessage()).willReturn("after-message");
+        given(request.getLeaveMessage()).willReturn(List.of(
+                LeaveMessageBlock.builder().title("t").body("after-message").build()
+        ));
         given(request.getActions()).willReturn(List.of("a2", "a3"));
 
         given(afternoteRepository.findById(10L)).willReturn(Optional.of(afternote));
@@ -168,7 +205,8 @@ class AfternoteServiceTest {
 
         assertThat(response.getAfternoteId()).isEqualTo(10L);
         assertThat(afternote.getTitle()).isEqualTo("after");
-        assertThat(afternote.getLeaveMessage()).isEqualTo("after-message");
+        assertThat(afternote.getLeaveMessage()).hasSize(1);
+        assertThat(afternote.getLeaveMessage().get(0).getBody()).isEqualTo("after-message");
         assertThat(afternote.getActions()).containsExactly("a2", "a3");
         verify(validator).validateUpdateRequest(request, AfternoteCategoryType.SOCIAL);
         verify(relationService).updateRelationsByCategory(afternote, request, AfternoteCategoryType.SOCIAL);

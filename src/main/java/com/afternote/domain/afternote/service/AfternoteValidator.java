@@ -3,6 +3,7 @@ package com.afternote.domain.afternote.service;
 import com.afternote.domain.afternote.dto.AfternoteCreateRequest;
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import com.afternote.domain.afternote.service.validation.AfternoteCategoryValidationStrategy;
+import com.afternote.domain.afternote.service.validation.AfternoteValidationCommons;
 import com.afternote.domain.afternote.service.validation.AfternoteValidationStrategyFactory;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
@@ -29,6 +30,7 @@ public class AfternoteValidator {
             throw new CustomException(ErrorCode.CATEGORY_REQUIRED);
         }
 
+        AfternoteValidationCommons.validateLeaveMessage(request.getLeaveMessage());
         AfternoteCategoryValidationStrategy strategy = validationStrategyFactory.get(request.getCategory());
         strategy.validateCreate(request);
     }
@@ -44,6 +46,7 @@ public class AfternoteValidator {
             throw new CustomException(ErrorCode.CATEGORY_CANNOT_BE_CHANGED);
         }
 
+        AfternoteValidationCommons.validateLeaveMessage(request.getLeaveMessage());
         AfternoteCategoryValidationStrategy strategy = validationStrategyFactory.get(category);
         strategy.validateUpdate(request);
     }

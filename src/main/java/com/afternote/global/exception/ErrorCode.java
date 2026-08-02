@@ -146,7 +146,11 @@ public enum ErrorCode {
     FIELD_CANNOT_BE_EMPTY(HttpStatus.BAD_REQUEST, 1619, "필드 값은 공백일 수 없습니다."),                                                                                                                    
     ATMOSPHERE_CANNOT_BE_EMPTY(HttpStatus.BAD_REQUEST, 1620, "분위기(atmosphere)는 공백일 수 없습니다."),                                                                                                    
     VIDEO_URL_CANNOT_BE_EMPTY(HttpStatus.BAD_REQUEST, 1621, "비디오 URL은 공백일 수 없습니다."),                                                                                                             
-    THUMBNAIL_URL_CANNOT_BE_EMPTY(HttpStatus.BAD_REQUEST, 1622, "썸네일 URL은 공백일 수 없습니다."),                                                                                                         
+    THUMBNAIL_URL_CANNOT_BE_EMPTY(HttpStatus.BAD_REQUEST, 1622, "썸네일 URL은 공백일 수 없습니다."),
+    LEAVE_MESSAGE_TOO_MANY(HttpStatus.BAD_REQUEST, 1623, "남기실 말씀은 최대 20개까지 등록할 수 있습니다."),
+    LEAVE_MESSAGE_BODY_REQUIRED(HttpStatus.BAD_REQUEST, 1624, "남기실 말씀 본문은 필수입니다."),
+    LEAVE_MESSAGE_TITLE_TOO_LONG(HttpStatus.BAD_REQUEST, 1625, "남기실 말씀 제목은 100자를 초과할 수 없습니다."),
+    LEAVE_MESSAGE_BODY_TOO_LONG(HttpStatus.BAD_REQUEST, 1626, "남기실 말씀 본문은 2000자를 초과할 수 없습니다."),
 
     // ======================================                                                                                                                                                               
     // 7. 암호화 관련 오류 (code: 1700 ~ 1799)                                                                                                                                                                    

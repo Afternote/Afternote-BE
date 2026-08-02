@@ -1,5 +1,6 @@
 package com.afternote.domain.receiver.dto;
 
+import com.afternote.domain.afternote.dto.LeaveMessageBlock;
 import com.afternote.domain.afternote.model.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -28,9 +29,9 @@ public record ReceivedAfternoteDetailResponse(
         @Getter
         List<String> actions,
 
-        @Schema(description = "남기는 메시지")
+        @Schema(description = "남기실 말씀 블록 목록 (제목+본문)")
         @Getter
-        String leaveMessage,
+        List<LeaveMessageBlock> leaveMessage,
 
         @Schema(description = "발신자 이름", example = "김철수")
         @Getter
@@ -164,6 +165,7 @@ public record ReceivedAfternoteDetailResponse(
                 .id(afternote.getId())
                 .category(afternote.getCategoryType())
                 .title(afternote.getTitle())
+                .leaveMessage(afternote.getLeaveMessage())
                 .senderName(senderName)
                 .createdAt(afternote.getCreatedAt())
                 .playlist(playlistInfo)

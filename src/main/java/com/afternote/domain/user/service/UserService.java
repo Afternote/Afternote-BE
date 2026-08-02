@@ -17,12 +17,14 @@ import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.domain.receiver.service.AuthCodeMessageService;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
+import com.afternote.global.util.PhoneNumbers;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 
 @Slf4j
@@ -193,6 +195,9 @@ public class UserService {
     ) {
         User user = findUserById(userId);
 
+        PhoneNumbers.validateOptional(request.getPhone());
+        ensureUniqueReceiverPhone(user.getId(), request.getPhone(), null);
+
         Receiver receiver = Receiver.builder()
                 .name(request.getName())
                 .relation(request.getRelation())
@@ -296,6 +301,9 @@ public class UserService {
 
         Receiver receiver = userReceiver.getReceiver();
 
+        PhoneNumbers.validateRequired(request.getPhone());
+        ensureUniqueReceiverPhone(user.getId(), request.getPhone(), receiver.getId());
+
         receiver.updateInfo(
                 request.getName(),
                 request.getRelation(),
@@ -306,5 +314,23 @@ public class UserService {
         return UserPatchReceiverResponse.from(receiver);
     }
 
+    /**
+     * 같은 사용자의 동일 전화번호(하이픈/공백 무시) 중복 등록은 거부한다.
+     */
+    private void ensureUniqueReceiverPhone(Long userId, String phone, Long excludeReceiverId) {
+        if (PhoneNumbers.isBlank(phone)) {
+            return;
+        }
+        String normalized = PhoneNumbers.normalize(phone);
+        boolean duplicated = receiverRepository.findAllByUserId(userId).stream()
+                .filter(r -> excludeReceiverId == null || !Objects.equals(r.getId(), excludeReceiverId))
+                .map(Receiver::getPhone)
+                .filter(p -> !PhoneNumbers.isBlank(p))
+                .map(PhoneNumbers::normalize)
+                .anyMatch(normalized::equals);
+        if (duplicated) {
+            throw new CustomException(ErrorCode.DUPLICATE_RECEIVER_PHONE);
+        }
+    }
 
 }

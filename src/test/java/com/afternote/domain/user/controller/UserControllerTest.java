@@ -133,7 +133,7 @@ class UserControllerTest {
         mockMvc.perform(post("/api/v1/users/receivers")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"kim\",\"relation\":\"DAUGHTER\",\"phone\":\"010\",\"email\":\"a@a.com\"}"))
+                        .content("{\"name\":\"kim\",\"relation\":\"DAUGHTER\",\"phone\":\"010-1234-5678\",\"email\":\"a@a.com\"}"))
                 .andExpect(status().isOk());
 
         verify(userService).createReceiver(eq(USER_ID), any());

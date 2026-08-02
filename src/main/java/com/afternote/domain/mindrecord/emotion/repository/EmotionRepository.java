@@ -19,4 +19,6 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
     Optional<Emotion> findByUserIdAndSourceTypeAndSourceId(Long userId, EmotionSourceType sourceType, Long sourceId);
 
     List<Emotion> findByUserIdAndSourceTypeAndSourceIdIn(Long userId, EmotionSourceType sourceType, List<Long> sourceIds);
+
+    void deleteByUser_Id(Long userId);
 }

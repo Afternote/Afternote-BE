@@ -14,6 +14,9 @@ import java.util.Optional;
 @Repository
 public interface DiaryRepository extends JpaRepository<Diary, Long> {
 
+	@Query("SELECT d.id FROM Diary d WHERE d.user.id = :userId")
+	List<Long> findIdsByUserId(@Param("userId") Long userId);
+
 	Optional<Diary> findByIdAndUserId(Long diaryId, Long userId);
 
 	List<Diary> findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(

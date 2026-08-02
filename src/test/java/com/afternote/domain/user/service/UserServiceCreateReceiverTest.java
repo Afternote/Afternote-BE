@@ -58,6 +58,8 @@ class UserServiceCreateReceiverTest {
     private SocialLoginFactory socialLoginFactory;
     @Mock
     private UserProviderRepository userProviderRepository;
+    @Mock
+    private AccountWithdrawalService accountWithdrawalService;
 
     @Test
     @DisplayName("수신자 등록 실패 - 전화번호 형식")

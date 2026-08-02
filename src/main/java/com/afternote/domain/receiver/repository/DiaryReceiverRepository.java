@@ -2,6 +2,7 @@ package com.afternote.domain.receiver.repository;
 
 import com.afternote.domain.receiver.model.DiaryReceiver;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
@@ -22,6 +23,10 @@ public interface DiaryReceiverRepository extends JpaRepository<DiaryReceiver, Lo
     List<DiaryReceiver> findByDiaryIdIn(@Param("diaryIds") List<Long> diaryIds);
 
     void deleteByDiaryId(Long diaryId);
+
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM DiaryReceiver dr WHERE dr.diary.id IN :diaryIds")
+    void deleteByDiaryIdIn(@Param("diaryIds") List<Long> diaryIds);
 
     @Query("""
         SELECT dr FROM DiaryReceiver dr

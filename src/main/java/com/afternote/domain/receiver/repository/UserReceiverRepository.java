@@ -21,4 +21,6 @@ public interface UserReceiverRepository extends JpaRepository<UserReceiver, Long
 
     // 특정 사용자의 특정 수신인 관계 조회
     Optional<UserReceiver> findByUserAndReceiverId(User user, Long receiverId);
+
+    void deleteByUser_Id(Long userId);
 }

@@ -22,4 +22,6 @@ public interface DeliveryConditionRepository extends JpaRepository<DeliveryCondi
             DeliveryConditionType conditionType, ConditionState state);
 
     boolean existsByReceiverIdAndState(Long receiverId, ConditionState state);
+
+    void deleteByUserId(Long userId);
 }

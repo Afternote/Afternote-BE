@@ -193,7 +193,7 @@ public class UserController {
 
     @Operation(
             summary = "회원 탈퇴 API",
-            description = "로그인한 사용자의 계정을 삭제합니다. 모든 데이터가 영구적으로 삭제되며 복구할 수 없습니다."
+            description = "로그인한 사용자의 계정을 삭제합니다. 모든 데이터가 영구적으로 삭제되며, 동일 이메일은 탈퇴 후 30일간 재가입할 수 없습니다."
     )
     @DeleteMapping("/me")
     public ApiResponse<Void> deleteAccount(

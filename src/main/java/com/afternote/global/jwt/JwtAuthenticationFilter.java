@@ -1,5 +1,7 @@
 package com.afternote.global.jwt;
 
+import com.afternote.domain.auth.service.TokenService;
+import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.resolver.UserIdArgumentResolver;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -23,6 +25,8 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
+    private final TokenService tokenService;
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
@@ -36,15 +40,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             // 3. 토큰에서 ID(Subject) 꺼내기
             Long userId = jwtTokenProvider.getUserId(token);
 
-            // 4. Request Attribute에 userId 저장 (컨트롤러에서 @AuthUser로 접근 가능)
-            request.setAttribute(UserIdArgumentResolver.USER_ID_ATTRIBUTE, userId);
+            // 탈퇴/삭제된 계정 또는 강제 만료된 accessToken 은 인증하지 않는다
+            if (!tokenService.isAccessRevoked(userId) && userRepository.existsById(userId)) {
+                // 4. Request Attribute에 userId 저장 (컨트롤러에서 @AuthUser로 접근 가능)
+                request.setAttribute(UserIdArgumentResolver.USER_ID_ATTRIBUTE, userId);
 
-            // 5. 유저 정보를 임시로 만들어서 SecurityContext에 넣어주기 (로그인 인정)
-            // (권한은 일단 USER로 통일. 실제로는 DB에서 조회해서 넣을 수도 있음)
-            UserDetails userDetails = new User(String.valueOf(userId), "", Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")));
-            Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails, "", userDetails.getAuthorities());
+                // 5. 유저 정보를 임시로 만들어서 SecurityContext에 넣어주기 (로그인 인정)
+                UserDetails userDetails = new User(String.valueOf(userId), "", Collections.singleton(new SimpleGrantedAuthority("ROLE_USER")));
+                Authentication authentication = new UsernamePasswordAuthenticationToken(userDetails, "", userDetails.getAuthorities());
 
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
         }
 
         // 6. 다음 필터로 넘기기

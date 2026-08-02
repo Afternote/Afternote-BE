@@ -102,6 +102,9 @@ public enum ErrorCode {
     // 가입되지 않은 이메일
     EMAIL_NOT_REGISTERED(HttpStatus.BAD_REQUEST, 1219, "가입되지 않은 이메일입니다."),
 
+    // 탈퇴 후 재가입 쿨다운
+    WITHDRAWAL_COOLDOWN(HttpStatus.CONFLICT, 1221, "탈퇴 후 30일 동안 동일 이메일로 재가입할 수 없습니다."),
+
     // ======================================
     // 4. 타임레터 관련 오류 (code: 1300 ~ 1399)
     // ======================================

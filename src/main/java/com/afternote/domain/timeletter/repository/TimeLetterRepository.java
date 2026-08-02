@@ -4,6 +4,8 @@ import com.afternote.domain.timeletter.model.TimeLetter;
 import com.afternote.domain.timeletter.model.TimeLetterStatus;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
@@ -12,6 +14,9 @@ import java.util.Optional;
 
 @Repository
 public interface TimeLetterRepository extends JpaRepository<TimeLetter, Long> {
+
+    @Query("SELECT t.id FROM TimeLetter t WHERE t.user.id = :userId")
+    List<Long> findIdsByUserId(@Param("userId") Long userId);
 
     @EntityGraph(attributePaths = {"blocks"})
     List<TimeLetter> findByUserIdAndStatusOrderByCreatedAtDesc(Long userId, TimeLetterStatus status);

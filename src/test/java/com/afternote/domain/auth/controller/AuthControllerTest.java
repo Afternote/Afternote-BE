@@ -1,6 +1,7 @@
 package com.afternote.domain.auth.controller;
 
 import com.afternote.domain.auth.dto.EmailFindResponse;
+import com.afternote.domain.auth.dto.EmailSendResponse;
 import com.afternote.domain.auth.dto.LoginResponse;
 import com.afternote.domain.auth.dto.ReissueResponse;
 import com.afternote.domain.auth.dto.SocialLoginResponse;
@@ -8,6 +9,9 @@ import com.afternote.domain.auth.service.AuthService;
 import com.afternote.domain.user.model.User;
 import com.afternote.global.resolver.UserId;
 import com.afternote.global.resolver.UserIdArgumentResolver;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -17,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -47,8 +52,12 @@ class AuthControllerTest {
 
     @BeforeEach
     void setUp() {
+        ObjectMapper objectMapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         this.mockMvc = MockMvcBuilders.standaloneSetup(authController)
                 .setCustomArgumentResolvers(new UserIdTestArgumentResolver())
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .build();
     }
 
@@ -190,6 +199,9 @@ class AuthControllerTest {
     @Test
     @DisplayName("이메일 인증번호 전송 API 성공")
     void emailSend_Success() throws Exception {
+        given(authService.emailSend(any()))
+                .willReturn(EmailSendResponse.of(java.time.Instant.parse("2026-07-06T13:45:30Z")));
+
         String requestBody = """
                 {
                   "email": "test@test.com"
@@ -200,7 +212,8 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value(200));
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.expiresAt").value("2026-07-06T13:45:30Z"));
 
         verify(authService).emailSend(any());
     }
@@ -256,6 +269,9 @@ class AuthControllerTest {
     @Test
     @DisplayName("아이디/비밀번호 찾기 인증번호 발송 API")
     void findSendCode_Success() throws Exception {
+        given(authService.findSendCode(any()))
+                .willReturn(EmailSendResponse.of(java.time.Instant.parse("2026-07-06T13:45:30Z")));
+
         String requestBody = """
                 {
                   "email": "test@test.com"
@@ -266,7 +282,8 @@ class AuthControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestBody))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value(200));
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.expiresAt").value("2026-07-06T13:45:30Z"));
 
         verify(authService).findSendCode(any());
     }

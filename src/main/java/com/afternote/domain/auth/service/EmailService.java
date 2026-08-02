@@ -10,8 +10,8 @@ import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.Instant;
 import java.util.Random;
-import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
@@ -23,6 +23,7 @@ public class EmailService {
     private static final String HOURLY_COUNT_KEY_PREFIX = "EMAIL_SEND_COUNT:";
     private static final Duration RESEND_COOLDOWN = Duration.ofSeconds(10);
     private static final Duration HOURLY_LIMIT_WINDOW = Duration.ofHours(1);
+    private static final Duration CODE_TTL = Duration.ofMinutes(3);
     private static final Duration VERIFIED_TTL = Duration.ofMinutes(10);
     private static final long MAX_SENDS_PER_HOUR = 5L;
 
@@ -32,7 +33,11 @@ public class EmailService {
     @Value("${spring.mail.username}")
     private String senderEmail;
 
-    public void sendCode(String toEmail, EmailVerificationPurpose purpose) {
+    /**
+     * 인증번호를 발송하고 Redis에 저장한다.
+     * @return 인증번호 만료 시각 (UTC)
+     */
+    public Instant sendCode(String toEmail, EmailVerificationPurpose purpose) {
         String cooldownKey = COOLDOWN_KEY_PREFIX + purpose.name() + ":" + toEmail;
         String hourlyKey = HOURLY_COUNT_KEY_PREFIX + toEmail;
 
@@ -54,7 +59,8 @@ public class EmailService {
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
         message.setSubject("[AfterNote] 이메일 인증 번호입니다.");
-        message.setText("인증 번호는 [" + authCode + "] 입니다. 3분 안에 입력해주세요.");
+        message.setText("인증 번호는 [" + authCode + "] 입니다. "
+                + CODE_TTL.toMinutes() + "분 안에 입력해주세요.");
         message.setFrom(senderEmail);
 
         try {
@@ -64,12 +70,15 @@ public class EmailService {
             throw e;
         }
 
-        redisTemplate.opsForValue().set(codeKey, authCode, 3, TimeUnit.MINUTES);
+        Instant expiresAt = Instant.now().plus(CODE_TTL);
+        redisTemplate.opsForValue().set(codeKey, authCode, CODE_TTL);
 
         Long newCount = redisTemplate.opsForValue().increment(hourlyKey);
         if (newCount != null && newCount == 1L) {
             redisTemplate.expire(hourlyKey, HOURLY_LIMIT_WINDOW);
         }
+
+        return expiresAt;
     }
 
     public boolean verifyCode(String email, String inputCode, EmailVerificationPurpose purpose) {

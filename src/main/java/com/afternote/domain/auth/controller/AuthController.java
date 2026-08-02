@@ -66,13 +66,12 @@ public class AuthController {
         return ApiResponse.success(null);
     }
 
-    @Operation(summary = "이메일 인증번호 전송 API", description = "이메일을 입력해 인증번호를 받습니다.")
+    @Operation(summary = "이메일 인증번호 전송 API", description = "이메일을 입력해 인증번호를 받습니다. 응답의 expiresAt으로 입력 화면 만료 카운트다운을 맞춥니다.")
     @PostMapping("/email/send")
-    public ApiResponse<Object> emailSend(
+    public ApiResponse<EmailSendResponse> emailSend(
             @Valid @RequestBody  EmailSendRequest emailSendRequest
     ) {
-        authService.emailSend(emailSendRequest);
-        return ApiResponse.success(null);
+        return ApiResponse.success(authService.emailSend(emailSendRequest));
     }
 
     @Operation(summary = "이메일 인증번호 검증 API", description = "이메일과 인증코드를 통해 검증받습니다.")
@@ -86,14 +85,13 @@ public class AuthController {
 
     @Operation(
             summary = "아이디/비밀번호 찾기 인증번호 발송 API",
-            description = "로컬(이메일) 계정의 아이디/비밀번호 찾기용 인증번호를 발송합니다."
+            description = "로컬(이메일) 계정의 아이디/비밀번호 찾기용 인증번호를 발송합니다. 응답의 expiresAt으로 입력 화면 만료 카운트다운을 맞춥니다."
     )
     @PostMapping("/find/send/code")
-    public ApiResponse<Object> findSendCode(
+    public ApiResponse<EmailSendResponse> findSendCode(
             @Valid @RequestBody FindSendCodeRequest findSendCodeRequest
     ) {
-        authService.findSendCode(findSendCodeRequest);
-        return ApiResponse.success(null);
+        return ApiResponse.success(authService.findSendCode(findSendCodeRequest));
     }
 
     @Operation(

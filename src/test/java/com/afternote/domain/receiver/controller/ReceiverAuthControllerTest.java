@@ -1,6 +1,10 @@
 package com.afternote.domain.receiver.controller;
 
+import com.afternote.domain.receiver.dto.ReceiverEmailAuthCodeSendResponse;
 import com.afternote.domain.receiver.service.ReceiverAuthService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -9,14 +13,18 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+import java.time.Instant;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,7 +42,12 @@ class ReceiverAuthControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.standaloneSetup(receiverAuthController).build();
+        ObjectMapper objectMapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
+        mockMvc = MockMvcBuilders.standaloneSetup(receiverAuthController)
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
+                .build();
     }
 
     @Test
@@ -152,5 +165,20 @@ class ReceiverAuthControllerTest {
                 .andExpect(status().isOk());
 
         verify(receiverAuthService).getDeliveryVerificationStatus(AUTH_CODE);
+    }
+
+    @Test
+    @DisplayName("수신자 이메일 인증번호 발송 API 성공")
+    void sendEmailAuthCode_Success() throws Exception {
+        given(receiverAuthService.sendEmailAuthCode("receiver@test.com"))
+                .willReturn(ReceiverEmailAuthCodeSendResponse.of(Instant.parse("2026-07-06T13:45:30Z")));
+
+        mockMvc.perform(post("/api/v1/receiver-auth/email/auth-code")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"receiver@test.com\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.data.expiresAt").value("2026-07-06T13:45:30Z"));
+
+        verify(receiverAuthService).sendEmailAuthCode("receiver@test.com");
     }
 }

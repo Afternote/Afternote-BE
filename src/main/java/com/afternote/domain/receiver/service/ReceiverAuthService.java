@@ -26,6 +26,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -127,7 +128,7 @@ public class ReceiverAuthService {
                 .orElseThrow(() -> new CustomException(ErrorCode.INVALID_AUTH_CODE));
     }
 
-    public void sendEmailAuthCode(String email) {
+    public ReceiverEmailAuthCodeSendResponse sendEmailAuthCode(String email) {
         String normalizedEmail = normalizeEmail(email);
 
         List<Receiver> receivers =
@@ -146,6 +147,7 @@ public class ReceiverAuthService {
 
         String redisKey = EMAIL_AUTH_CODE_PREFIX + normalizedEmail;
         String redisValue = receiver.getId() + ":" + emailAuthCode;
+        Instant expiresAt = Instant.now().plus(EMAIL_AUTH_CODE_TTL);
 
         try {
             stringRedisTemplate.opsForValue().set(
@@ -164,6 +166,8 @@ public class ReceiverAuthService {
             stringRedisTemplate.delete(redisKey);
             throw new CustomException(ErrorCode.RECEIVER_EMAIL_SEND_FAILED);
         }
+
+        return ReceiverEmailAuthCodeSendResponse.of(expiresAt);
     }
 
     public ReceiverEmailAuthVerifyResponse verifyEmailAuthCode(String email, String inputAuthCode) {

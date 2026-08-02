@@ -15,7 +15,7 @@ public record UserCreateReceiverRequest(
         @Getter
         String relation,
 
-        @Schema(description = "전화번호", example = "010-1234-1234", nullable = true)
+        @Schema(description = "전화번호 (선택, 입력 시 국내 휴대폰 형식)", example = "010-1234-5678", nullable = true)
         @Getter
         String phone,
 

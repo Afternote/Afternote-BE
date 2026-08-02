@@ -151,6 +151,8 @@ public enum ErrorCode {
     LEAVE_MESSAGE_BODY_REQUIRED(HttpStatus.BAD_REQUEST, 1624, "남기실 말씀 본문은 필수입니다."),
     LEAVE_MESSAGE_TITLE_TOO_LONG(HttpStatus.BAD_REQUEST, 1625, "남기실 말씀 제목은 100자를 초과할 수 없습니다."),
     LEAVE_MESSAGE_BODY_TOO_LONG(HttpStatus.BAD_REQUEST, 1626, "남기실 말씀 본문은 2000자를 초과할 수 없습니다."),
+    INVALID_PHONE_FORMAT(HttpStatus.BAD_REQUEST, 1627, "전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)"),
+    DUPLICATE_RECEIVER_PHONE(HttpStatus.CONFLICT, 1628, "이미 등록된 수신자 전화번호입니다."),
 
     // ======================================                                                                                                                                                               
     // 7. 암호화 관련 오류 (code: 1700 ~ 1799)                                                                                                                                                                    

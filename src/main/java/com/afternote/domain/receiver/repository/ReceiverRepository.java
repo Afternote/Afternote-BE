@@ -11,4 +11,5 @@ import java.util.Optional;
 public interface ReceiverRepository extends JpaRepository<Receiver, Long> {
     Optional<Receiver> findByAuthCode(String authCode);
     List<Receiver> findAllByEmailIgnoreCaseOrderByIdDesc(String email);
+    List<Receiver> findAllByUserId(Long userId);
 }

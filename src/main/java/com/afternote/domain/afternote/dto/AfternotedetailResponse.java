@@ -32,9 +32,9 @@ public record AfternotedetailResponse(
         @Getter
         AfternoteCreateRequest.CredentialsRequest credentials,
 
-        @Schema(description = "수신자 목록")
+        @Schema(description = "수신자 목록 (receiverId, name, relation)")
         @Getter
-        List<AfternoteCreateRequest.ReceiverRequest> receivers,
+        List<AfternoteReceiverResponse> receivers,
 
         @Schema(description = "플레이리스트 정보 (Playlist 전용)")
         @Getter

@@ -3,11 +3,14 @@ package com.afternote.domain.afternote.service;
 import com.afternote.domain.afternote.dto.AfternoteCreateRequest;
 import com.afternote.domain.afternote.dto.AfternoteCreateResponse;
 import com.afternote.domain.afternote.dto.AfternotePageResponse;
+import com.afternote.domain.afternote.dto.AfternotedetailResponse;
 import com.afternote.domain.afternote.dto.LeaveMessageBlock;
 import com.afternote.domain.afternote.model.Afternote;
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
+import com.afternote.domain.afternote.model.AfternoteReceiver;
 import com.afternote.domain.afternote.repository.AfternoteRepository;
 import com.afternote.domain.image.service.S3Service;
+import com.afternote.domain.receiver.model.Receiver;
 import com.afternote.domain.user.model.AuthProvider;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserStatus;
@@ -210,6 +213,44 @@ class AfternoteServiceTest {
         assertThat(afternote.getActions()).containsExactly("a2", "a3");
         verify(validator).validateUpdateRequest(request, AfternoteCategoryType.SOCIAL);
         verify(relationService).updateRelationsByCategory(afternote, request, AfternoteCategoryType.SOCIAL);
+    }
+
+    @Test
+    @DisplayName("애프터노트 상세 조회 - receivers 에 name·relation 포함")
+    void getDetailAfternote_ReceiversIncludeNameAndRelation() {
+        User owner = sampleUser(1L);
+        Afternote afternote = Afternote.builder()
+                .user(owner)
+                .categoryType(AfternoteCategoryType.GALLERY)
+                .title("구글 포토")
+                .sortOrder(1)
+                .actions(new ArrayList<>(List.of("QA runtime check")))
+                .build();
+        ReflectionTestUtils.setField(afternote, "id", 1L);
+
+        Receiver receiver = Receiver.builder()
+                .name("김소희")
+                .relation("딸")
+                .phone("010")
+                .email("a@a.com")
+                .userId(1L)
+                .build();
+        ReflectionTestUtils.setField(receiver, "id", 1L);
+
+        AfternoteReceiver link = AfternoteReceiver.builder()
+                .afternote(afternote)
+                .receiver(receiver)
+                .build();
+        afternote.getReceivers().add(link);
+
+        given(afternoteRepository.findById(1L)).willReturn(Optional.of(afternote));
+
+        AfternotedetailResponse response = afternoteService.getDetailAfternote(1L, 1L);
+
+        assertThat(response.getReceivers()).hasSize(1);
+        assertThat(response.getReceivers().get(0).getReceiverId()).isEqualTo(1L);
+        assertThat(response.getReceivers().get(0).getName()).isEqualTo("김소희");
+        assertThat(response.getReceivers().get(0).getRelation()).isEqualTo("딸");
     }
 
     @Test

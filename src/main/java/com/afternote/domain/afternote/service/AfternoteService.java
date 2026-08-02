@@ -74,8 +74,8 @@ public class AfternoteService {
         }
         
         // 모든 카테고리에서 공통으로 필요한 receivers 매핑
-        List<AfternoteCreateRequest.ReceiverRequest> receivers = afternote.getReceivers().stream()
-                .map(ar -> new AfternoteCreateRequest.ReceiverRequest(ar.getReceiver().getId()))
+        List<AfternoteReceiverResponse> receivers = afternote.getReceivers().stream()
+                .map(ar -> AfternoteReceiverResponse.from(ar.getReceiver()))
                 .collect(Collectors.toList());
         
         AfternotedetailResponse response;

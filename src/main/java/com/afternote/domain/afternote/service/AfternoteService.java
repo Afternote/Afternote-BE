@@ -173,7 +173,7 @@ public class AfternoteService {
                         afternote.getCategoryType(),
                         afternote.getTitle(),
                         null,
-                        null,
+                        afternote.getLeaveMessage(),
                         null,
                         receivers,
                         playlistRequest,
@@ -218,15 +218,15 @@ public class AfternoteService {
                 .user(user)
                 .categoryType(request.getCategory())
                 .title(request.getTitle())
-                .sortOrder(nextSortOrder);
-        
+                .sortOrder(nextSortOrder)
+                .leaveMessage(request.getLeaveMessage());
+
         // SOCIAL/GALLERY 전용 필드
-        if (request.getCategory() == AfternoteCategoryType.SOCIAL || 
+        if (request.getCategory() == AfternoteCategoryType.SOCIAL ||
             request.getCategory() == AfternoteCategoryType.GALLERY) {
-            builder.actions(request.getActions() != null ? new ArrayList<>(request.getActions()) : new ArrayList<>())
-                   .leaveMessage(request.getLeaveMessage());
+            builder.actions(request.getActions() != null ? new ArrayList<>(request.getActions()) : new ArrayList<>());
         }
-        
+
         Afternote afternote = builder.build();
 
         // ✅ 먼저 Afternote 저장 (ID 생성)
@@ -252,16 +252,20 @@ public class AfternoteService {
 
         // 기본 필드 업데이트 (null이 아닌 경우만)
         String title = request.getTitle() != null ? request.getTitle() : afternote.getTitle();
-        String leaveMessage = null;
-        List<String> actions = null;
-        
-        // SOCIAL/GALLERY 전용 필드 업데이트
-        if (afternote.getCategoryType() == AfternoteCategoryType.SOCIAL || 
-            afternote.getCategoryType() == AfternoteCategoryType.GALLERY) {
-            leaveMessage = request.getLeaveMessage() != null ? request.getLeaveMessage() : afternote.getLeaveMessage();
-            actions = request.getActions() != null ? request.getActions() : afternote.getActions();
+        List<LeaveMessageBlock> leaveMessage = request.getLeaveMessage() != null
+                ? request.getLeaveMessage()
+                : afternote.getLeaveMessage();
+
+        // update()가 actions를 clear 하므로 동일 리스트 참조를 넘기지 않는다
+        List<String> actions = afternote.getActions() == null
+                ? new ArrayList<>()
+                : new ArrayList<>(afternote.getActions());
+        if ((afternote.getCategoryType() == AfternoteCategoryType.SOCIAL
+                || afternote.getCategoryType() == AfternoteCategoryType.GALLERY)
+                && request.getActions() != null) {
+            actions = new ArrayList<>(request.getActions());
         }
-        
+
         afternote.update(title, afternote.getSortOrder(), leaveMessage, actions);
 
         // 관계 데이터 업데이트 (카테고리 전략 + 공통 receivers 처리)

@@ -1,5 +1,6 @@
 package com.afternote.domain.afternote.model;
 
+import com.afternote.domain.afternote.dto.LeaveMessageBlock;
 import com.afternote.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
@@ -32,8 +33,9 @@ public class Afternote extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String title;
     
+    @Convert(converter = LeaveMessageListConverter.class)
     @Column(columnDefinition = "TEXT")
-    private String leaveMessage;
+    private List<LeaveMessageBlock> leaveMessage;
 
     @Column(name = "sort_order")
     private Integer sortOrder;
@@ -56,7 +58,7 @@ public class Afternote extends BaseEntity {
     private AfternotePlaylist playlist;
 
     // 업데이트 메서드
-    public void update(String title, Integer sortOrder, String leaveMessage,List<String> actions) {
+    public void update(String title, Integer sortOrder, List<LeaveMessageBlock> leaveMessage, List<String> actions) {
         this.title = title;
         this.sortOrder = sortOrder;
         this.leaveMessage = leaveMessage;

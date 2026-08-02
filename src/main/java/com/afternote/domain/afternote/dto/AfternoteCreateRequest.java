@@ -2,6 +2,7 @@ package com.afternote.domain.afternote.dto;
 
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
@@ -23,9 +24,10 @@ public record AfternoteCreateRequest(
         @Getter
         List<String> actions,
 
-        @Schema(description = "남기신 말씀 (SOCIAL/GALLERY 전용)")
+        @Schema(description = "남기실 말씀 블록 목록 (제목+본문). 모든 카테고리에서 사용 가능")
         @Getter
-        String leaveMessage,
+        @Valid
+        List<LeaveMessageBlock> leaveMessage,
 
         @Schema(description = "계정 정보 (SOCIAL 전용)")
         @Getter

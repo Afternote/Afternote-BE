@@ -24,9 +24,9 @@ public record AfternotedetailResponse(
         @Getter
         List<String> actions,
 
-        @Schema(description = "남기신 말씀 (SOCIAL/GALLERY 전용)")
+        @Schema(description = "남기실 말씀 블록 목록 (제목+본문)")
         @Getter
-        String leaveMessage,
+        List<LeaveMessageBlock> leaveMessage,
 
         @Schema(description = "계정 정보 (SOCIAL 전용)")
         @Getter

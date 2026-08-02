@@ -1,5 +1,6 @@
 package com.afternote.domain.receiver.dto;
 
+import com.afternote.domain.afternote.dto.LeaveMessageBlock;
 import com.afternote.domain.afternote.model.Afternote;
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import com.afternote.domain.afternote.model.AfternoteReceiver;
@@ -8,6 +9,7 @@ import lombok.Builder;
 import lombok.Getter;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Schema(description = "수신한 애프터노트 응답")
 @Builder
@@ -24,9 +26,9 @@ public record ReceivedAfternoteResponse(
         @Getter
         AfternoteCategoryType category,
 
-        @Schema(description = "남기는 메시지")
+        @Schema(description = "남기실 말씀 블록 목록 (제목+본문)")
         @Getter
-        String leaveMessage,
+        List<LeaveMessageBlock> leaveMessage,
 
         @Schema(description = "발신자 ID", example = "1")
         @Getter

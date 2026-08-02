@@ -141,11 +141,13 @@ public class AuthService {
     }
 
     @Transactional
-    public void emailSend(EmailSendRequest request) {
+    public EmailSendResponse emailSend(EmailSendRequest request) {
         if (userRepository.existsByEmail(request.getEmail())) {
             throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
         }
-        emailService.sendCode(request.getEmail(), EmailVerificationPurpose.SIGNUP);
+        return EmailSendResponse.of(
+                emailService.sendCode(request.getEmail(), EmailVerificationPurpose.SIGNUP)
+        );
     }
 
     @Transactional
@@ -161,9 +163,11 @@ public class AuthService {
     }
 
     @Transactional
-    public void findSendCode(FindSendCodeRequest request) {
+    public EmailSendResponse findSendCode(FindSendCodeRequest request) {
         findActiveLocalUserForRecovery(request.getEmail());
-        emailService.sendCode(request.getEmail(), EmailVerificationPurpose.FIND);
+        return EmailSendResponse.of(
+                emailService.sendCode(request.getEmail(), EmailVerificationPurpose.FIND)
+        );
     }
 
     @Transactional

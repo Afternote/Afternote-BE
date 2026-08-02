@@ -233,9 +233,12 @@ class AuthServiceTest {
         EmailSendRequest request = org.mockito.Mockito.mock(EmailSendRequest.class);
         given(request.getEmail()).willReturn("new@test.com");
         given(userRepository.existsByEmail("new@test.com")).willReturn(false);
+        java.time.Instant expiresAt = java.time.Instant.parse("2026-07-06T13:45:30Z");
+        given(emailService.sendCode("new@test.com", EmailVerificationPurpose.SIGNUP)).willReturn(expiresAt);
 
-        authService.emailSend(request);
+        EmailSendResponse response = authService.emailSend(request);
 
+        assertThat(response.getExpiresAt()).isEqualTo(expiresAt);
         verify(emailService).sendCode("new@test.com", EmailVerificationPurpose.SIGNUP);
     }
 
@@ -354,9 +357,12 @@ class AuthServiceTest {
                 .build();
 
         given(userRepository.findByEmail("test@test.com")).willReturn(Optional.of(user));
+        java.time.Instant expiresAt = java.time.Instant.parse("2026-07-06T13:45:30Z");
+        given(emailService.sendCode("test@test.com", EmailVerificationPurpose.FIND)).willReturn(expiresAt);
 
-        authService.findSendCode(request);
+        EmailSendResponse response = authService.findSendCode(request);
 
+        assertThat(response.getExpiresAt()).isEqualTo(expiresAt);
         verify(emailService).sendCode("test@test.com", EmailVerificationPurpose.FIND);
     }
 

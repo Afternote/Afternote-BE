@@ -20,20 +20,20 @@ public record AfternoteCreateRequest(
         @Getter
         String title,
 
-        @Schema(description = "체크리스트 (SOCIAL/GALLERY 전용)")
+        @Schema(description = "체크리스트 (선택, SOCIAL/GALLERY 전용). 생략 또는 빈 배열 가능")
         @Getter
         List<String> actions,
 
-        @Schema(description = "남기실 말씀 블록 목록 (제목+본문). 모든 카테고리에서 사용 가능")
+        @Schema(description = "남기실 말씀 블록 목록 (선택, 모든 카테고리). 생략 가능")
         @Getter
         @Valid
         List<LeaveMessageBlock> leaveMessage,
 
-        @Schema(description = "계정 정보 (SOCIAL 전용)")
+        @Schema(description = "계정 정보 (SOCIAL 전용, 생성 시 필수)")
         @Getter
         CredentialsRequest credentials,
 
-        @Schema(description = "수신자 목록 (선택사항, 모든 카테고리에서 가능)")
+        @Schema(description = "수신자 목록 (선택, 모든 카테고리). 생략 또는 빈 배열 가능. 포함 시 각 receiverId 필수")
         @Getter
         List<ReceiverRequest> receivers,
 

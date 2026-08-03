@@ -38,7 +38,8 @@ public class PlaylistValidationStrategy implements AfternoteCategoryValidationSt
             }
         }
 
-        AfternoteValidationCommons.validateRequiredReceivers(request);
+        // receivers 는 선택 (없으면 빈 상태로 생성)
+        AfternoteValidationCommons.validateOptionalReceivers(request);
     }
 
     @Override

@@ -23,11 +23,8 @@ public class GalleryValidationStrategy implements AfternoteCategoryValidationStr
             throw new CustomException(ErrorCode.INVALID_FIELD_FOR_GALLERY);
         }
 
-        if (request.getActions() == null || request.getActions().isEmpty()) {
-            throw new CustomException(ErrorCode.ACTIONS_REQUIRED);
-        }
-
-        AfternoteValidationCommons.validateRequiredReceivers(request);
+        // actions·receivers 는 선택 (없으면 빈 상태로 생성)
+        AfternoteValidationCommons.validateOptionalReceivers(request);
     }
 
     @Override

@@ -143,7 +143,7 @@ class AuthServiceTest {
 
         assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(CustomException.class)
-                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.SOCIAL_CREDENTIALS_REQUIRED));
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.SOCIAL_LOGIN_USER));
     }
 
     @Test

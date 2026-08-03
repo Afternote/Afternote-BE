@@ -20,9 +20,7 @@ public class SocialValidationStrategy implements AfternoteCategoryValidationStra
             throw new CustomException(ErrorCode.INVALID_FIELD_FOR_SOCIAL);
         }
 
-        if (request.getActions() == null || request.getActions().isEmpty()) {
-            throw new CustomException(ErrorCode.ACTIONS_REQUIRED);
-        }
+        // actions·receivers 는 선택 (없으면 빈 상태로 생성)
         if (request.getCredentials() == null) {
             throw new CustomException(ErrorCode.SOCIAL_CREDENTIALS_REQUIRED);
         }
@@ -33,7 +31,7 @@ public class SocialValidationStrategy implements AfternoteCategoryValidationStra
             throw new CustomException(ErrorCode.SOCIAL_ACCOUNT_PASSWORD_REQUIRED);
         }
 
-        AfternoteValidationCommons.validateRequiredReceivers(request);
+        AfternoteValidationCommons.validateOptionalReceivers(request);
     }
 
     @Override

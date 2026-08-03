@@ -60,6 +60,8 @@ class UserServiceCreateReceiverTest {
     private UserProviderRepository userProviderRepository;
     @Mock
     private AccountWithdrawalService accountWithdrawalService;
+    @Mock
+    private ReceiverDeletionService receiverDeletionService;
 
     @Test
     @DisplayName("수신자 등록 실패 - 전화번호 형식")

@@ -7,12 +7,14 @@ import org.springframework.beans.TypeMismatchException;
 import org.springframework.core.convert.ConversionFailedException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -68,7 +70,25 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(400, ErrorCode.INVALID_INPUT_VALUE.getCode(), "요청 파라미터 형식이 올바르지 않습니다."));
     }
 
-    // 5. 그 외 예상치 못한 에러 — 상세는 로그에만, 응답은 일반 메시지
+    // 5. 허용되지 않은 HTTP 메서드
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
+        ErrorCode errorCode = ErrorCode.METHOD_NOT_ALLOWED;
+        return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .body(ApiResponse.error(errorCode));
+    }
+
+    // 5-1. 존재하지 않는 엔드포인트 (설정 시 NoHandlerFoundException 발생)
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleNoHandlerFound(NoHandlerFoundException e) {
+        ErrorCode errorCode = ErrorCode.ENDPOINT_NOT_FOUND;
+        return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .body(ApiResponse.error(errorCode));
+    }
+
+    // 6. 그 외 예상치 못한 에러 — 상세는 로그에만, 응답은 일반 메시지
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
         log.error("Unhandled exception", e);

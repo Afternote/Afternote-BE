@@ -42,6 +42,7 @@ public class UserService {
     private final SocialLoginFactory socialLoginFactory;
     private final UserProviderRepository userProviderRepository;
     private final AccountWithdrawalService accountWithdrawalService;
+    private final ReceiverDeletionService receiverDeletionService;
 
     public UserResponse getMyProfile(Long userId) {
 
@@ -248,6 +249,11 @@ public class UserService {
     @Transactional
     public void deleteAccount(Long userId) {
         accountWithdrawalService.withdraw(userId);
+    }
+
+    @Transactional
+    public void deleteReceiver(Long userId, Long receiverId) {
+        receiverDeletionService.deleteReceiver(userId, receiverId);
     }
 
     private User findUserById(Long userId) {

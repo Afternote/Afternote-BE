@@ -206,6 +206,16 @@ class UserControllerTest {
         verify(userService).updateReceiver(eq(USER_ID), eq(2L), any());
     }
 
+    @Test
+    @DisplayName("수신자 삭제 API 성공")
+    void deleteReceiver_Success() throws Exception {
+        mockMvc.perform(delete("/api/v1/users/receivers/{receiverId}", 17L)
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
+                .andExpect(status().isOk());
+
+        verify(userService).deleteReceiver(USER_ID, 17L);
+    }
+
     private static class UserIdTestArgumentResolver implements HandlerMethodArgumentResolver {
         @Override
         public boolean supportsParameter(MethodParameter parameter) {

@@ -218,5 +218,18 @@ public class UserController {
         );
     }
 
+    @Operation(
+            summary = "수신자 삭제 API",
+            description = "등록한 수신자를 삭제합니다. 타임레터·애프터노트 등 콘텐츠에 이미 연결된 수신자는 삭제할 수 없습니다."
+    )
+    @DeleteMapping("/receivers/{receiverId}")
+    public ApiResponse<Void> deleteReceiver(
+            @Parameter(hidden = true) @UserId Long userId,
+            @PathVariable Long receiverId
+    ) {
+        userService.deleteReceiver(userId, receiverId);
+        return ApiResponse.success(null);
+    }
+
 
 }

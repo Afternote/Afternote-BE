@@ -29,4 +29,6 @@ public interface DeliveryVerificationRepository extends JpaRepository<DeliveryVe
     );
 
     void deleteByUserId(Long userId);
+
+    void deleteByReceiverId(Long receiverId);
 }

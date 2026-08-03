@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
@@ -70,7 +71,7 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(400, ErrorCode.INVALID_INPUT_VALUE.getCode(), "요청 파라미터 형식이 올바르지 않습니다."));
     }
 
-    // 5. 허용되지 않은 HTTP 메서드
+    // 5. 허용되지 않은 HTTP 메서드 (예: POST만 있는 path에 DELETE)
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ApiResponse<Void>> handleMethodNotSupported(HttpRequestMethodNotSupportedException e) {
         ErrorCode errorCode = ErrorCode.METHOD_NOT_ALLOWED;
@@ -79,9 +80,11 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(errorCode));
     }
 
-    // 5-1. 존재하지 않는 엔드포인트 (설정 시 NoHandlerFoundException 발생)
-    @ExceptionHandler(NoHandlerFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleNoHandlerFound(NoHandlerFoundException e) {
+    // 5-1. 존재하지 않는 경로
+    // Spring Boot 3.2+ 는 ResourceHttpRequestHandler 가 NoResourceFoundException 을 던지고,
+    // 이를 잡지 않으면 아래 Exception 핸들러가 500/1004 로 삼킨다.
+    @ExceptionHandler({NoResourceFoundException.class, NoHandlerFoundException.class})
+    public ResponseEntity<ApiResponse<Void>> handleNotFound(Exception e) {
         ErrorCode errorCode = ErrorCode.ENDPOINT_NOT_FOUND;
         return ResponseEntity
                 .status(errorCode.getHttpStatus())

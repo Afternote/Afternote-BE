@@ -24,7 +24,9 @@ public interface UserDailyQuestionReceiverRepository extends JpaRepository<UserD
             @Param("userDailyQuestionIds") List<Long> userDailyQuestionIds
     );
 
-    void deleteByUserDailyQuestionId(Long userDailyQuestionId);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM UserDailyQuestionReceiver udqr WHERE udqr.userDailyQuestion.id = :userDailyQuestionId")
+    void deleteByUserDailyQuestionId(@Param("userDailyQuestionId") Long userDailyQuestionId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM UserDailyQuestionReceiver udqr WHERE udqr.userDailyQuestion.id IN :ids")

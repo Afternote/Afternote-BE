@@ -22,7 +22,9 @@ public interface DiaryReceiverRepository extends JpaRepository<DiaryReceiver, Lo
     """)
     List<DiaryReceiver> findByDiaryIdIn(@Param("diaryIds") List<Long> diaryIds);
 
-    void deleteByDiaryId(Long diaryId);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM DiaryReceiver dr WHERE dr.diary.id = :diaryId")
+    void deleteByDiaryId(@Param("diaryId") Long diaryId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM DiaryReceiver dr WHERE dr.diary.id IN :diaryIds")

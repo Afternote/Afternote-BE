@@ -23,7 +23,9 @@ public interface DeepThoughtReceiverRepository extends JpaRepository<DeepThought
     """)
     List<DeepThoughtReceiver> findByDeepThoughtIdIn(@Param("deepThoughtIds") List<Long> deepThoughtIds);
 
-    void deleteByDeepThoughtId(Long deepThoughtId);
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("DELETE FROM DeepThoughtReceiver dtr WHERE dtr.deepThought.id = :deepThoughtId")
+    void deleteByDeepThoughtId(@Param("deepThoughtId") Long deepThoughtId);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("DELETE FROM DeepThoughtReceiver dtr WHERE dtr.deepThought.id IN :deepThoughtIds")

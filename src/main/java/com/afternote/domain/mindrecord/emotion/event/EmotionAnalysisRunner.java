@@ -5,6 +5,7 @@ import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.repository.DiaryRepository;
 import com.afternote.domain.deepthought.model.DeepThought;
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
+import com.afternote.domain.mindrecord.emotion.EmotionCategoryAllowlist;
 import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
 import com.afternote.domain.mindrecord.emotion.service.EmotionService;
 import com.afternote.global.service.GeminiService;
@@ -16,11 +17,15 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDateTime;
 import java.util.Optional;
+import java.util.function.Supplier;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmotionAnalysisRunner {
+
+    private static final int IMMEDIATE_ATTEMPTS = 2;
+    private static final long[] IMMEDIATE_BACKOFF_MS = {0L, 1_000L};
 
     /** 트랜잭션 종료 후에도 사용할 수 있도록 연관 엔티티를 모두 풀어 문자열만 담는다. */
     private record DailyQuestionEmotionSnapshot(
@@ -49,17 +54,12 @@ public class EmotionAnalysisRunner {
             return;
         }
         String mood = diary.getTodayMood() != null ? diary.getTodayMood().name() : null;
-        String category = geminiService.analyzeEmotionFromDiary(diary.getTitle(), diary.getContent(), mood);
-        if (category == null || category.isBlank()) {
-            log.warn("[EmotionAnalysis] no category from Gemini (diary) userId={} diaryId={}", userId, diaryId);
-            return;
-        }
-        emotionService.persistAnalyzedEmotion(
+        analyze(
                 userId,
                 EmotionSourceType.DIARY,
                 diaryId,
-                category,
-                diary.getCreatedAt()
+                diary.getCreatedAt(),
+                () -> geminiService.analyzeEmotionFromDiary(diary.getTitle(), diary.getContent(), mood)
         );
     }
 
@@ -81,17 +81,12 @@ public class EmotionAnalysisRunner {
             return;
         }
         DailyQuestionEmotionSnapshot s = snapshot.get();
-        String category = geminiService.analyzeEmotionFromDailyQuestion(s.questionContent(), s.answerContent());
-        if (category == null || category.isBlank()) {
-            log.warn("[EmotionAnalysis] no category from Gemini (dailyQuestion) userId={} id={}", userId, userDailyQuestionId);
-            return;
-        }
-        emotionService.persistAnalyzedEmotion(
+        analyze(
                 userId,
                 EmotionSourceType.DAILY_QUESTION,
                 userDailyQuestionId,
-                category,
-                s.createdAt()
+                s.createdAt(),
+                () -> geminiService.analyzeEmotionFromDailyQuestion(s.questionContent(), s.answerContent())
         );
     }
 
@@ -107,17 +102,68 @@ public class EmotionAnalysisRunner {
             log.debug("[EmotionAnalysis] skip draft deepThought userId={} id={}", userId, deepThoughtId);
             return;
         }
-        String category = geminiService.analyzeEmotionFromDeepThought(dt.getTitle(), dt.getContent());
-        if (category == null || category.isBlank()) {
-            log.warn("[EmotionAnalysis] no category from Gemini (deepThought) userId={} id={}", userId, deepThoughtId);
-            return;
-        }
-        emotionService.persistAnalyzedEmotion(
+        analyze(
                 userId,
                 EmotionSourceType.DEEP_THOUGHT,
                 deepThoughtId,
-                category,
-                dt.getCreatedAt()
+                dt.getCreatedAt(),
+                () -> geminiService.analyzeEmotionFromDeepThought(dt.getTitle(), dt.getContent())
         );
+    }
+
+    private void analyze(
+            Long userId,
+            EmotionSourceType sourceType,
+            Long sourceId,
+            LocalDateTime sourceCreatedAt,
+            Supplier<String> geminiCall
+    ) {
+        emotionService.ensurePending(userId, sourceType, sourceId, sourceCreatedAt);
+
+        for (int i = 0; i < IMMEDIATE_ATTEMPTS; i++) {
+            sleepQuietly(IMMEDIATE_BACKOFF_MS[Math.min(i, IMMEDIATE_BACKOFF_MS.length - 1)]);
+            emotionService.markAttemptStarted(userId, sourceType, sourceId);
+
+            String category;
+            try {
+                category = geminiCall.get();
+            } catch (Exception e) {
+                log.error("[EmotionAnalysis] Gemini threw userId={} sourceType={} sourceId={} attempt={}",
+                        userId, sourceType, sourceId, i + 1, e);
+                emotionService.recordFailedAttempt(userId, sourceType, sourceId);
+                continue;
+            }
+
+            if (category == null || category.isBlank()) {
+                log.warn("[EmotionAnalysis] empty category userId={} sourceType={} sourceId={} attempt={}",
+                        userId, sourceType, sourceId, i + 1);
+                emotionService.recordFailedAttempt(userId, sourceType, sourceId);
+                continue;
+            }
+
+            if (EmotionCategoryAllowlist.normalizeIfAllowed(category).isEmpty()) {
+                log.warn("[EmotionAnalysis] category not in allowlist userId={} sourceType={} sourceId={} raw={} attempt={}",
+                        userId, sourceType, sourceId, category, i + 1);
+                emotionService.recordFailedAttempt(userId, sourceType, sourceId);
+                continue;
+            }
+
+            emotionService.markSucceeded(userId, sourceType, sourceId, category);
+            return;
+        }
+        // 즉시 재시도 소진 후에도 PENDING이면 스케줄러가 backoff 후 이어서 처리
+        log.warn("[EmotionAnalysis] immediate retries exhausted userId={} sourceType={} sourceId={}",
+                userId, sourceType, sourceId);
+    }
+
+    private static void sleepQuietly(long ms) {
+        if (ms <= 0) {
+            return;
+        }
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
     }
 }

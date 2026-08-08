@@ -7,9 +7,11 @@ import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
 import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.repository.DiaryRepository;
 import com.afternote.domain.mindrecord.emotion.model.Emotion;
+import com.afternote.domain.mindrecord.emotion.model.EmotionAnalysisStatus;
 import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
 import com.afternote.domain.mindrecord.emotion.repository.EmotionRepository;
 import com.afternote.domain.mindrecord.weekly.dto.WeeklyMindRecordResponse;
+import com.afternote.domain.mindrecord.weekly.dto.WeeklyMindRecordResponse.EmotionAnalysisSummary;
 import com.afternote.domain.mindrecord.weekly.dto.WeeklyMindRecordResponse.WeekRecordItem;
 import com.afternote.domain.mindrecord.weekly.dto.WeeklyMindRecordResponse.WeeklyDailyQuestionItem;
 import com.afternote.domain.mindrecord.weekly.dto.WeeklyMindRecordResponse.WeeklyEmotionItem;
@@ -95,7 +97,12 @@ public class WeeklyMindRecordService {
         Map<Long, String> dtEmotion = emotionMap(
                 userId, EmotionSourceType.DEEP_THOUGHT, deepThoughts.stream().map(DeepThought::getId).toList());
 
-        List<WeeklyEmotionItem> topEmotions = buildTopEmotions(userId, diaries, dailyQuestions, deepThoughts);
+        List<Emotion> weekEmotions = collectWeekEmotions(userId, diaries, dailyQuestions, deepThoughts);
+        List<WeeklyEmotionItem> topEmotions = buildTopEmotions(weekEmotions);
+        EmotionAnalysisSummary emotionAnalysis = buildEmotionAnalysisSummary(
+                diaries.size() + dailyQuestions.size() + deepThoughts.size(),
+                weekEmotions
+        );
         String keywordJson = toKeywordJson(topEmotions);
 
         String summaryText = geminiService.generateWeeklyMindRecordSummary(keywordJson);
@@ -123,6 +130,7 @@ public class WeeklyMindRecordService {
                 .week(week)
                 .dailyQuestion(dqItems)
                 .emotions(topEmotions)
+                .emotionAnalysis(emotionAnalysis)
                 .build();
     }
 
@@ -146,11 +154,15 @@ public class WeeklyMindRecordService {
         if (sourceIds.isEmpty()) {
             return Map.of();
         }
-        return emotionRepository.findByUserIdAndSourceTypeAndSourceIdIn(userId, type, sourceIds).stream()
+        return emotionRepository
+                .findByUserIdAndSourceTypeAndSourceIdInAndStatus(
+                        userId, type, sourceIds, EmotionAnalysisStatus.SUCCEEDED)
+                .stream()
+                .filter(Emotion::isSucceeded)
                 .collect(Collectors.toMap(Emotion::getSourceId, Emotion::getEmotionCategory, (a, b) -> a));
     }
 
-    private List<WeeklyEmotionItem> buildTopEmotions(
+    private List<Emotion> collectWeekEmotions(
             Long userId,
             List<Diary> diaries,
             List<UserDailyQuestion> dailyQuestions,
@@ -161,21 +173,52 @@ public class WeeklyMindRecordService {
         List<Long> qIds = dailyQuestions.stream().map(UserDailyQuestion::getId).toList();
         List<Long> tIds = deepThoughts.stream().map(DeepThought::getId).toList();
         if (!dIds.isEmpty()) {
-            collected.addAll(emotionRepository.findByUserIdAndSourceTypeAndSourceIdIn(userId, EmotionSourceType.DIARY, dIds));
+            collected.addAll(emotionRepository.findByUserIdAndSourceTypeAndSourceIdIn(
+                    userId, EmotionSourceType.DIARY, dIds));
         }
         if (!qIds.isEmpty()) {
-            collected.addAll(emotionRepository.findByUserIdAndSourceTypeAndSourceIdIn(userId, EmotionSourceType.DAILY_QUESTION, qIds));
+            collected.addAll(emotionRepository.findByUserIdAndSourceTypeAndSourceIdIn(
+                    userId, EmotionSourceType.DAILY_QUESTION, qIds));
         }
         if (!tIds.isEmpty()) {
-            collected.addAll(emotionRepository.findByUserIdAndSourceTypeAndSourceIdIn(userId, EmotionSourceType.DEEP_THOUGHT, tIds));
+            collected.addAll(emotionRepository.findByUserIdAndSourceTypeAndSourceIdIn(
+                    userId, EmotionSourceType.DEEP_THOUGHT, tIds));
         }
+        return collected;
+    }
 
+    private EmotionAnalysisSummary buildEmotionAnalysisSummary(int sourceTotal, List<Emotion> emotions) {
+        int succeeded = 0;
+        int pending = 0;
+        int failed = 0;
+        for (Emotion e : emotions) {
+            EmotionAnalysisStatus status = e.effectiveStatus();
+            if (status == EmotionAnalysisStatus.SUCCEEDED && e.isSucceeded()) {
+                succeeded++;
+            } else if (status == EmotionAnalysisStatus.FAILED) {
+                failed++;
+            } else {
+                pending++;
+            }
+        }
+        // 행이 아직 없는 기록은 pending으로 간주
+        int missing = Math.max(0, sourceTotal - emotions.size());
+        pending += missing;
+        return EmotionAnalysisSummary.builder()
+                .total(sourceTotal)
+                .succeeded(succeeded)
+                .pending(pending)
+                .failed(failed)
+                .build();
+    }
+
+    private List<WeeklyEmotionItem> buildTopEmotions(List<Emotion> collected) {
         Map<String, Integer> freq = new HashMap<>();
         for (Emotion e : collected) {
-            String k = e.getEmotionCategory();
-            if (k == null || k.isBlank()) {
+            if (!e.isSucceeded()) {
                 continue;
             }
+            String k = e.getEmotionCategory();
             freq.merge(k.trim(), 1, Integer::sum);
         }
 

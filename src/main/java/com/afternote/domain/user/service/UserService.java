@@ -197,6 +197,11 @@ public class UserService {
     ) {
         User user = findUserById(userId);
 
+        String email = request.getEmail() != null ? request.getEmail().trim() : null;
+        if (email == null || email.isBlank()) {
+            throw new CustomException(ErrorCode.RECEIVER_EMAIL_REQUIRED);
+        }
+
         PhoneNumbers.validateOptional(request.getPhone());
         ensureUniqueReceiverPhone(user.getId(), request.getPhone(), null);
 
@@ -204,7 +209,7 @@ public class UserService {
                 .name(request.getName())
                 .relation(request.getRelation())
                 .phone(request.getPhone())
-                .email(request.getEmail())
+                .email(email)
                 .message(request.getMessage())
                 .userId(user.getId())
                 .build();

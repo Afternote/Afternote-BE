@@ -1,0 +1,54 @@
+services:
+  nginx:
+    image: nginx:alpine
+    container_name: afternote-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./data/certbot/conf:/etc/letsencrypt:ro
+      - ./data/certbot/www:/var/www/certbot:ro
+    depends_on:
+      - afternote-server
+    networks:
+      - afternote-net
+
+  afternote-server:
+    image: hwanggyuun/afternote-server:latest
+    container_name: afternote-server
+    restart: unless-stopped
+    env_file:
+      - .env
+    expose:
+      - "8080"
+    depends_on:
+      - afternote-redis
+    networks:
+      - afternote-net
+
+  afternote-redis:
+    image: redis:7-alpine
+    container_name: afternote-redis
+    restart: unless-stopped
+    expose:
+      - "6379"
+    networks:
+      - afternote-net
+
+  # 인증서 발급/갱신만 할 때만 실행 (끝나면 프로세스 종료)
+  # 평소: docker compose up -d  → certbot 은 안 뜸 (profile: cert)
+  certbot:
+    image: certbot/certbot:latest
+    profiles:
+      - cert
+    volumes:
+      - ./data/certbot/conf:/etc/letsencrypt
+      - ./data/certbot/www:/var/www/certbot
+    networks:
+      - afternote-net
+
+networks:
+  afternote-net:
+    driver: bridge

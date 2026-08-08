@@ -1,6 +1,7 @@
 package com.afternote.domain.user.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Getter;
 
@@ -19,7 +20,9 @@ public record UserCreateReceiverRequest(
         @Getter
         String phone,
 
-        @Schema(description = "이메일", example = "jieun@naver.com", nullable = true)
+        @Schema(description = "이메일 (수신자 본인 인증용, 필수)", example = "jieun@naver.com")
+        @NotBlank(message = "수신자 이메일은 필수입니다.")
+        @Email(message = "올바른 이메일 형식이 아닙니다.")
         @Getter
         String email,
 

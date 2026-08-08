@@ -107,6 +107,23 @@ class UserServiceCreateReceiverTest {
     }
 
     @Test
+    @DisplayName("수신자 등록 실패 - 이메일 누락")
+    void createReceiver_MissingEmail_Fail() {
+        User user = sampleUser(1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+
+        UserCreateReceiverRequest request = new UserCreateReceiverRequest(
+                "이름만", "딸", null, "  ", null
+        );
+
+        assertThatThrownBy(() -> userService.createReceiver(1L, request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.RECEIVER_EMAIL_REQUIRED));
+        verify(receiverRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("수신자 등록 성공 - 유효 전화번호")
     void createReceiver_ValidPhone_Success() {
         User user = sampleUser(1L);

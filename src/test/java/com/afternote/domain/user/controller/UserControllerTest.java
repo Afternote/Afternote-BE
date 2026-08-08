@@ -150,6 +150,16 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("수신자 등록 API 실패 - 필수 email 누락")
+    void createReceiver_MissingEmail_Fail() throws Exception {
+        mockMvc.perform(post("/api/v1/users/receivers")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"kim\",\"relation\":\"DAUGHTER\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     @DisplayName("수신인 상세 조회 API 성공")
     void getReceiverDetail_Success() throws Exception {
         given(userService.getReceiverDetail(USER_ID, 2L)).willReturn(null);

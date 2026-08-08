@@ -63,7 +63,7 @@ public class AfternoteRelationService {
     private void saveReceivers(Afternote afternote, AfternoteCreateRequest request) {
         if (request.getReceivers() == null) return;
 
-        appendReceivers(afternote, resolveReceivers(request.getReceivers()));
+        appendReceivers(afternote, resolveReceivers(afternote.getUser().getId(), request.getReceivers()));
     }
     
     /**
@@ -73,7 +73,7 @@ public class AfternoteRelationService {
         if (request.getReceivers() == null) return;
 
         // receivers가 제공된 경우에만 전체 교체
-        replaceReceivers(afternote, resolveReceivers(request.getReceivers()));
+        replaceReceivers(afternote, resolveReceivers(afternote.getUser().getId(), request.getReceivers()));
     }
     
     // ========== Builder Helper Methods ==========
@@ -85,7 +85,10 @@ public class AfternoteRelationService {
                 .build();
     }
 
-    private List<Receiver> resolveReceivers(List<AfternoteCreateRequest.ReceiverRequest> receiverRequests) {
+    private List<Receiver> resolveReceivers(
+            Long userId,
+            List<AfternoteCreateRequest.ReceiverRequest> receiverRequests
+    ) {
         List<Long> receiverIds = receiverRequests.stream()
             .map(AfternoteCreateRequest.ReceiverRequest::getReceiverId)
             .toList();
@@ -96,6 +99,12 @@ public class AfternoteRelationService {
 
         if (receiverMap.size() != new HashSet<>(receiverIds).size()) {
             throw new CustomException(ErrorCode.RECEIVER_NOT_FOUND);
+        }
+
+        boolean hasUnauthorizedReceiver = foundReceivers.stream()
+                .anyMatch(receiver -> !receiver.getUserId().equals(userId));
+        if (hasUnauthorizedReceiver) {
+            throw new CustomException(ErrorCode.NOT_ENOUGH_PERMISSION);
         }
 
         return receiverIds.stream()

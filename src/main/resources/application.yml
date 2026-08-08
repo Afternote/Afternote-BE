@@ -79,6 +79,13 @@ app:
         version-name: ${APP_ANDROID_SEED_VERSION_NAME:1.0.0}
         store-url: ${APP_ANDROID_STORE_URL:}
 
+# 마인드레코드 감정 분석 (Gemini 실패 방어)
+afternote:
+  emotion-analysis:
+    max-retry: 5
+    backfill-batch-size: 20
+    backfill-delay-ms: 300000
+
 cloud:
   aws:
     s3:

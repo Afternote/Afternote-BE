@@ -1,7 +1,7 @@
 package com.afternote.domain.mindrecord.weekly.dto;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.afternote.global.sanitizer.MindRecordHtmlSchema;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
@@ -36,17 +36,34 @@ public record WeeklyMindRecordResponse(
         @Getter
         List<WeeklyDailyQuestionItem> dailyQuestion,
 
-        @Schema(description = "해당 주 상위 감정 키워드 (최대 3)")
+        @Schema(description = "해당 주 상위 감정 키워드 (최대 3, 분석 성공분만)")
         @Getter
-        List<WeeklyEmotionItem> emotions
+        List<WeeklyEmotionItem> emotions,
+
+        @Schema(description = "해당 주 감정 분석 진행 상태 요약")
+        @Getter
+        EmotionAnalysisSummary emotionAnalysis
 ) {
 
+    @Builder
+    public static record EmotionAnalysisSummary(
+            @Schema(description = "분석 대상 기록 수")
+            @Getter
+            int total,
 
+            @Schema(description = "분석 성공 수")
+            @Getter
+            int succeeded,
 
+            @Schema(description = "분석 대기/재시도 중 수")
+            @Getter
+            int pending,
 
-
-
-
+            @Schema(description = "분석 실패(재시도 소진) 수")
+            @Getter
+            int failed
+    ) {
+    }
 
     @Builder
     public static record WeekRecordItem(
@@ -75,8 +92,6 @@ public record WeeklyMindRecordResponse(
             @Getter
             String date
     ) {
-
-
     }
 
     @Builder

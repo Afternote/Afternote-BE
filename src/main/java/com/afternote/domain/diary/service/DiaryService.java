@@ -7,6 +7,7 @@ import com.afternote.domain.diary.dto.DiaryUpdateRequest;
 import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.model.TodayMood;
 import com.afternote.domain.diary.repository.DiaryRepository;
+import com.afternote.domain.mindrecord.emotion.EmotionAnalysisTrigger;
 import com.afternote.domain.mindrecord.emotion.event.DiaryEmotionAnalysisRequestedEvent;
 import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.domain.receiver.repository.DiaryReceiverRepository;
@@ -119,15 +120,33 @@ public class DiaryService {
         Diary diary = diaryRepository.findByIdAndUserId(diaryId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DIARY_NOT_FOUND));
 
+        boolean wasDraft = Boolean.TRUE.equals(diary.getIsDraft());
+        String beforeTitle = diary.getTitle();
+        String beforeContent = diary.getContent();
+        TodayMood beforeMood = diary.getTodayMood();
+
+        String contentToUpdate = request.getContent() != null
+                ? mindRecordContentMediaService.prepareContentForSave(userId, request.getContent())
+                : null;
+
         diary.update(
                 request.getTitle(),
-                request.getContent() != null
-                        ? mindRecordContentMediaService.prepareContentForSave(userId, request.getContent())
-                        : null,
+                contentToUpdate,
                 request.getIsDraft(),
                 request.getTodayMood()
         );
-        if (Boolean.FALSE.equals(diary.getIsDraft())) {
+
+        boolean isFinal = Boolean.FALSE.equals(diary.getIsDraft());
+        if (EmotionAnalysisTrigger.shouldAnalyzeDiary(
+                wasDraft,
+                isFinal,
+                beforeTitle,
+                beforeContent,
+                beforeMood,
+                diary.getTitle(),
+                diary.getContent(),
+                diary.getTodayMood()
+        )) {
             eventPublisher.publishEvent(new DiaryEmotionAnalysisRequestedEvent(userId, diary.getId()));
         }
 

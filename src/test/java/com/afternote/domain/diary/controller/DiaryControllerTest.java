@@ -17,6 +17,7 @@ import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -53,8 +54,11 @@ class DiaryControllerTest {
 
     @BeforeEach
     void setUp() {
+        LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
+        validator.afterPropertiesSet();
         mockMvc = MockMvcBuilders.standaloneSetup(diaryController)
                 .setCustomArgumentResolvers(new UserIdTestArgumentResolver())
+                .setValidator(validator)
                 .build();
     }
 
@@ -73,6 +77,16 @@ class DiaryControllerTest {
             .andExpect(jsonPath("$.data.todayMood").value("HAPPY"));
 
         verify(diaryService).createDiary(eq(USER_ID), any());
+    }
+
+    @Test
+    @DisplayName("Diary 작성 API 실패 - todayMood 누락")
+    void createDiary_MissingTodayMood_Fail() throws Exception {
+        mockMvc.perform(post("/api/v1/diary")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"content\":\"c\",\"isDraft\":false}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

@@ -5,6 +5,7 @@ import com.afternote.domain.dailyquestion.model.DailyQuestion;
 import com.afternote.domain.dailyquestion.model.UserDailyQuestion;
 import com.afternote.domain.dailyquestion.repository.DailyQuestionRepository;
 import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
+import com.afternote.domain.mindrecord.emotion.EmotionAnalysisTrigger;
 import com.afternote.domain.mindrecord.emotion.event.DailyQuestionEmotionAnalysisRequestedEvent;
 import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.domain.receiver.repository.UserDailyQuestionReceiverRepository;
@@ -136,14 +137,23 @@ public class DailyQuestionService {
         }
 
         if (request.getContent() != null || request.getIsDraft() != null) {
-            userDailyQuestion.updateAnswer(
-                    request.getContent() != null
-                            ? mindRecordContentMediaService.prepareContentForSave(userId, request.getContent())
-                            : userDailyQuestion.getContent(),
-                    request.getIsDraft() != null ? request.getIsDraft() : userDailyQuestion.isDraft()
-            );
-            if (!userDailyQuestion.isDraft()) {
-                eventPublisher.publishEvent(new DailyQuestionEmotionAnalysisRequestedEvent(userId, userDailyQuestion.getId()));
+            boolean wasDraft = userDailyQuestion.isDraft();
+            String beforeContent = userDailyQuestion.getContent();
+            String nextContent = request.getContent() != null
+                    ? mindRecordContentMediaService.prepareContentForSave(userId, request.getContent())
+                    : userDailyQuestion.getContent();
+            boolean nextDraft = request.getIsDraft() != null ? request.getIsDraft() : userDailyQuestion.isDraft();
+
+            userDailyQuestion.updateAnswer(nextContent, nextDraft);
+
+            if (EmotionAnalysisTrigger.shouldAnalyzeDailyQuestion(
+                    wasDraft,
+                    !userDailyQuestion.isDraft(),
+                    beforeContent,
+                    userDailyQuestion.getContent()
+            )) {
+                eventPublisher.publishEvent(
+                        new DailyQuestionEmotionAnalysisRequestedEvent(userId, userDailyQuestion.getId()));
             }
         }
 

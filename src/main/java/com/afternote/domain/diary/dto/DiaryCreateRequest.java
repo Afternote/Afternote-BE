@@ -26,7 +26,8 @@ public record DiaryCreateRequest(
         @Getter
         Boolean isDraft,
 
-        @Schema(description = "오늘의 기분", example = "HAPPY")
+        @Schema(description = "오늘의 기분 (필수)", example = "HAPPY", requiredMode = Schema.RequiredMode.REQUIRED)
+        @NotNull(message = "오늘의 기분은 필수입니다.")
         @Getter
         TodayMood todayMood,
 

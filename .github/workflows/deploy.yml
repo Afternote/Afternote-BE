@@ -37,7 +37,17 @@ jobs:
           docker build --platform linux/amd64 -t ${{ secrets.DOCKER_USERNAME }}/afternote-server:latest .
           docker push ${{ secrets.DOCKER_USERNAME }}/afternote-server:latest
 
-      # EC2가 Amazon Linux 2023 등이어도 Docker 서비스가 꺼져 있을 수 있어 한 줄 보강
+      - name: Sync deploy configs to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          source: "deploy/nginx/nginx.conf,deploy/docker-compose.yml"
+          target: "/tmp/afternote-deploy-sync/"
+          overwrite: true
+          strip_components: 1
+
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -45,19 +55,9 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           script: |
-            set -e
+            set -euo pipefail
             sudo systemctl start docker 2>/dev/null || true
             cd ~/deploy
-
-            if [ ! -f docker-compose.yml ]; then
-              echo "[ERROR] docker-compose.yml not found in ~/deploy"
-              exit 1
-            fi
-
-            if [ ! -f nginx/nginx.conf ]; then
-              echo "[ERROR] nginx/nginx.conf not found in ~/deploy/nginx"
-              exit 1
-            fi
 
             if [ ! -d data/certbot/conf ]; then
               echo "[ERROR] data/certbot/conf directory not found"
@@ -69,8 +69,45 @@ jobs:
               exit 1
             fi
 
+            SYNC_ROOT=/tmp/afternote-deploy-sync
+            if [ ! -f "${SYNC_ROOT}/nginx/nginx.conf" ]; then
+              echo "[ERROR] synced nginx.conf not found at ${SYNC_ROOT}/nginx/nginx.conf"
+              ls -laR "${SYNC_ROOT}" || true
+              exit 1
+            fi
+            if [ ! -f "${SYNC_ROOT}/docker-compose.yml" ]; then
+              echo "[ERROR] synced docker-compose.yml not found"
+              exit 1
+            fi
+
+            mkdir -p ~/deploy/nginx
+            TS=$(date +%Y%m%d%H%M%S)
+            if [ -f nginx/nginx.conf ]; then
+              cp nginx/nginx.conf "nginx/nginx.conf.bak.${TS}"
+            fi
+            if [ -f docker-compose.yml ]; then
+              cp docker-compose.yml "docker-compose.yml.bak.${TS}"
+            fi
+
+            cp "${SYNC_ROOT}/nginx/nginx.conf" nginx/nginx.conf
+            cp "${SYNC_ROOT}/docker-compose.yml" docker-compose.yml
+
             docker compose pull
             docker compose up -d --remove-orphans --pull always
+
+            echo "[INFO] validating nginx config..."
+            if ! docker compose exec -T nginx nginx -t; then
+              echo "[ERROR] nginx -t failed; restoring previous nginx.conf if backup exists"
+              if [ -f "nginx/nginx.conf.bak.${TS}" ]; then
+                cp "nginx/nginx.conf.bak.${TS}" nginx/nginx.conf
+                docker compose up -d nginx
+                docker compose exec -T nginx nginx -t
+                docker compose exec -T nginx nginx -s reload || true
+              fi
+              exit 1
+            fi
+
+            docker compose exec -T nginx nginx -s reload
             docker compose logs --tail=30 afternote-server
             docker image prune -f
 
@@ -105,6 +142,9 @@ jobs:
 
           echo "Checking /api/v1/app/version ..."
           curl -sf "${BASE_URL}/api/v1/app/version?platform=ANDROID&versionCode=10001" | grep -q '"status":200'
+
+          echo "Checking /nginx-health ..."
+          curl -sf "${BASE_URL}/nginx-health" | grep -q ok
 
           echo "Smoke OK"
 

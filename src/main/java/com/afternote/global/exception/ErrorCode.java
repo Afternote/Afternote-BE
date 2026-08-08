@@ -123,7 +123,8 @@ public enum ErrorCode {
     // ======================================                                                                                                                                                               
     // 5. 요청 값 검증 오류 (code: 1400 ~ 1499)                                                                                                                                                                   
     // ======================================                                                                                                                                                               
-    INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, 1400, "요청 값이 올바르지 않습니다."),                                                                                                                       
+    INVALID_INPUT_VALUE(HttpStatus.BAD_REQUEST, 1400, "요청 값이 올바르지 않습니다."),
+    RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, 1429, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
 
     // ======================================
     // 6. 애프터노트 관련 오류 (code: 1600 ~ 1699)                                                                                                                                                            

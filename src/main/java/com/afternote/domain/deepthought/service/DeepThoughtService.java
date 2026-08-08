@@ -8,6 +8,7 @@ import com.afternote.domain.deepthought.model.DeepThought;
 import com.afternote.domain.deepthought.model.DeepThoughtCategory;
 import com.afternote.domain.deepthought.repository.DeepThoughtCategoryRepository;
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
+import com.afternote.domain.mindrecord.emotion.EmotionAnalysisTrigger;
 import com.afternote.domain.mindrecord.emotion.event.DeepThoughtEmotionAnalysisRequestedEvent;
 import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.domain.receiver.repository.DeepThoughtReceiverRepository;
@@ -80,17 +81,30 @@ public class DeepThoughtService {
             category = getCategory(userId, request.getCategory());
         }
 
+        boolean wasDraft = Boolean.TRUE.equals(deepThought.getIsDraft());
+        String beforeTitle = deepThought.getTitle();
+        String beforeContent = deepThought.getContent();
+        String contentToUpdate = request.getContent() != null
+                ? mindRecordContentMediaService.prepareContentForSave(userId, request.getContent())
+                : null;
+
         deepThought.update(
                 request.getTitle(),
-                request.getContent() != null
-                        ? mindRecordContentMediaService.prepareContentForSave(userId, request.getContent())
-                        : null,
+                contentToUpdate,
                 request.getIsDraft(),
                 category,
                 request.getTags()
         );
 
-        if (Boolean.FALSE.equals(deepThought.getIsDraft())) {
+        boolean isFinal = Boolean.FALSE.equals(deepThought.getIsDraft());
+        if (EmotionAnalysisTrigger.shouldAnalyzeDeepThought(
+                wasDraft,
+                isFinal,
+                beforeTitle,
+                beforeContent,
+                deepThought.getTitle(),
+                deepThought.getContent()
+        )) {
             eventPublisher.publishEvent(new DeepThoughtEmotionAnalysisRequestedEvent(userId, deepThought.getId()));
         }
 

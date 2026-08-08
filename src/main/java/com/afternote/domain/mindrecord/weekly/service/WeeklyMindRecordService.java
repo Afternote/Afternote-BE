@@ -25,6 +25,7 @@ import com.afternote.global.service.GeminiService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,12 +40,18 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class WeeklyMindRecordService {
+
+    static final String FALLBACK_SUMMARY =
+            "이번 주 기록을 바탕으로 인사이트를 준비 중이에요. 꾸준히 남겨 주셔서 고마워요.";
 
     private static final DateTimeFormatter DAILY_QUESTION_DATE =
             DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN);
@@ -57,6 +64,9 @@ public class WeeklyMindRecordService {
     private final WeeklyReportRepository weeklyReportRepository;
     private final GeminiService geminiService;
     private final ObjectMapper objectMapper;
+
+    /** 동일 사용자·주차 동시 GET에서 Gemini를 한 번만 호출 */
+    private final ConcurrentHashMap<String, Object> summaryLocks = new ConcurrentHashMap<>();
 
     @Transactional
     public WeeklyMindRecordResponse getWeeklyMindRecord(Long userId, LocalDate date) {
@@ -105,12 +115,7 @@ public class WeeklyMindRecordService {
         );
         String keywordJson = toKeywordJson(topEmotions);
 
-        String summaryText = geminiService.generateWeeklyMindRecordSummary(keywordJson);
-        if (summaryText == null || summaryText.isBlank()) {
-            summaryText = "이번 주 기록을 바탕으로 인사이트를 준비 중이에요. 꾸준히 남겨 주셔서 고마워요.";
-        }
-
-        persistWeeklyReport(user, storedStart, storedEnd, summaryText, keywordJson);
+        String summaryText = resolveSummaryText(user, weekMonday, storedStart, storedEnd, keywordJson, topEmotions);
 
         List<WeekRecordItem> week = buildWeekItems(diaries, dailyQuestions, deepThoughts, diaryEmotion, dqEmotion, dtEmotion);
 
@@ -132,6 +137,62 @@ public class WeeklyMindRecordService {
                 .emotions(topEmotions)
                 .emotionAnalysis(emotionAnalysis)
                 .build();
+    }
+
+    private String resolveSummaryText(
+            User user,
+            LocalDate weekMonday,
+            LocalDateTime storedStart,
+            LocalDateTime storedEnd,
+            String keywordJson,
+            List<WeeklyEmotionItem> topEmotions
+    ) {
+        String lockKey = user.getId() + ":" + weekMonday;
+        Object lock = summaryLocks.computeIfAbsent(lockKey, k -> new Object());
+        try {
+            synchronized (lock) {
+                Optional<WeeklyReport> existing =
+                        weeklyReportRepository.findByUserIdAndStartDate(user.getId(), storedStart);
+
+                if (existing.isPresent()
+                        && Objects.equals(existing.get().getKeywordJson(), keywordJson)
+                        && isUsableSummary(existing.get().getSummaryText())) {
+                    log.debug("[WeeklySummary] cache_hit userId={} week={}", user.getId(), weekMonday);
+                    return existing.get().getSummaryText();
+                }
+
+                if (topEmotions == null || topEmotions.isEmpty()) {
+                    log.debug("[WeeklySummary] skip_empty userId={} week={}", user.getId(), weekMonday);
+                    if (existing.isPresent() && isUsableSummary(existing.get().getSummaryText())) {
+                        return existing.get().getSummaryText();
+                    }
+                    return FALLBACK_SUMMARY;
+                }
+
+                String generated = geminiService.generateWeeklyMindRecordSummary(keywordJson);
+                if (generated != null && !generated.isBlank() && !isFallbackSummary(generated)) {
+                    log.info("[WeeklySummary] gemini_ok userId={} week={}", user.getId(), weekMonday);
+                    persistWeeklyReport(user, storedStart, storedEnd, generated.trim(), keywordJson);
+                    return generated.trim();
+                }
+
+                log.warn("[WeeklySummary] gemini_fail userId={} week={}", user.getId(), weekMonday);
+                if (existing.isPresent() && isUsableSummary(existing.get().getSummaryText())) {
+                    return existing.get().getSummaryText();
+                }
+                return FALLBACK_SUMMARY;
+            }
+        } finally {
+            summaryLocks.remove(lockKey, lock);
+        }
+    }
+
+    private static boolean isFallbackSummary(String summaryText) {
+        return summaryText != null && FALLBACK_SUMMARY.equals(summaryText.trim());
+    }
+
+    private static boolean isUsableSummary(String summaryText) {
+        return summaryText != null && !summaryText.isBlank() && !isFallbackSummary(summaryText);
     }
 
     private void persistWeeklyReport(
@@ -201,7 +262,6 @@ public class WeeklyMindRecordService {
                 pending++;
             }
         }
-        // 행이 아직 없는 기록은 pending으로 간주
         int missing = Math.max(0, sourceTotal - emotions.size());
         pending += missing;
         return EmotionAnalysisSummary.builder()

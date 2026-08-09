@@ -54,7 +54,7 @@ public class AuthService {
         return userRepository.save(user);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
@@ -67,6 +67,8 @@ public class AuthService {
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
         }
+
+        user.touchActivity();
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
@@ -97,8 +99,11 @@ public class AuthService {
         if (storedUserId == null || !storedUserId.equals(userId)) {
             throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
+
+        // 4. 로그인 상태 확정을 활동으로 집계 (클라이언트 ping 의존 제거)
+        userRepository.findById(userId).ifPresent(User::touchActivity);
         
-        // 4. 신규 토큰 발급 (RTR 전략)
+        // 5. 신규 토큰 발급 (RTR 전략)
         String newAccessToken = jwtTokenProvider.generateAccessToken(userId);
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(userId);
         tokenService.saveToken(newRefreshToken, userId);

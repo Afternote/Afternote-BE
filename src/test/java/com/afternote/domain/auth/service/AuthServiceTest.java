@@ -20,14 +20,15 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
+import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
@@ -147,7 +148,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("로그인 성공")
+    @DisplayName("로그인 성공 - lastActiveAt 갱신")
     void login_Success() {
         LoginRequest request = org.mockito.Mockito.mock(LoginRequest.class);
         given(request.getEmail()).willReturn("test@test.com");
@@ -161,6 +162,8 @@ class AuthServiceTest {
                 .provider(AuthProvider.LOCAL)
                 .build();
         ReflectionTestUtils.setField(user, "id", 10L);
+        LocalDateTime beforeLogin = LocalDateTime.now().minusDays(3);
+        ReflectionTestUtils.setField(user, "lastActiveAt", beforeLogin);
 
         given(userRepository.findByEmail("test@test.com")).willReturn(Optional.of(user));
         given(passwordEncoder.matches("Password1!", "encoded")).willReturn(true);
@@ -173,30 +176,57 @@ class AuthServiceTest {
         assertThat(response.getAccessToken()).isEqualTo("access");
         assertThat(response.getRefreshToken()).isEqualTo("refresh");
         assertThat(response.getExpiresIn()).isEqualTo(3600L);
+        assertThat(user.getLastActiveAt()).isAfter(beforeLogin);
         verify(tokenService).saveToken("refresh", 10L);
     }
 
     @Test
-    @DisplayName("재발급 실패 - 유효하지 않은 리프레시 토큰")
-    void reissue_InvalidToken_Fail() {
-        ReissueRequest request = org.mockito.Mockito.mock(ReissueRequest.class);
-        given(request.getRefreshToken()).willReturn("rt");
-        given(jwtTokenProvider.validateToken("rt")).willReturn(false);
+    @DisplayName("로그인 실패 - 비밀번호 불일치 시 lastActiveAt 미갱신")
+    void login_PasswordMismatch_DoesNotTouchActivity() {
+        LoginRequest request = org.mockito.Mockito.mock(LoginRequest.class);
+        given(request.getEmail()).willReturn("test@test.com");
+        given(request.getPassword()).willReturn("wrong");
 
-        assertThatThrownBy(() -> authService.reissue(request))
+        User user = User.builder()
+                .email("test@test.com")
+                .password("encoded")
+                .name("tester")
+                .status(UserStatus.ACTIVE)
+                .provider(AuthProvider.LOCAL)
+                .build();
+        LocalDateTime before = LocalDateTime.now().minusDays(1);
+        ReflectionTestUtils.setField(user, "lastActiveAt", before);
+
+        given(userRepository.findByEmail("test@test.com")).willReturn(Optional.of(user));
+        given(passwordEncoder.matches("wrong", "encoded")).willReturn(false);
+
+        assertThatThrownBy(() -> authService.login(request))
                 .isInstanceOf(CustomException.class)
-                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.PASSWORD_MISMATCH));
+        assertThat(user.getLastActiveAt()).isEqualTo(before);
     }
 
     @Test
-    @DisplayName("재발급 성공")
+    @DisplayName("재발급 성공 - lastActiveAt 갱신")
     void reissue_Success() {
         ReissueRequest request = org.mockito.Mockito.mock(ReissueRequest.class);
         given(request.getRefreshToken()).willReturn("oldRt");
 
+        User user = User.builder()
+                .email("test@test.com")
+                .password("encoded")
+                .name("tester")
+                .status(UserStatus.ACTIVE)
+                .provider(AuthProvider.LOCAL)
+                .build();
+        ReflectionTestUtils.setField(user, "id", 11L);
+        LocalDateTime beforeReissue = LocalDateTime.now().minusDays(2);
+        ReflectionTestUtils.setField(user, "lastActiveAt", beforeReissue);
+
         given(jwtTokenProvider.validateToken("oldRt")).willReturn(true);
         given(jwtTokenProvider.getUserId("oldRt")).willReturn(11L);
         given(tokenService.getUserIdAndDelete("oldRt")).willReturn(11L);
+        given(userRepository.findById(11L)).willReturn(Optional.of(user));
         given(jwtTokenProvider.generateAccessToken(11L)).willReturn("newAccess");
         given(jwtTokenProvider.generateRefreshToken(11L)).willReturn("newRt");
         given(jwtTokenProvider.getAccessTokenExpirationSeconds()).willReturn(3600L);
@@ -206,7 +236,22 @@ class AuthServiceTest {
         assertThat(response.getAccessToken()).isEqualTo("newAccess");
         assertThat(response.getRefreshToken()).isEqualTo("newRt");
         assertThat(response.getExpiresIn()).isEqualTo(3600L);
+        assertThat(user.getLastActiveAt()).isAfter(beforeReissue);
         verify(tokenService).saveToken("newRt", 11L);
+        verify(userRepository).findById(11L);
+    }
+
+    @Test
+    @DisplayName("재발급 실패 - 토큰 무효 시 lastActiveAt 미조회")
+    void reissue_InvalidToken_DoesNotLoadUser() {
+        ReissueRequest request = org.mockito.Mockito.mock(ReissueRequest.class);
+        given(request.getRefreshToken()).willReturn("rt");
+        given(jwtTokenProvider.validateToken("rt")).willReturn(false);
+
+        assertThatThrownBy(() -> authService.reissue(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.INVALID_REFRESH_TOKEN));
+        verify(userRepository, never()).findById(any());
     }
 
     @Test

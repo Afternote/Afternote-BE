@@ -4,6 +4,7 @@ import com.afternote.domain.music.dto.GetMusicSearchResponse;
 import com.afternote.domain.music.service.ItunesService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,7 +15,11 @@ public class MusicController {
 
     private final ItunesService itunesService;
 
-    @Operation(summary = "노래 검색 API", description = "가수명 또는 노래 제목으로 노래를 검색")
+    @Operation(
+            summary = "노래 검색 API",
+            description = "가수명 또는 노래 제목으로 노래를 검색. JWT 인증 없이 사용합니다."
+    )
+    @SecurityRequirements // 전역 bearer 상속 제거 → OpenAPI security: []
     @GetMapping("/search")
     public GetMusicSearchResponse searchMusic(
             @Parameter(description = "검색어", example = "아이유", required = true)

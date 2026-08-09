@@ -13,7 +13,11 @@ public record AppVersionCheckResponse(
         @Getter
         int latestVersionCode,
 
-        @Schema(description = "Play Store URL (updateRequired=true일 때만 포함)", example = "https://play.google.com/store/apps/details?id=com.afternote")
+        @Schema(
+                description = "Play Store URL. updateRequired=true일 때 스토어 URL, 불필요하면 null",
+                example = "https://play.google.com/store/apps/details?id=com.afternote",
+                nullable = true
+        )
         @Getter
         String storeUrl
 ) {

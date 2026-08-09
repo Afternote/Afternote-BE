@@ -48,7 +48,8 @@ class AppVersionControllerTest {
                 .andExpect(jsonPath("$.code").value(200))
                 .andExpect(jsonPath("$.data.updateRequired").value(false))
                 .andExpect(jsonPath("$.data.latestVersionCode").value(10001))
-                .andExpect(jsonPath("$.data.storeUrl").doesNotExist());
+                // 배포 응답과 동일: 필드가 null로 포함됨 (omit 아님)
+                .andExpect(jsonPath("$.data.storeUrl").value((Object) null));
 
         verify(appVersionService).checkVersion(AppPlatform.ANDROID, 10001);
     }

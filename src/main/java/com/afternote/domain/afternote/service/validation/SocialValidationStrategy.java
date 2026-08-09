@@ -36,12 +36,11 @@ public class SocialValidationStrategy implements AfternoteCategoryValidationStra
 
     @Override
     public void validateUpdate(AfternoteCreateRequest request) {
-        if (request.getReceivers() != null && !request.getReceivers().isEmpty()) {
-            throw new CustomException(ErrorCode.INVALID_FIELD_FOR_SOCIAL);
-        }
         if (request.getPlaylist() != null) {
             throw new CustomException(ErrorCode.INVALID_FIELD_FOR_SOCIAL);
         }
+        // receivers·credentials·title·actions·leaveMessage 는 수정 허용
+        AfternoteValidationCommons.validateOptionalReceivers(request);
     }
 
 }

@@ -107,9 +107,9 @@ public class ReceiverAuthService {
         return new ReceiverMessageResponse(sender.getName(), receiver.getMessage(), receiver.getCreatedAt());
     }
 
-    public PresignedUrlResponse generatePresignedUrl(String authCode, String extension) {
+    public PresignedUrlResponse generatePresignedUrl(String authCode, String extension, Long contentLength) {
         findReceiverByAuthCode(authCode);
-        return s3Service.generatePresignedUrl("documents", extension, null);
+        return s3Service.generatePresignedUrl("documents", extension, contentLength, null);
     }
 
     public DeliveryVerificationResponse getDeliveryVerificationStatus(String authCode) {

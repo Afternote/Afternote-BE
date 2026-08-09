@@ -171,7 +171,9 @@ public class ReceiverAuthController {
             @RequestHeader("X-Auth-Code") String authCode,
             @Valid @RequestBody ReceiverPresignedUrlRequest request
     ) {
-        return ApiResponse.success(receiverAuthService.generatePresignedUrl(authCode, request.getExtension()));
+        return ApiResponse.success(
+                receiverAuthService.generatePresignedUrl(authCode, request.getExtension(), request.getContentLength())
+        );
     }
 
     @Operation(

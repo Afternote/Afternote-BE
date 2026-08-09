@@ -24,6 +24,16 @@ public record PresignedUrlResponse(
         @Schema(description = "PUT 요청 시 사용할 Content-Type 헤더 값",
             example = "image/jpeg")
         @Getter
-        String contentType
+        String contentType,
+
+        @Schema(description = "PUT 요청 시 필수인 Content-Length 값(바이트). 요청한 contentLength 와 동일합니다.",
+            example = "1048576")
+        @Getter
+        Long contentLength,
+
+        @Schema(description = "해당 확장자에 허용된 최대 업로드 크기(바이트)",
+            example = "10485760")
+        @Getter
+        Long maxContentLength
 ) {
 }

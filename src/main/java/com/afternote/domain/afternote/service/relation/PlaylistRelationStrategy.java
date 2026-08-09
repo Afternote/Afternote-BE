@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrategy {
 
     private static final String DEFAULT_PLAYLIST_TITLE = "추모 플레이리스트";
+    private static final String AFTERNOTES_DIRECTORY = "afternotes";
 
     private final AfternotePlaylistRepository playlistRepository;
     private final S3Service s3Service;
@@ -28,11 +29,12 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
     public void save(Afternote afternote, AfternoteCreateRequest request) {
         if (request.getPlaylist() == null) return;
 
-        AfternotePlaylist.MemorialVideo memorialVideo = createMemorialVideo(request.getPlaylist().getMemorialVideo());
+        Long userId = afternote.getUser().getId();
+        AfternotePlaylist.MemorialVideo memorialVideo = createMemorialVideo(userId, request.getPlaylist().getMemorialVideo());
         AfternotePlaylist playlist = createPlaylist(
                 afternote,
                 request.getPlaylist().getAtmosphere(),
-            normalizeKey(request.getPlaylist().getMemorialPhotoUrl()),
+                promoteKey(userId, request.getPlaylist().getMemorialPhotoUrl()),
                 memorialVideo);
 
         playlist = playlistRepository.save(playlist);
@@ -40,7 +42,7 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
         if (request.getPlaylist().getSongs() != null) {
             int sortOrder = 1;
             for (AfternoteCreateRequest.SongRequest songReq : request.getPlaylist().getSongs()) {
-                playlist.getItems().add(createPlaylistItem(playlist, songReq, sortOrder++));
+                playlist.getItems().add(createPlaylistItem(userId, playlist, songReq, sortOrder++));
             }
             playlistRepository.save(playlist);
         }
@@ -50,15 +52,16 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
     public void update(Afternote afternote, AfternoteCreateRequest request) {
         if (request.getPlaylist() == null) return;
 
+        Long userId = afternote.getUser().getId();
         AfternotePlaylist playlist = afternote.getPlaylist();
 
         if (playlist == null) {
             AfternotePlaylist newPlaylist = createPlaylist(
                     afternote,
                     request.getPlaylist().getAtmosphere(),
-                    normalizeKey(request.getPlaylist().getMemorialPhotoUrl()),
+                    promoteKey(userId, request.getPlaylist().getMemorialPhotoUrl()),
                     request.getPlaylist().getMemorialVideo() != null
-                            ? createMemorialVideo(request.getPlaylist().getMemorialVideo())
+                            ? createMemorialVideo(userId, request.getPlaylist().getMemorialVideo())
                             : null);
 
             newPlaylist = playlistRepository.save(newPlaylist);
@@ -66,7 +69,7 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
             if (request.getPlaylist().getSongs() != null) {
                 int sortOrder = 1;
                 for (AfternoteCreateRequest.SongRequest songReq : request.getPlaylist().getSongs()) {
-                    newPlaylist.getItems().add(createPlaylistItem(newPlaylist, songReq, sortOrder++));
+                    newPlaylist.getItems().add(createPlaylistItem(userId, newPlaylist, songReq, sortOrder++));
                 }
                 playlistRepository.save(newPlaylist);
             }
@@ -74,30 +77,30 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
         }
 
         AfternotePlaylist.MemorialVideo memorialVideo = request.getPlaylist().getMemorialVideo() != null
-                ? createMemorialVideo(request.getPlaylist().getMemorialVideo())
+                ? createMemorialVideo(userId, request.getPlaylist().getMemorialVideo())
                 : null;
         playlist.update(
                 request.getPlaylist().getAtmosphere(),
-            normalizeKey(request.getPlaylist().getMemorialPhotoUrl()),
+                promoteKey(userId, request.getPlaylist().getMemorialPhotoUrl()),
                 memorialVideo);
 
         if (request.getPlaylist().getSongs() != null) {
             playlist.getItems().clear();
             int sortOrder = 1;
             for (AfternoteCreateRequest.SongRequest songReq : request.getPlaylist().getSongs()) {
-                playlist.getItems().add(createPlaylistItem(playlist, songReq, sortOrder++));
+                playlist.getItems().add(createPlaylistItem(userId, playlist, songReq, sortOrder++));
             }
         }
 
         playlistRepository.save(playlist);
     }
 
-    private AfternotePlaylist.MemorialVideo createMemorialVideo(AfternoteCreateRequest.MemorialVideoRequest request) {
+    private AfternotePlaylist.MemorialVideo createMemorialVideo(Long userId, AfternoteCreateRequest.MemorialVideoRequest request) {
         if (request == null) return null;
 
         return AfternotePlaylist.MemorialVideo.builder()
-            .videoUrl(normalizeKey(request.getVideoUrl()))
-            .thumbnailUrl(normalizeKey(request.getThumbnailUrl()))
+                .videoUrl(promoteKey(userId, request.getVideoUrl()))
+                .thumbnailUrl(promoteKey(userId, request.getThumbnailUrl()))
                 .build();
     }
 
@@ -117,6 +120,7 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
     }
 
     private AfternotePlaylistItem createPlaylistItem(
+            Long userId,
             AfternotePlaylist playlist,
             AfternoteCreateRequest.SongRequest song,
             int sortOrder
@@ -125,17 +129,15 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
                 .playlist(playlist)
                 .songTitle(song.getTitle())
                 .artist(song.getArtist())
-                .coverUrl(normalizeKey(song.getCoverUrl()))
+                .coverUrl(promoteKey(userId, song.getCoverUrl()))
                 .sortOrder(sortOrder)
                 .build();
     }
 
-    private String normalizeKey(String rawUrlOrKey) {
+    private String promoteKey(Long userId, String rawUrlOrKey) {
         if (rawUrlOrKey == null || rawUrlOrKey.isBlank()) {
             return rawUrlOrKey;
         }
-
-        String key = s3Service.extractStorageKey(rawUrlOrKey);
-        return key != null ? key : rawUrlOrKey;
+        return s3Service.promoteMediaKey(AFTERNOTES_DIRECTORY, userId, rawUrlOrKey);
     }
 }

@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
@@ -47,6 +48,22 @@ public class S3Service {
     @Value("${cloud.aws.public-base-url:}")
     private String publicBaseUrl;
 
+    /** 이미지 업로드 상한(바이트). 정책 미확정 임시값 — 설정으로 조정. */
+    @Value("${cloud.aws.s3.upload.max-bytes.image:10485760}")
+    private long maxImageBytes;
+
+    /** 영상 업로드 상한(바이트). 정책 미확정 임시값 — 설정으로 조정. */
+    @Value("${cloud.aws.s3.upload.max-bytes.video:209715200}")
+    private long maxVideoBytes;
+
+    /** 음성 업로드 상한(바이트). 정책 미확정 임시값 — 설정으로 조정. */
+    @Value("${cloud.aws.s3.upload.max-bytes.audio:52428800}")
+    private long maxAudioBytes;
+
+    /** 문서(PDF) 업로드 상한(바이트). 정책 미확정 임시값 — 설정으로 조정. */
+    @Value("${cloud.aws.s3.upload.max-bytes.document:20971520}")
+    private long maxDocumentBytes;
+
     private static final Set<String> ALLOWED_EXTENSIONS = Set.of(
             "jpg", "jpeg", "png", "gif", "webp", "heic",
             "mp4", "mov",
@@ -56,25 +73,34 @@ public class S3Service {
     private static final Set<String> ALLOWED_DIRECTORIES = Set.of(
             "profiles", "timeletters", "afternotes", "mindrecords", "documents"
     );
+    private static final Set<String> IMAGE_EXTENSIONS = Set.of(
+            "jpg", "jpeg", "png", "gif", "webp", "heic"
+    );
+    private static final Set<String> VIDEO_EXTENSIONS = Set.of("mp4", "mov");
+    private static final Set<String> AUDIO_EXTENSIONS = Set.of("mp3", "m4a", "wav");
     private static final Duration PRESIGNED_URL_EXPIRATION = Duration.ofMinutes(10);
 
     /**
-     * @deprecated {@link #generatePresignedUrl(String, String, Long)} 사용. owner 미지정 시 {@code receiver}.
+     * @deprecated {@link #generatePresignedUrl(String, String, Long, Long)} 사용. owner 미지정 시 {@code receiver}.
      */
-    public PresignedUrlResponse generatePresignedUrl(String directory, String extension) {
-        return generatePresignedUrl(directory, extension, null);
+    @Deprecated
+    public PresignedUrlResponse generatePresignedUrl(String directory, String extension, Long contentLength) {
+        return generatePresignedUrl(directory, extension, contentLength, null);
     }
 
     /**
      * 업로드용 presigned URL. 객체는 {@code {directory}/staging/{owner}/{uuid}.{ext}} 에 생성된다.
+     * {@code contentLength} 는 서명에 포함되므로 PUT 시 동일 Content-Length 헤더가 필수다.
      */
-    public PresignedUrlResponse generatePresignedUrl(String directory, String extension, Long userId) {
+    public PresignedUrlResponse generatePresignedUrl(String directory, String extension, Long contentLength, Long userId) {
         String normalizedDir = directory.toLowerCase();
         String normalizedExt = extension.toLowerCase().replaceFirst("^\\.", "");
         String owner = resolveOwnerSegment(userId);
 
         validateDirectory(normalizedDir);
         validateExtension(normalizedExt);
+        long maxContentLength = resolveMaxContentLength(normalizedExt);
+        validateContentLength(contentLength, maxContentLength);
 
         String fileName = UUID.randomUUID() + "." + normalizedExt;
         String key = buildStagingKey(normalizedDir, owner, fileName);
@@ -84,6 +110,7 @@ public class S3Service {
                 .bucket(bucket)
                 .key(key)
                 .contentType(contentType)
+                .contentLength(contentLength)
                 .build();
 
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
@@ -101,11 +128,38 @@ public class S3Service {
                     .fileKey(key)
                     .fileUrl(fileUrl)
                     .contentType(contentType)
+                    .contentLength(contentLength)
+                    .maxContentLength(maxContentLength)
                     .build();
         } catch (Exception e) {
             log.error("Presigned URL generation failed for key: {}", key, e);
             throw new CustomException(ErrorCode.PRESIGNED_URL_GENERATION_FAILED);
         }
+    }
+
+    /**
+     * staging/legacy 미디어를 permanent로 승격하고 storage key를 반환한다.
+     * 관리되지 않는 URL이면 기존처럼 extract 결과(또는 원문)를 반환한다.
+     */
+    public String promoteMediaKey(String directory, Long userId, String rawUrlOrKey) {
+        if (!StringUtils.hasText(rawUrlOrKey)) {
+            return rawUrlOrKey;
+        }
+
+        String key = extractStorageKey(rawUrlOrKey);
+        if (!StringUtils.hasText(key)) {
+            return rawUrlOrKey;
+        }
+
+        String normalizedDir = directory.toLowerCase();
+        String owner = resolveOwnerSegment(userId);
+        if (!belongsToDirectory(key, normalizedDir)) {
+            return key;
+        }
+        if (!isPromotableKey(key, normalizedDir, owner)) {
+            return key;
+        }
+        return promoteToPermanent(normalizedDir, owner, key);
     }
 
     /**
@@ -215,10 +269,28 @@ public class S3Service {
                     .destinationKey(permanentKey)
                     .build());
             log.debug("Promoted S3 object {} -> {}", sourceKey, permanentKey);
-            return permanentKey;
         } catch (Exception e) {
             log.error("S3 promote failed sourceKey={} permanentKey={}", sourceKey, permanentKey, e);
             throw new CustomException(ErrorCode.PRESIGNED_URL_GENERATION_FAILED);
+        }
+
+        if (isStagingKey(sourceKey, directory, owner)) {
+            deleteStagingOriginal(sourceKey);
+        }
+
+        return permanentKey;
+    }
+
+    private void deleteStagingOriginal(String sourceKey) {
+        try {
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(sourceKey)
+                    .build());
+            log.debug("Deleted staging original {}", sourceKey);
+        } catch (Exception e) {
+            // permanent 사본은 이미 있으므로 승격 자체는 성공으로 두고, lifecycle 이 후속 정리한다.
+            log.warn("Failed to delete staging original after promote: {}", sourceKey, e);
         }
     }
 
@@ -319,6 +391,31 @@ public class S3Service {
         if (!ALLOWED_DIRECTORIES.contains(directory)) {
             throw new CustomException(ErrorCode.INVALID_DIRECTORY);
         }
+    }
+
+    private void validateContentLength(Long contentLength, long maxContentLength) {
+        if (contentLength == null || contentLength <= 0) {
+            throw new CustomException(ErrorCode.INVALID_FILE_SIZE);
+        }
+        if (contentLength > maxContentLength) {
+            throw new CustomException(ErrorCode.FILE_SIZE_EXCEEDED);
+        }
+    }
+
+    long resolveMaxContentLength(String extension) {
+        if (IMAGE_EXTENSIONS.contains(extension)) {
+            return maxImageBytes;
+        }
+        if (VIDEO_EXTENSIONS.contains(extension)) {
+            return maxVideoBytes;
+        }
+        if (AUDIO_EXTENSIONS.contains(extension)) {
+            return maxAudioBytes;
+        }
+        if ("pdf".equals(extension)) {
+            return maxDocumentBytes;
+        }
+        throw new CustomException(ErrorCode.INVALID_FILE_EXTENSION);
     }
 
     private String getContentType(String extension) {

@@ -131,15 +131,15 @@ class ReceiverAuthControllerTest {
     @Test
     @DisplayName("수신자 Presigned URL API 성공")
     void getPresignedUrl_Success() throws Exception {
-        given(receiverAuthService.generatePresignedUrl(AUTH_CODE, "pdf")).willReturn(null);
+        given(receiverAuthService.generatePresignedUrl(AUTH_CODE, "pdf", 1024L)).willReturn(null);
 
         mockMvc.perform(post("/api/v1/receiver-auth/presigned-url")
                         .header("X-Auth-Code", AUTH_CODE)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"extension\":\"pdf\"}"))
+                        .content("{\"extension\":\"pdf\",\"contentLength\":1024}"))
                 .andExpect(status().isOk());
 
-        verify(receiverAuthService).generatePresignedUrl(AUTH_CODE, "pdf");
+        verify(receiverAuthService).generatePresignedUrl(AUTH_CODE, "pdf", 1024L);
     }
 
     @Test

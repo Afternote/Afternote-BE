@@ -124,7 +124,7 @@ public class TimeLetterService {
                 .build();
 
         // 요청으로 받은 blocks를 TimeLetterBlock 엔티티로 변환 후 연결
-        List<TimeLetterBlock> blocks = buildBlocks(request.getBlocks());
+        List<TimeLetterBlock> blocks = buildBlocks(userId, request.getBlocks());
         timeLetter.replaceBlocks(blocks);
 
         // TimeLetter 저장
@@ -273,7 +273,7 @@ public class TimeLetterService {
         if (request.getBlocks() != null) {
             validateBlocks(request.getBlocks());
 
-            List<TimeLetterBlock> newBlocks = buildBlocks(request.getBlocks());
+            List<TimeLetterBlock> newBlocks = buildBlocks(userId, request.getBlocks());
             timeLetter.replaceBlocks(newBlocks);
         }
 
@@ -381,7 +381,7 @@ public class TimeLetterService {
      * - TEXT 블록은 textContent를 사용한다.
      * - IMAGE/AUDIO/FILE/LINK 블록은 url을 사용한다.
      */
-    private List<TimeLetterBlock> buildBlocks(List<TimeLetterBlockRequest> blockRequests) {
+    private List<TimeLetterBlock> buildBlocks(Long userId, List<TimeLetterBlockRequest> blockRequests) {
         if (blockRequests == null || blockRequests.isEmpty()) {
             return new ArrayList<>();
         }
@@ -393,7 +393,7 @@ public class TimeLetterService {
                         .blockType(req.getBlockType())
                         .blockOrder(req.getBlockOrder())
                         .textContent(req.getTextContent())
-                        .url(normalizeBlockUrl(req.getBlockType(), req.getUrl()))
+                        .url(normalizeBlockUrl(userId, req.getBlockType(), req.getUrl()))
                         .mimeType(req.getMimeType())
                         .build())
                 .collect(Collectors.toList());
@@ -478,10 +478,10 @@ public class TimeLetterService {
 
     /**
      * 블록 URL 정규화
-     * - IMAGE/AUDIO/FILE은 S3 key 또는 presigned URL이 들어올 수 있으므로 storage key로 정규화한다.
+     * - IMAGE/AUDIO/FILE은 staging/legacy를 permanent로 승격한 storage key로 저장한다.
      * - LINK는 외부 URL이므로 그대로 저장한다.
      */
-    private String normalizeBlockUrl(TimeLetterBlockType blockType, String rawUrlOrKey) {
+    private String normalizeBlockUrl(Long userId, TimeLetterBlockType blockType, String rawUrlOrKey) {
         if (rawUrlOrKey == null || rawUrlOrKey.isBlank()) {
             return rawUrlOrKey;
         }
@@ -490,7 +490,6 @@ public class TimeLetterService {
             return rawUrlOrKey;
         }
 
-        String key = s3Service.extractStorageKey(rawUrlOrKey);
-        return key != null ? key : rawUrlOrKey;
+        return s3Service.promoteMediaKey("timeletters", userId, rawUrlOrKey);
     }
 }

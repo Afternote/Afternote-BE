@@ -52,8 +52,11 @@ public class DeliveryVerificationService {
             throw new CustomException(ErrorCode.INVALID_DELIVERY_CONDITION);
         }
 
-        String deathCertKey = hasDeathCert ? s3Service.extractStorageKey(deathCertUrl) : null;
-        String familyRelationCertKey = hasFamilyCert ? s3Service.extractStorageKey(familyRelationCertUrl) : null;
+        // receiver 업로드는 owner=receiver staging → permanent 승격
+        String deathCertKey = hasDeathCert ? s3Service.promoteMediaKey("documents", null, deathCertUrl) : null;
+        String familyRelationCertKey = hasFamilyCert
+                ? s3Service.promoteMediaKey("documents", null, familyRelationCertUrl)
+                : null;
 
         if (deliveryVerificationRepository.existsByUserIdAndReceiverIdAndStatus(
                 user.getId(), receiver.getId(), VerificationStatus.PENDING)) {

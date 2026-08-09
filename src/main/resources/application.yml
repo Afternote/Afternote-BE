@@ -91,6 +91,13 @@ cloud:
     s3:
       bucket: ${AWS_S3_BUCKET}
       region: ${AWS_REGION:ap-northeast-2}
+      # 업로드 크기 상한(바이트). 정책 미확정이므로 임시값 — 확정 시 여기만 조정.
+      upload:
+        max-bytes:
+          image: ${S3_UPLOAD_MAX_BYTES_IMAGE:10485760}       # 10MB (jpg/jpeg/png/gif/webp/heic)
+          video: ${S3_UPLOAD_MAX_BYTES_VIDEO:209715200}      # 200MB (mp4/mov)
+          audio: ${S3_UPLOAD_MAX_BYTES_AUDIO:52428800}       # 50MB (mp3/m4a/wav)
+          document: ${S3_UPLOAD_MAX_BYTES_DOCUMENT:20971520} # 20MB (pdf)
     public-base-url: ${AWS_PUBLIC_BASE_URL:}
     credentials:
       access-key: ${AWS_ACCESS_KEY}

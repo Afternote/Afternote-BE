@@ -23,14 +23,24 @@ public class ImageController {
 
     private final S3Service s3Service;
 
-    @Operation(summary = "Presigned URL 생성", description = "S3 파일 업로드를 위한 Presigned URL을 생성합니다. 지원 형식: 이미지(jpg, jpeg, png, gif, webp, heic), 영상(mp4, mov), 음성(mp3, m4a, wav), 문서(pdf)")
+    @Operation(
+            summary = "Presigned URL 생성",
+            description = "S3 파일 업로드를 위한 Presigned URL을 생성합니다. "
+                    + "contentLength는 서명에 포함되므로 PUT 시 동일 Content-Length 헤더가 필요합니다. "
+                    + "지원 형식: 이미지(jpg, jpeg, png, gif, webp, heic), 영상(mp4, mov), 음성(mp3, m4a, wav), 문서(pdf)"
+    )
     @PostMapping("/presigned-url")
     public ApiResponse<PresignedUrlResponse> getPresignedUrl(
             @Parameter(hidden = true) @UserId Long userId,
             @Valid @RequestBody PresignedUrlRequest request
     ) {
         return ApiResponse.success(
-                s3Service.generatePresignedUrl(request.getDirectory(), request.getExtension(), userId)
+                s3Service.generatePresignedUrl(
+                        request.getDirectory(),
+                        request.getExtension(),
+                        request.getContentLength(),
+                        userId
+                )
         );
     }
 }

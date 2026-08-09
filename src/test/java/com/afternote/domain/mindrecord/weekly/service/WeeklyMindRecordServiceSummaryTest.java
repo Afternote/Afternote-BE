@@ -91,6 +91,21 @@ class WeeklyMindRecordServiceSummaryTest {
         verify(geminiService, never()).generateWeeklyMindRecordSummary(anyString());
     }
 
+    @Test
+    @DisplayName("MySQL json 공백 정규화와 Jackson compact 직렬화가 달라도 동일로 본다")
+    void sameKeywordJson_ignoresMysqlSpacing() {
+        ReflectionTestUtils.setField(weeklyMindRecordService, "objectMapper", new ObjectMapper());
+
+        Boolean same = ReflectionTestUtils.invokeMethod(
+                weeklyMindRecordService,
+                "sameKeywordJson",
+                "[{\"keyword\": \"평온\", \"percentage\": 100}]",
+                "[{\"keyword\":\"평온\",\"percentage\":100}]"
+        );
+
+        assertThat(same).isTrue();
+    }
+
     private static User sampleUser(Long id) {
         User user = User.builder()
                 .email("u@test.com")

@@ -57,8 +57,7 @@ public class UserService {
 
         String profileImageKey = request.getProfileImageUrl();
         if (profileImageKey != null && !profileImageKey.isBlank()) {
-            String extracted = s3Service.extractStorageKey(profileImageKey);
-            profileImageKey = extracted != null ? extracted : profileImageKey;
+            profileImageKey = s3Service.promoteMediaKey("profiles", userId, profileImageKey);
         }
 
         user.updateProfile(

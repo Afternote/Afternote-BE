@@ -176,6 +176,8 @@ public enum ErrorCode {
     PRESIGNED_URL_GENERATION_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1800, "Presigned URL 생성에 실패했습니다."),
     INVALID_FILE_EXTENSION(HttpStatus.BAD_REQUEST, 1801, "허용되지 않는 파일 확장자입니다. (jpg, jpeg, png, gif, webp, heic, mp4, mov, mp3, m4a, wav, pdf 허용)"),
     INVALID_DIRECTORY(HttpStatus.BAD_REQUEST, 1802, "허용되지 않는 디렉토리입니다."),
+    FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, 1803, "업로드 파일 크기가 허용 한도를 초과했습니다."),
+    INVALID_FILE_SIZE(HttpStatus.BAD_REQUEST, 1804, "업로드 파일 크기는 1바이트 이상이어야 합니다."),
 
     // ======================================
     // 9. 수신자 인증/외부 API 관련 오류 (code: 1900 ~ 1999)

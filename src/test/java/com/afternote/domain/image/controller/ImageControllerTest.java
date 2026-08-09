@@ -47,15 +47,15 @@ class ImageControllerTest {
     @Test
     @DisplayName("Presigned URL 생성 API 성공")
     void getPresignedUrl_Success() throws Exception {
-        given(s3Service.generatePresignedUrl("profiles", "jpg", USER_ID)).willReturn(null);
+        given(s3Service.generatePresignedUrl("profiles", "jpg", 1024L, USER_ID)).willReturn(null);
 
         mockMvc.perform(post("/api/v1/files/presigned-url")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"directory\":\"profiles\",\"extension\":\"jpg\"}"))
+                        .content("{\"directory\":\"profiles\",\"extension\":\"jpg\",\"contentLength\":1024}"))
                 .andExpect(status().isOk());
 
-        verify(s3Service).generatePresignedUrl("profiles", "jpg", USER_ID);
+        verify(s3Service).generatePresignedUrl("profiles", "jpg", 1024L, USER_ID);
     }
 
     @Test
@@ -64,7 +64,17 @@ class ImageControllerTest {
         mockMvc.perform(post("/api/v1/files/presigned-url")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"directory\":\"profiles\"}"))
+                        .content("{\"directory\":\"profiles\",\"contentLength\":1024}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Presigned URL 생성 API 실패 - contentLength 누락")
+    void getPresignedUrl_MissingContentLength_Fail() throws Exception {
+        mockMvc.perform(post("/api/v1/files/presigned-url")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"directory\":\"profiles\",\"extension\":\"jpg\"}"))
                 .andExpect(status().isBadRequest());
     }
 

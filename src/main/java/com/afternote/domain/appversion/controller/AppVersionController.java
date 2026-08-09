@@ -6,6 +6,7 @@ import com.afternote.domain.appversion.service.AppVersionService;
 import com.afternote.global.common.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +35,7 @@ public class AppVersionController {
                     - API 호출 실패 또는 `updateRequired=true`이면 클라이언트에서 스플래시 진입을 막습니다.
                     """
     )
+    @SecurityRequirements // 전역 bearer 상속 제거 → OpenAPI security: []
     @GetMapping
     public ApiResponse<AppVersionCheckResponse> checkVersion(
             @Parameter(description = "플랫폼", example = "ANDROID", required = true)

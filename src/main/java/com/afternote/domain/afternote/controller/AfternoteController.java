@@ -10,6 +10,7 @@ import com.afternote.global.common.ApiResponse;
 import com.afternote.global.resolver.UserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -57,6 +58,11 @@ public class AfternoteController {
             summary = "애프터노트 상세 목록 조회 API",
             description = "애프터노트 상세목록을 가져옵니다. path variable로 afternote_id를 보내주시면 됩니다."
     )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "애프터노트 상세 조회 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "애프터노트를 찾을 수 없음 (code: 1600)")
+    })
     @GetMapping("/{afternoteId}")
     public ApiResponse<AfternotedetailResponse> getDetailAfternote(
             @Parameter(hidden = true) @UserId Long userId,

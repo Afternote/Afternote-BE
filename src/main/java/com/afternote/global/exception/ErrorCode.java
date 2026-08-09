@@ -145,7 +145,7 @@ public enum ErrorCode {
     ACTIONS_REQUIRED(HttpStatus.BAD_REQUEST, 1613, "액션(actions)은 최소 1개 이상 필요합니다."),
     CATEGORY_CANNOT_BE_CHANGED(HttpStatus.BAD_REQUEST, 1614, "카테고리는 변경할 수 없습니다."),
     RECEIVERS_REQUIRED(HttpStatus.BAD_REQUEST, 1615, "수신자(receivers)는 최소 1명 이상 필요합니다."),
-    INVALID_FIELD_FOR_SOCIAL(HttpStatus.BAD_REQUEST, 1616, "SOCIAL 카테고리는 credentials만 수정할 수 있습니다."),                                                                                           
+    INVALID_FIELD_FOR_SOCIAL(HttpStatus.BAD_REQUEST, 1616, "SOCIAL 카테고리에서는 playlist 필드를 사용할 수 없습니다."),                                                                                           
     INVALID_FIELD_FOR_GALLERY(HttpStatus.BAD_REQUEST, 1617, "GALLERY 카테고리는 receivers만 수정할 수 있습니다."),                                                                                           
     INVALID_FIELD_FOR_PLAYLIST(HttpStatus.BAD_REQUEST, 1618, "PLAYLIST 카테고리는 playlist만 수정할 수 있습니다."),                                                                                          
     FIELD_CANNOT_BE_EMPTY(HttpStatus.BAD_REQUEST, 1619, "필드 값은 공백일 수 없습니다."),                                                                                                                    

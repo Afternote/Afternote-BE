@@ -6,6 +6,7 @@ import com.afternote.global.common.ApiResponse;
 import com.afternote.global.resolver.UserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +26,10 @@ public class UserController {
             summary = "내 프로필 조회 API",
             description = "로그인한 사용자의 프로필 정보를 조회합니다."
     )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "프로필 조회 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)")
+    })
     @GetMapping("/me")
     public ApiResponse<UserResponse> getMyProfile(
             @Parameter(hidden = true) @UserId Long userId

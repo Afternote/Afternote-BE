@@ -33,8 +33,8 @@ public class Emotion {
     @Column(name = "source_id", nullable = false)
     private Long sourceId;
 
-    /** 분석 성공 시에만 채워진다. PENDING/FAILED 는 null. */
-    @Column(length = 30)
+    /** 분석 성공 시에만 채워진다. PENDING/FAILED 는 null. (기존 NOT NULL 컬럼은 배포 SQL로 NULL 허용 필요) */
+    @Column(name = "emotion_category", length = 30, nullable = true)
     private String emotionCategory;
 
     @Enumerated(EnumType.STRING)

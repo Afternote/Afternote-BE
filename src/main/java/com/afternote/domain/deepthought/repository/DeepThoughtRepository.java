@@ -2,6 +2,7 @@ package com.afternote.domain.deepthought.repository;
 
 import com.afternote.domain.deepthought.dto.DeepThoughtTagCountResponse;
 import com.afternote.domain.deepthought.model.DeepThought;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -73,4 +74,15 @@ public interface DeepThoughtRepository extends JpaRepository<DeepThought, Long> 
             LocalDateTime startInclusive,
             LocalDateTime endExclusive
     );
+
+    /** 감정 행이 없는 최종 깊은생각 (userId, deepThoughtId). 백필용. */
+    @Query(value = """
+            SELECT dt.user_id, dt.id
+            FROM deep_thought dt
+            LEFT JOIN emotions e
+              ON e.user_id = dt.user_id AND e.source_type = 'DEEP_THOUGHT' AND e.source_id = dt.id
+            WHERE dt.is_draft = 0 AND e.id IS NULL
+            ORDER BY dt.id ASC
+            """, nativeQuery = true)
+    List<Object[]> findFinalDeepThoughtsMissingEmotion(Pageable pageable);
 }

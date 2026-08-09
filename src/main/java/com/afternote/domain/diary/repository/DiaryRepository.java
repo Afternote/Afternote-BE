@@ -2,6 +2,7 @@ package com.afternote.domain.diary.repository;
 
 import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.model.TodayMood;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -50,4 +51,15 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
 			@Param("startInclusive") LocalDateTime startInclusive,
 			@Param("endExclusive") LocalDateTime endExclusive
 	);
+
+	/** 감정 행이 없는 최종 일기 (userId, diaryId). 백필용. */
+	@Query(value = """
+			SELECT d.user_id, d.id
+			FROM diary d
+			LEFT JOIN emotions e
+			  ON e.user_id = d.user_id AND e.source_type = 'DIARY' AND e.source_id = d.id
+			WHERE d.is_draft = 0 AND e.id IS NULL
+			ORDER BY d.id ASC
+			""", nativeQuery = true)
+	List<Object[]> findFinalDiariesMissingEmotion(Pageable pageable);
 }

@@ -23,6 +23,7 @@ import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import com.afternote.global.service.GeminiService;
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -155,9 +156,9 @@ public class WeeklyMindRecordService {
                         weeklyReportRepository.findByUserIdAndStartDate(user.getId(), storedStart);
 
                 if (existing.isPresent()
-                        && Objects.equals(existing.get().getKeywordJson(), keywordJson)
+                        && sameKeywordJson(existing.get().getKeywordJson(), keywordJson)
                         && isUsableSummary(existing.get().getSummaryText())) {
-                    log.debug("[WeeklySummary] cache_hit userId={} week={}", user.getId(), weekMonday);
+                    log.info("[WeeklySummary] cache_hit userId={} week={}", user.getId(), weekMonday);
                     return existing.get().getSummaryText();
                 }
 
@@ -193,6 +194,27 @@ public class WeeklyMindRecordService {
 
     private static boolean isUsableSummary(String summaryText) {
         return summaryText != null && !summaryText.isBlank() && !isFallbackSummary(summaryText);
+    }
+
+    /**
+     * MySQL json 컬럼은 저장 시 공백/키 순서를 정규화하므로, 문자열 equals로는 캐시가 항상 미스난다.
+     * 파싱한 JsonNode로 구조 동등성을 비교한다.
+     */
+    private boolean sameKeywordJson(String stored, String current) {
+        if (Objects.equals(stored, current)) {
+            return true;
+        }
+        if (stored == null || current == null || stored.isBlank() || current.isBlank()) {
+            return false;
+        }
+        try {
+            JsonNode a = objectMapper.readTree(stored);
+            JsonNode b = objectMapper.readTree(current);
+            return a.equals(b);
+        } catch (JsonProcessingException e) {
+            log.warn("[WeeklySummary] keywordJson parse failed stored={} current={}", stored, current);
+            return false;
+        }
     }
 
     private void persistWeeklyReport(

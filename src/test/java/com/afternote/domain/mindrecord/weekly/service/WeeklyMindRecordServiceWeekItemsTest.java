@@ -10,6 +10,7 @@ import com.afternote.domain.diary.repository.DiaryRepository;
 import com.afternote.domain.mindrecord.emotion.model.Emotion;
 import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
 import com.afternote.domain.mindrecord.emotion.repository.EmotionRepository;
+import com.afternote.domain.mindrecord.weekly.dto.WeekRecordType;
 import com.afternote.domain.mindrecord.weekly.dto.WeeklyMindRecordResponse.WeekRecordItem;
 import com.afternote.domain.mindrecord.weekly.repository.WeeklyReportRepository;
 import com.afternote.domain.user.model.AuthProvider;
@@ -117,14 +118,14 @@ class WeeklyMindRecordServiceWeekItemsTest {
         assertThat(response.week()).hasSize(2);
 
         WeekRecordItem diaryItem = response.week().stream()
-                .filter(WeekRecordItem::isDiary)
+                .filter(item -> item.type() == WeekRecordType.DIARY)
                 .findFirst()
                 .orElseThrow();
         assertThat(diaryItem.emotion()).isEqualTo("HAPPY");
         assertThat(diaryItem.emotion()).isNotEqualTo("기쁨");
 
         WeekRecordItem dqItem = response.week().stream()
-                .filter(item -> !item.isDiary())
+                .filter(item -> item.type() == WeekRecordType.DAILY_QUESTION)
                 .findFirst()
                 .orElseThrow();
         assertThat(dqItem.emotion()).isNull();

@@ -67,21 +67,34 @@ public record WeeklyMindRecordResponse(
 
     @Builder
     public static record WeekRecordItem(
+            @Schema(
+                    description = "원본 기록 ID (맵/리스트 키). type에 따라 일기/데일리질문/깊은생각 PK",
+                    example = "27",
+                    requiredMode = Schema.RequiredMode.REQUIRED
+            )
             @Getter
             Long diaryId,
 
+            @Schema(description = "일(day of month)", example = "10", requiredMode = Schema.RequiredMode.REQUIRED)
             @Getter
             int day,
 
-            @Schema(description = "일기 여부. true면 일기, false면 데일리질문/깊은생각 등")
-            boolean isDiary,
+            @Schema(
+                    description = "기록 타입. DIARY=일기, DAILY_QUESTION=데일리질문, DEEP_THOUGHT=깊은생각",
+                    example = "DIARY",
+                    requiredMode = Schema.RequiredMode.REQUIRED
+            )
+            @Getter
+            WeekRecordType type,
 
             @Schema(
                     description = "주간 캘린더 이모지용 일기 todayMood (HAPPY/SOSO/SAD). "
-                            + "일기만 채우고, Gemini 감정분석 결과는 emotions[]에만 둔다.",
+                            + "type=DIARY일 때만 채우고, Gemini 감정분석 결과는 emotions[]에만 둔다. "
+                            + "DIARY가 아니면 null(점 표시).",
                     example = "HAPPY",
                     allowableValues = {"HAPPY", "SOSO", "SAD"},
-                    nullable = true
+                    nullable = true,
+                    requiredMode = Schema.RequiredMode.NOT_REQUIRED
             )
             @Getter
             String emotion

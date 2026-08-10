@@ -12,6 +12,7 @@ import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
 import com.afternote.domain.mindrecord.emotion.repository.EmotionRepository;
 import com.afternote.domain.mindrecord.weekly.dto.WeeklyMindRecordResponse;
 import com.afternote.domain.mindrecord.weekly.dto.WeeklyMindRecordResponse.EmotionAnalysisSummary;
+import com.afternote.domain.mindrecord.weekly.dto.WeekRecordType;
 import com.afternote.domain.mindrecord.weekly.dto.WeeklyMindRecordResponse.WeekRecordItem;
 import com.afternote.domain.mindrecord.weekly.dto.WeeklyMindRecordResponse.WeeklyDailyQuestionItem;
 import com.afternote.domain.mindrecord.weekly.dto.WeeklyMindRecordResponse.WeeklyEmotionItem;
@@ -324,7 +325,7 @@ public class WeeklyMindRecordService {
             sortables.add(new Sortable(at, WeekRecordItem.builder()
                     .diaryId(d.getId())
                     .day(at.toLocalDate().getDayOfMonth())
-                    .isDiary(true)
+                    .type(WeekRecordType.DIARY)
                     .emotion(todayMood)
                     .build()));
         }
@@ -334,7 +335,7 @@ public class WeeklyMindRecordService {
             sortables.add(new Sortable(at, WeekRecordItem.builder()
                     .diaryId(u.getId())
                     .day(u.getQuestionDate().getDayOfMonth())
-                    .isDiary(false)
+                    .type(WeekRecordType.DAILY_QUESTION)
                     .emotion(null)
                     .build()));
         }
@@ -344,7 +345,7 @@ public class WeeklyMindRecordService {
             sortables.add(new Sortable(at, WeekRecordItem.builder()
                     .diaryId(dt.getId())
                     .day(at.toLocalDate().getDayOfMonth())
-                    .isDiary(false)
+                    .type(WeekRecordType.DEEP_THOUGHT)
                     .emotion(null)
                     .build()));
         }

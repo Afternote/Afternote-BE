@@ -57,7 +57,7 @@ class AfternoteControllerTest {
     @Test
     @DisplayName("애프터노트 목록 조회 API 성공")
     void getAfternotes_Success() throws Exception {
-        given(afternoteService.getAfternotes(USER_ID, AfternoteCategoryType.SOCIAL, 0, 10)).willReturn(null);
+        given(afternoteService.getAfternotes(USER_ID, AfternoteCategoryType.SOCIAL, 0, 10, null)).willReturn(null);
 
         mockMvc.perform(get("/api/v1/afternotes")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
@@ -66,7 +66,7 @@ class AfternoteControllerTest {
                         .param("size", "10"))
                 .andExpect(status().isOk());
 
-        verify(afternoteService).getAfternotes(USER_ID, AfternoteCategoryType.SOCIAL, 0, 10);
+        verify(afternoteService).getAfternotes(USER_ID, AfternoteCategoryType.SOCIAL, 0, 10, null);
     }
 
     @Test

@@ -30,7 +30,8 @@ public class AfternoteController {
 
     @Operation(
             summary = "애프터노트 목록 조회 API",
-            description = "애프터노트 목록을 가져옵니다. param으로 category와 page, size를 보내주시면 됩니다."
+            description = "애프터노트 목록을 가져옵니다. 기본은 정식 등록(isDraft=false)만 반환하며, "
+                    + "draftOnly=true이면 임시저장만 반환합니다."
     )
     @GetMapping
     public ApiResponse<AfternotePageResponse> getAfternotes(
@@ -48,9 +49,12 @@ public class AfternoteController {
             @RequestParam(defaultValue = "10")
             @Min(value = 1, message = "size는 1 이상이어야 합니다.")
             @Max(value = 100, message = "size는 100 이하여야 합니다.")
-            int size
+            int size,
+
+            @Parameter(description = "true면 임시저장(isDraft=true)만 조회")
+            @RequestParam(required = false) Boolean draftOnly
     ) {
-        AfternotePageResponse response = afternoteService.getAfternotes(userId, category, page, size);
+        AfternotePageResponse response = afternoteService.getAfternotes(userId, category, page, size, draftOnly);
         return ApiResponse.success(response);
     }
 
@@ -74,7 +78,8 @@ public class AfternoteController {
     }
     @Operation(
             summary = "애프터노트 생성 API",
-            description = "새로운 애프터노트를 생성합니다. 카테고리에 따라 다른 필드를 전달해야 합니다."
+            description = "새로운 애프터노트를 생성합니다. 카테고리에 따라 다른 필드를 전달해야 합니다. "
+                    + "isDraft=true이면 credentials/playlist 등 일부 필수 검증이 완화됩니다."
     )
     @PostMapping
     public ApiResponse<AfternoteCreateResponse> createAfternote(

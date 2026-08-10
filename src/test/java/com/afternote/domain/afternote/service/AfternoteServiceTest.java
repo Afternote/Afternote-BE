@@ -77,15 +77,18 @@ class AfternoteServiceTest {
                 .build();
         ReflectionTestUtils.setField(afternote, "id", 10L);
 
-        given(afternoteRepository.findByUserIdAndCategoryTypeOrderByCreatedAtDesc(eq(1L), eq(AfternoteCategoryType.SOCIAL), any(Pageable.class)))
+        given(afternoteRepository.findByUserIdAndCategoryTypeAndIsDraftOrderByCreatedAtDesc(
+                eq(1L), eq(AfternoteCategoryType.SOCIAL), eq(false), any(Pageable.class)))
                 .willReturn(new PageImpl<>(List.of(afternote)));
 
-        AfternotePageResponse response = afternoteService.getAfternotes(1L, AfternoteCategoryType.SOCIAL, 0, 10);
+        AfternotePageResponse response = afternoteService.getAfternotes(1L, AfternoteCategoryType.SOCIAL, 0, 10, null);
 
         assertThat(response.getContent()).hasSize(1);
         assertThat(response.getContent().get(0).getAfternoteId()).isEqualTo(10L);
-        verify(afternoteRepository).findByUserIdAndCategoryTypeOrderByCreatedAtDesc(eq(1L), eq(AfternoteCategoryType.SOCIAL), any(Pageable.class));
-        verify(afternoteRepository, never()).findByUserIdOrderByCreatedAtDesc(any(), any(Pageable.class));
+        assertThat(response.getContent().get(0).getIsDraft()).isFalse();
+        verify(afternoteRepository).findByUserIdAndCategoryTypeAndIsDraftOrderByCreatedAtDesc(
+                eq(1L), eq(AfternoteCategoryType.SOCIAL), eq(false), any(Pageable.class));
+        verify(afternoteRepository, never()).findByUserIdAndIsDraftOrderByCreatedAtDesc(any(), any(), any(Pageable.class));
     }
 
     @Test
@@ -115,10 +118,36 @@ class AfternoteServiceTest {
         ArgumentCaptor<Afternote> captor = ArgumentCaptor.forClass(Afternote.class);
         verify(afternoteRepository).save(captor.capture());
         assertThat(captor.getValue().getSortOrder()).isEqualTo(3);
+        assertThat(captor.getValue().getIsDraft()).isFalse();
         assertThat(captor.getValue().getLeaveMessage()).hasSize(1);
         assertThat(captor.getValue().getLeaveMessage().get(0).getBody()).isEqualTo("message");
         verify(validator).validateCreateRequest(request);
         verify(relationService).saveRelationsByCategory(any(Afternote.class), eq(request));
+    }
+
+    @Test
+    @DisplayName("애프터노트 임시저장 생성 성공")
+    void createAfternote_Draft_Success() {
+        AfternoteCreateRequest request = org.mockito.Mockito.mock(AfternoteCreateRequest.class);
+        given(request.getCategory()).willReturn(AfternoteCategoryType.SOCIAL);
+        given(request.getTitle()).willReturn("draft social");
+        given(request.isDraftValue()).willReturn(true);
+
+        User user = sampleUser(1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(afternoteRepository.findMaxSortOrderByUserId(1L)).willReturn(Optional.empty());
+        given(afternoteRepository.save(any(Afternote.class))).willAnswer(invocation -> {
+            Afternote saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 102L);
+            return saved;
+        });
+
+        AfternoteCreateResponse response = afternoteService.createAfternote(1L, request);
+
+        assertThat(response.getAfternoteId()).isEqualTo(102L);
+        ArgumentCaptor<Afternote> captor = ArgumentCaptor.forClass(Afternote.class);
+        verify(afternoteRepository).save(captor.capture());
+        assertThat(captor.getValue().getIsDraft()).isTrue();
     }
 
     @Test
@@ -212,6 +241,7 @@ class AfternoteServiceTest {
         assertThat(afternote.getLeaveMessage().get(0).getBody()).isEqualTo("after-message");
         assertThat(afternote.getActions()).containsExactly("a2", "a3");
         verify(validator).validateUpdateRequest(request, AfternoteCategoryType.SOCIAL);
+        verify(validator).validatePublishRequirements(request, afternote);
         verify(relationService).updateRelationsByCategory(afternote, request, AfternoteCategoryType.SOCIAL);
     }
 

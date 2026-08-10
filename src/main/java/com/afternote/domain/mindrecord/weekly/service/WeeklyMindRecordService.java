@@ -45,6 +45,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Stream;
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -308,51 +309,92 @@ public class WeeklyMindRecordService {
         }
     }
 
+    /**
+     * 주간 캘린더는 day(날짜)당 1개.
+     * - 일기 있으면 → DIARY 우선, 같은 날 일기 여러 개면 최신(createdAt) todayMood
+     * - 일기 없음 → 데일리질문/깊은생각 중 최신 1개 (emotion=null, 점 표시)
+     */
     private List<WeekRecordItem> buildWeekItems(
             List<Diary> diaries,
             List<UserDailyQuestion> dailyQuestions,
             List<DeepThought> deepThoughts
     ) {
-        record Sortable(LocalDateTime at, WeekRecordItem item) {
+        record Candidate(LocalDate date, LocalDateTime at, WeekRecordItem item) {
         }
 
-        List<Sortable> sortables = new ArrayList<>();
+        Map<LocalDate, List<Candidate>> diariesByDate = new HashMap<>();
+        Map<LocalDate, List<Candidate>> othersByDate = new HashMap<>();
 
         for (Diary d : diaries) {
             LocalDateTime at = d.getCreatedAt() != null ? d.getCreatedAt() : d.getUpdatedAt();
-            // 캘린더 이모지 = todayMood 만 (HAPPY/SOSO/SAD). 분석 카테고리는 emotions[] 전용.
+            if (at == null) {
+                continue;
+            }
+            LocalDate date = at.toLocalDate();
             String todayMood = d.getTodayMood() != null ? d.getTodayMood().name() : null;
-            sortables.add(new Sortable(at, WeekRecordItem.builder()
-                    .diaryId(d.getId())
-                    .day(at.toLocalDate().getDayOfMonth())
-                    .type(WeekRecordType.DIARY)
-                    .emotion(todayMood)
-                    .build()));
+            diariesByDate.computeIfAbsent(date, ignored -> new ArrayList<>()).add(new Candidate(
+                    date,
+                    at,
+                    WeekRecordItem.builder()
+                            .diaryId(d.getId())
+                            .day(date.getDayOfMonth())
+                            .type(WeekRecordType.DIARY)
+                            .emotion(todayMood)
+                            .build()
+            ));
         }
 
         for (UserDailyQuestion u : dailyQuestions) {
             LocalDateTime at = u.getCreatedAt() != null ? u.getCreatedAt() : u.getQuestionDate().atStartOfDay();
-            sortables.add(new Sortable(at, WeekRecordItem.builder()
-                    .diaryId(u.getId())
-                    .day(u.getQuestionDate().getDayOfMonth())
-                    .type(WeekRecordType.DAILY_QUESTION)
-                    .emotion(null)
-                    .build()));
+            LocalDate date = u.getQuestionDate();
+            othersByDate.computeIfAbsent(date, ignored -> new ArrayList<>()).add(new Candidate(
+                    date,
+                    at,
+                    WeekRecordItem.builder()
+                            .diaryId(u.getId())
+                            .day(date.getDayOfMonth())
+                            .type(WeekRecordType.DAILY_QUESTION)
+                            .emotion(null)
+                            .build()
+            ));
         }
 
         for (DeepThought dt : deepThoughts) {
             LocalDateTime at = dt.getCreatedAt() != null ? dt.getCreatedAt() : dt.getUpdatedAt();
-            sortables.add(new Sortable(at, WeekRecordItem.builder()
-                    .diaryId(dt.getId())
-                    .day(at.toLocalDate().getDayOfMonth())
-                    .type(WeekRecordType.DEEP_THOUGHT)
-                    .emotion(null)
-                    .build()));
+            if (at == null) {
+                continue;
+            }
+            LocalDate date = at.toLocalDate();
+            othersByDate.computeIfAbsent(date, ignored -> new ArrayList<>()).add(new Candidate(
+                    date,
+                    at,
+                    WeekRecordItem.builder()
+                            .diaryId(dt.getId())
+                            .day(date.getDayOfMonth())
+                            .type(WeekRecordType.DEEP_THOUGHT)
+                            .emotion(null)
+                            .build()
+            ));
         }
 
-        return sortables.stream()
-                .sorted(Comparator.comparing(Sortable::at))
-                .map(Sortable::item)
+        return Stream.concat(diariesByDate.keySet().stream(), othersByDate.keySet().stream())
+                .distinct()
+                .sorted()
+                .map(date -> {
+                    List<Candidate> dayDiaries = diariesByDate.get(date);
+                    if (dayDiaries != null && !dayDiaries.isEmpty()) {
+                        // 최신 일기 1개 → 그 일기의 todayMood(이모지)
+                        return dayDiaries.stream()
+                                .max(Comparator.comparing(Candidate::at))
+                                .map(Candidate::item)
+                                .orElseThrow();
+                    }
+                    List<Candidate> dayOthers = othersByDate.getOrDefault(date, List.of());
+                    return dayOthers.stream()
+                            .max(Comparator.comparing(Candidate::at))
+                            .map(Candidate::item)
+                            .orElseThrow();
+                })
                 .toList();
     }
 }

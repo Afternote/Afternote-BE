@@ -64,30 +64,12 @@ class WeeklyMindRecordServiceWeekItemsTest {
     @Test
     @DisplayName("week[].emotion 은 todayMood만 쓰고 Gemini 분석 카테고리는 넣지 않는다")
     void weekEmotion_usesTodayMoodOnly_notAnalyzedCategory() throws Exception {
-        ReflectionTestUtils.setField(weeklyMindRecordService, "objectMapper", new ObjectMapper());
-
+        stubCommon();
         User user = sampleUser(1L);
         LocalDate monday = LocalDate.of(2026, 8, 3);
 
-        Diary diary = Diary.create(user, "제목", "본문", false, TodayMood.HAPPY);
-        ReflectionTestUtils.setField(diary, "id", 7L);
-        ReflectionTestUtils.setField(diary, "createdAt", monday.plusDays(1).atTime(10, 0));
-        ReflectionTestUtils.setField(diary, "updatedAt", monday.plusDays(1).atTime(10, 0));
-
-        DailyQuestion question = new DailyQuestion();
-        ReflectionTestUtils.setField(question, "id", 1L);
-        ReflectionTestUtils.setField(question, "content", "질문");
-
-        UserDailyQuestion dq = UserDailyQuestion.builder()
-                .user(user)
-                .dailyQuestion(question)
-                .questionDate(monday.plusDays(1))
-                .isAnswered(true)
-                .content("답변")
-                .isDraft(false)
-                .build();
-        ReflectionTestUtils.setField(dq, "id", 22L);
-        ReflectionTestUtils.setField(dq, "createdAt", monday.plusDays(1).atTime(11, 0));
+        Diary diary = diary(user, 7L, monday.plusDays(1).atTime(10, 0), TodayMood.HAPPY);
+        UserDailyQuestion dq = dailyQuestion(user, 22L, monday.plusDays(2), monday.plusDays(2).atTime(11, 0));
 
         Emotion analyzed = Emotion.createSucceeded(
                 user, EmotionSourceType.DIARY, 7L, "기쁨", LocalDateTime.now());
@@ -133,6 +115,74 @@ class WeeklyMindRecordServiceWeekItemsTest {
         assertThat(response.emotions())
                 .extracting(e -> e.keyword())
                 .contains("기쁨");
+    }
+
+    @Test
+    @DisplayName("같은 날 일기+DQ면 day당 1개(일기 우선), 일기 여러 개면 최신 todayMood")
+    void week_onePerDay_diaryPreferred_latestMood() {
+        stubCommon();
+        User user = sampleUser(1L);
+        LocalDate monday = LocalDate.of(2026, 8, 3);
+        LocalDate day = monday.plusDays(1);
+
+        Diary older = diary(user, 1L, day.atTime(9, 0), TodayMood.SAD);
+        Diary newer = diary(user, 2L, day.atTime(18, 0), TodayMood.HAPPY);
+        UserDailyQuestion dq = dailyQuestion(user, 30L, day, day.atTime(12, 0));
+
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(diaryRepository
+                .findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+                        any(), any(), any()))
+                .willReturn(List.of(older, newer));
+        given(userDailyQuestionRepository
+                .findByUserIdAndQuestionDateBetweenOrderByQuestionDateAscCreatedAtAsc(any(), any(), any()))
+                .willReturn(List.of(dq));
+        given(deepThoughtRepository
+                .findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+                        any(), any(), any()))
+                .willReturn(List.of());
+        given(emotionRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), anyList()))
+                .willReturn(List.of());
+        given(weeklyReportRepository.findByUserIdAndStartDate(any(), any())).willReturn(Optional.empty());
+
+        var response = weeklyMindRecordService.getWeeklyMindRecord(1L, monday);
+
+        assertThat(response.week()).hasSize(1);
+        WeekRecordItem item = response.week().get(0);
+        assertThat(item.day()).isEqualTo(day.getDayOfMonth());
+        assertThat(item.type()).isEqualTo(WeekRecordType.DIARY);
+        assertThat(item.diaryId()).isEqualTo(2L);
+        assertThat(item.emotion()).isEqualTo("HAPPY");
+    }
+
+    private void stubCommon() {
+        ReflectionTestUtils.setField(weeklyMindRecordService, "objectMapper", new ObjectMapper());
+    }
+
+    private static Diary diary(User user, Long id, LocalDateTime at, TodayMood mood) {
+        Diary diary = Diary.create(user, "제목", "본문", false, mood);
+        ReflectionTestUtils.setField(diary, "id", id);
+        ReflectionTestUtils.setField(diary, "createdAt", at);
+        ReflectionTestUtils.setField(diary, "updatedAt", at);
+        return diary;
+    }
+
+    private static UserDailyQuestion dailyQuestion(User user, Long id, LocalDate questionDate, LocalDateTime at) {
+        DailyQuestion question = new DailyQuestion();
+        ReflectionTestUtils.setField(question, "id", 1L);
+        ReflectionTestUtils.setField(question, "content", "질문");
+
+        UserDailyQuestion dq = UserDailyQuestion.builder()
+                .user(user)
+                .dailyQuestion(question)
+                .questionDate(questionDate)
+                .isAnswered(true)
+                .content("답변")
+                .isDraft(false)
+                .build();
+        ReflectionTestUtils.setField(dq, "id", id);
+        ReflectionTestUtils.setField(dq, "createdAt", at);
+        return dq;
     }
 
     private static User sampleUser(Long id) {

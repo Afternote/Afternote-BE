@@ -73,8 +73,16 @@ public record WeeklyMindRecordResponse(
             @Getter
             int day,
 
+            @Schema(description = "일기 여부. true면 일기, false면 데일리질문/깊은생각 등")
             boolean isDiary,
 
+            @Schema(
+                    description = "주간 캘린더 이모지용 일기 todayMood (HAPPY/SOSO/SAD). "
+                            + "일기만 채우고, Gemini 감정분석 결과는 emotions[]에만 둔다.",
+                    example = "HAPPY",
+                    allowableValues = {"HAPPY", "SOSO", "SAD"},
+                    nullable = true
+            )
             @Getter
             String emotion
     ) {

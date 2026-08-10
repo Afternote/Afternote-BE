@@ -44,8 +44,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -101,13 +99,6 @@ public class WeeklyMindRecordService {
                         userId, rangeStart, rangeEndExclusive
                 );
 
-        Map<Long, String> diaryEmotion = emotionMap(
-                userId, EmotionSourceType.DIARY, diaries.stream().map(Diary::getId).toList());
-        Map<Long, String> dqEmotion = emotionMap(
-                userId, EmotionSourceType.DAILY_QUESTION, dailyQuestions.stream().map(UserDailyQuestion::getId).toList());
-        Map<Long, String> dtEmotion = emotionMap(
-                userId, EmotionSourceType.DEEP_THOUGHT, deepThoughts.stream().map(DeepThought::getId).toList());
-
         List<Emotion> weekEmotions = collectWeekEmotions(userId, diaries, dailyQuestions, deepThoughts);
         List<WeeklyEmotionItem> topEmotions = buildTopEmotions(weekEmotions);
         EmotionAnalysisSummary emotionAnalysis = buildEmotionAnalysisSummary(
@@ -118,7 +109,8 @@ public class WeeklyMindRecordService {
 
         String summaryText = resolveSummaryText(user, weekMonday, storedStart, storedEnd, keywordJson, topEmotions);
 
-        List<WeekRecordItem> week = buildWeekItems(diaries, dailyQuestions, deepThoughts, diaryEmotion, dqEmotion, dtEmotion);
+        // week[] 캘린더는 일기 todayMood 이모지용. Gemini 감정분석(emotions[])과 분리한다.
+        List<WeekRecordItem> week = buildWeekItems(diaries, dailyQuestions, deepThoughts);
 
         List<WeeklyDailyQuestionItem> dqItems = dailyQuestions.stream()
                 .map(udq -> WeeklyDailyQuestionItem.builder()
@@ -233,18 +225,6 @@ public class WeeklyMindRecordService {
         }
     }
 
-    private Map<Long, String> emotionMap(Long userId, EmotionSourceType type, List<Long> sourceIds) {
-        if (sourceIds.isEmpty()) {
-            return Map.of();
-        }
-        return emotionRepository
-                .findByUserIdAndSourceTypeAndSourceIdInAndStatus(
-                        userId, type, sourceIds, EmotionAnalysisStatus.SUCCEEDED)
-                .stream()
-                .filter(Emotion::isSucceeded)
-                .collect(Collectors.toMap(Emotion::getSourceId, Emotion::getEmotionCategory, (a, b) -> a));
-    }
-
     private List<Emotion> collectWeekEmotions(
             Long userId,
             List<Diary> diaries,
@@ -330,10 +310,7 @@ public class WeeklyMindRecordService {
     private List<WeekRecordItem> buildWeekItems(
             List<Diary> diaries,
             List<UserDailyQuestion> dailyQuestions,
-            List<DeepThought> deepThoughts,
-            Map<Long, String> diaryEmotion,
-            Map<Long, String> dqEmotion,
-            Map<Long, String> dtEmotion
+            List<DeepThought> deepThoughts
     ) {
         record Sortable(LocalDateTime at, WeekRecordItem item) {
         }
@@ -342,26 +319,23 @@ public class WeeklyMindRecordService {
 
         for (Diary d : diaries) {
             LocalDateTime at = d.getCreatedAt() != null ? d.getCreatedAt() : d.getUpdatedAt();
-            String analyzed = diaryEmotion.get(d.getId());
-            String emotion = analyzed != null && !analyzed.isBlank()
-                    ? analyzed
-                    : (d.getTodayMood() != null ? d.getTodayMood().name() : null);
+            // 캘린더 이모지 = todayMood 만 (HAPPY/SOSO/SAD). 분석 카테고리는 emotions[] 전용.
+            String todayMood = d.getTodayMood() != null ? d.getTodayMood().name() : null;
             sortables.add(new Sortable(at, WeekRecordItem.builder()
                     .diaryId(d.getId())
                     .day(at.toLocalDate().getDayOfMonth())
                     .isDiary(true)
-                    .emotion(emotion)
+                    .emotion(todayMood)
                     .build()));
         }
 
         for (UserDailyQuestion u : dailyQuestions) {
             LocalDateTime at = u.getCreatedAt() != null ? u.getCreatedAt() : u.getQuestionDate().atStartOfDay();
-            String emotion = dqEmotion.get(u.getId());
             sortables.add(new Sortable(at, WeekRecordItem.builder()
                     .diaryId(u.getId())
                     .day(u.getQuestionDate().getDayOfMonth())
                     .isDiary(false)
-                    .emotion(emotion)
+                    .emotion(null)
                     .build()));
         }
 
@@ -371,7 +345,7 @@ public class WeeklyMindRecordService {
                     .diaryId(dt.getId())
                     .day(at.toLocalDate().getDayOfMonth())
                     .isDiary(false)
-                    .emotion(dtEmotion.get(dt.getId()))
+                    .emotion(null)
                     .build()));
         }
 

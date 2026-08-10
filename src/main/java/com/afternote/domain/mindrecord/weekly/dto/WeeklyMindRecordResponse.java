@@ -27,7 +27,7 @@ public record WeeklyMindRecordResponse(
         @Getter
         String summaryText,
 
-        @Schema(description = "해당 주 기록 타임라인")
+        @Schema(description = "해당 주 캘린더(day당 1개). 일기 우선, 같은 날 일기 여러 개면 최신 todayMood")
         @Getter
         List<WeekRecordItem> week,
 

@@ -17,6 +17,7 @@ public interface AfternoteReceiverRepository extends JpaRepository<AfternoteRece
             SELECT ar FROM AfternoteReceiver ar
             JOIN FETCH ar.afternote a
             WHERE ar.receiver.id = :receiverId
+              AND a.isDraft = false
             ORDER BY a.createdAt DESC
             """)
     List<AfternoteReceiver> findByReceiverIdWithAfternote(@Param("receiverId") Long receiverId);
@@ -24,7 +25,9 @@ public interface AfternoteReceiverRepository extends JpaRepository<AfternoteRece
     @Query("""
             SELECT ar FROM AfternoteReceiver ar
             JOIN FETCH ar.afternote a
-            WHERE a.id = :afternoteId AND ar.receiver.id = :receiverId
+            WHERE a.id = :afternoteId
+              AND ar.receiver.id = :receiverId
+              AND a.isDraft = false
             """)
     Optional<AfternoteReceiver> findByAfternoteIdAndReceiverIdWithAfternote(
             @Param("afternoteId") Long afternoteId,

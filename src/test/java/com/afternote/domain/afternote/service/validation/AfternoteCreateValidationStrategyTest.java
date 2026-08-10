@@ -29,7 +29,25 @@ class AfternoteCreateValidationStrategyTest {
                 null,
                 new AfternoteCreateRequest.CredentialsRequest("id", "pw"),
                 null,
+                null,
                 null
+        );
+
+        assertThatCode(() -> social.validateCreate(request)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("SOCIAL 임시저장 - credentials 없어도 성공")
+    void social_DraftWithoutCredentials_Ok() {
+        AfternoteCreateRequest request = new AfternoteCreateRequest(
+                AfternoteCategoryType.SOCIAL,
+                "인스타그램",
+                null,
+                null,
+                null,
+                null,
+                null,
+                true
         );
 
         assertThatCode(() -> social.validateCreate(request)).doesNotThrowAnyException();
@@ -50,7 +68,8 @@ class AfternoteCreateValidationStrategyTest {
                         null,
                         List.of(new AfternoteCreateRequest.SongRequest("곡", "가수", null)),
                         null
-                )
+                ),
+                null
         );
 
         assertThatThrownBy(() -> social.validateCreate(request))
@@ -75,6 +94,7 @@ class AfternoteCreateValidationStrategyTest {
                 null,
                 new AfternoteCreateRequest.CredentialsRequest("id", "pw"),
                 List.of(new AfternoteCreateRequest.ReceiverRequest(1L)),
+                null,
                 null
         );
 
@@ -96,7 +116,8 @@ class AfternoteCreateValidationStrategyTest {
                         null,
                         List.of(new AfternoteCreateRequest.SongRequest("곡", "가수", null)),
                         null
-                )
+                ),
+                null
         );
 
         assertThatThrownBy(() -> social.validateUpdate(request))
@@ -121,6 +142,7 @@ class AfternoteCreateValidationStrategyTest {
                 null,
                 null,
                 List.of(),
+                null,
                 null
         );
 
@@ -142,7 +164,25 @@ class AfternoteCreateValidationStrategyTest {
                         null,
                         List.of(new AfternoteCreateRequest.SongRequest("곡", "가수", null)),
                         null
-                )
+                ),
+                null
+        );
+
+        assertThatCode(() -> playlist.validateCreate(request)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("PLAYLIST 임시저장 - playlist 없어도 성공")
+    void playlist_DraftWithoutPlaylist_Ok() {
+        AfternoteCreateRequest request = new AfternoteCreateRequest(
+                AfternoteCategoryType.PLAYLIST,
+                "추억 노트",
+                null,
+                null,
+                null,
+                null,
+                null,
+                true
         );
 
         assertThatCode(() -> playlist.validateCreate(request)).doesNotThrowAnyException();

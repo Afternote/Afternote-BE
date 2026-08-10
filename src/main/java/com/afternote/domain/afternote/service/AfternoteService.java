@@ -31,7 +31,13 @@ public class AfternoteService {
     private final ChaChaEncryptionUtil chaChaEncryptionUtil;
     private final S3Service s3Service;
 
-    public AfternotePageResponse getAfternotes(Long userId, AfternoteCategoryType category, Integer page, Integer size) {
+    public AfternotePageResponse getAfternotes(
+            Long userId,
+            AfternoteCategoryType category,
+            Integer page,
+            Integer size,
+            Boolean draftOnly
+    ) {
         if (page == null || page < 0 || size == null || size < 1) {
             throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
         }
@@ -40,13 +46,16 @@ public class AfternoteService {
             throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
         }
 
+        boolean isDraft = Boolean.TRUE.equals(draftOnly);
         Pageable pageable = PageRequest.of(page, size);
         Page<Afternote> afternotePage;
         
         if (category != null) {
-            afternotePage = afternoteRepository.findByUserIdAndCategoryTypeOrderByCreatedAtDesc(userId, category, pageable);
+            afternotePage = afternoteRepository.findByUserIdAndCategoryTypeAndIsDraftOrderByCreatedAtDesc(
+                    userId, category, isDraft, pageable);
         } else {
-            afternotePage = afternoteRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable);
+            afternotePage = afternoteRepository.findByUserIdAndIsDraftOrderByCreatedAtDesc(
+                    userId, isDraft, pageable);
         }
         
         List<AfternoteResponse> content = afternotePage.getContent().stream()
@@ -54,6 +63,7 @@ public class AfternoteService {
                         .afternoteId(afternote.getId())
                         .title(afternote.getTitle())
                         .category(afternote.getCategoryType())
+                        .isDraft(Boolean.TRUE.equals(afternote.getIsDraft()))
                         .createdAt(afternote.getCreatedAt())
                         .build())
                 .collect(Collectors.toList());
@@ -106,6 +116,7 @@ public class AfternoteService {
                         afternote.getId(),
                         afternote.getCategoryType(),
                         afternote.getTitle(),
+                        Boolean.TRUE.equals(afternote.getIsDraft()),
                         afternote.getActions(),
                         afternote.getLeaveMessage(),
                         credentials,
@@ -120,6 +131,7 @@ public class AfternoteService {
                         afternote.getId(),
                         afternote.getCategoryType(),
                         afternote.getTitle(),
+                        Boolean.TRUE.equals(afternote.getIsDraft()),
                         afternote.getActions(),
                         afternote.getLeaveMessage(),
                         null,
@@ -172,6 +184,7 @@ public class AfternoteService {
                         afternote.getId(),
                         afternote.getCategoryType(),
                         afternote.getTitle(),
+                        Boolean.TRUE.equals(afternote.getIsDraft()),
                         null,
                         afternote.getLeaveMessage(),
                         null,
@@ -186,6 +199,7 @@ public class AfternoteService {
                         afternote.getId(),
                         afternote.getCategoryType(),
                         afternote.getTitle(),
+                        Boolean.TRUE.equals(afternote.getIsDraft()),
                         afternote.getActions(),
                         afternote.getLeaveMessage(),
                         null,
@@ -218,6 +232,7 @@ public class AfternoteService {
                 .user(user)
                 .categoryType(request.getCategory())
                 .title(request.getTitle())
+                .isDraft(request.isDraftValue())
                 .sortOrder(nextSortOrder)
                 .leaveMessage(request.getLeaveMessage());
 
@@ -249,6 +264,8 @@ public class AfternoteService {
         }
         // PATCH용 검증 (카테고리 변경 불가 체크)
         validator.validateUpdateRequest(request, afternote.getCategoryType());
+        // 정식 등록으로 남거나 전환될 때 필수값 검증
+        validator.validatePublishRequirements(request, afternote);
 
         // 기본 필드 업데이트 (null이 아닌 경우만)
         String title = request.getTitle() != null ? request.getTitle() : afternote.getTitle();
@@ -266,7 +283,7 @@ public class AfternoteService {
             actions = new ArrayList<>(request.getActions());
         }
 
-        afternote.update(title, afternote.getSortOrder(), leaveMessage, actions);
+        afternote.update(title, afternote.getSortOrder(), leaveMessage, actions, request.getIsDraft());
 
         // 관계 데이터 업데이트 (카테고리 전략 + 공통 receivers 처리)
         relationService.updateRelationsByCategory(afternote, request, afternote.getCategoryType());

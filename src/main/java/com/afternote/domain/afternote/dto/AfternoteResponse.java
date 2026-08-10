@@ -21,6 +21,10 @@ public record AfternoteResponse(
         @Getter
         AfternoteCategoryType category,
 
+        @Schema(description = "임시저장 여부", example = "false")
+        @Getter
+        Boolean isDraft,
+
         @Schema(description = "생성일시", example = "2025-11-26T14:30:00")
         @Getter
         LocalDateTime createdAt

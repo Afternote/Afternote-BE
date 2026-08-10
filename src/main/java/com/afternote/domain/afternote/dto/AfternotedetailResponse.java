@@ -20,6 +20,10 @@ public record AfternotedetailResponse(
         @Getter
         String title,
 
+        @Schema(description = "임시저장 여부", example = "false")
+        @Getter
+        Boolean isDraft,
+
         @Schema(description = "체크리스트 (SOCIAL/GALLERY 전용)")
         @Getter
         List<String> actions,

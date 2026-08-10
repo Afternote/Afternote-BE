@@ -39,8 +39,16 @@ public record AfternoteCreateRequest(
 
         @Schema(description = "플레이리스트 정보 (Playlist 전용)")
         @Getter
-        PlaylistRequest playlist
+        PlaylistRequest playlist,
+
+        @Schema(description = "임시저장 여부. true면 credentials/playlist 필수 검증 완화. 생략 시 false", example = "false")
+        @Getter
+        Boolean isDraft
 ) {
+
+    public boolean isDraftValue() {
+        return Boolean.TRUE.equals(isDraft);
+    }
 
     
 

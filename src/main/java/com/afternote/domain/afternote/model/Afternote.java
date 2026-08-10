@@ -4,6 +4,7 @@ import com.afternote.domain.afternote.dto.LeaveMessageBlock;
 import com.afternote.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.ColumnDefault;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -32,6 +33,11 @@ public class Afternote extends BaseEntity {
     
     @Column(nullable = false, length = 100)
     private String title;
+
+    @ColumnDefault("false")
+    @Column(name = "is_draft", nullable = false)
+    @Builder.Default
+    private Boolean isDraft = false;
     
     @Convert(converter = LeaveMessageListConverter.class)
     @Column(columnDefinition = "TEXT")
@@ -58,13 +64,16 @@ public class Afternote extends BaseEntity {
     private AfternotePlaylist playlist;
 
     // 업데이트 메서드
-    public void update(String title, Integer sortOrder, List<LeaveMessageBlock> leaveMessage, List<String> actions) {
+    public void update(String title, Integer sortOrder, List<LeaveMessageBlock> leaveMessage, List<String> actions, Boolean isDraft) {
         this.title = title;
         this.sortOrder = sortOrder;
         this.leaveMessage = leaveMessage;
         this.actions.clear();
         if (actions != null) {
             this.actions.addAll(actions);
+        }
+        if (isDraft != null) {
+            this.isDraft = isDraft;
         }
     }
 

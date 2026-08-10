@@ -1,7 +1,7 @@
 # nginx (EC2 배포 정본)
 
 이 디렉터리의 `nginx.conf`가 운영 EC2 `~/deploy/nginx/nginx.conf`의 **정본**입니다.  
-`release` 브랜치 배포 시 GitHub Actions가 서버로 동기화한 뒤 `nginx -t` + reload 합니다.
+`main` 브랜치 배포 시 GitHub Actions가 서버로 동기화한 뒤 `nginx -t` + reload 합니다.
 
 ## 포함 내용
 

@@ -5,6 +5,7 @@ import com.afternote.domain.auth.service.social.SocialLoginFactory;
 import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.receiver.model.Receiver;
 import com.afternote.domain.receiver.model.UserReceiver;
+import com.afternote.domain.receiver.event.ReceiverAuthCodeEmailRequestedEvent;
 import com.afternote.domain.receiver.service.DeliveryVerificationService;
 import com.afternote.domain.receiver.repository.ReceiverRepository;
 import com.afternote.domain.receiver.repository.UserReceiverRepository;
@@ -14,12 +15,11 @@ import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserProvider;
 import com.afternote.domain.user.repository.UserProviderRepository;
 import com.afternote.domain.user.repository.UserRepository;
-import com.afternote.domain.receiver.service.AuthCodeMessageService;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import com.afternote.global.util.PhoneNumbers;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +27,6 @@ import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
 
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -35,7 +34,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserReceiverRepository userReceiverRepository;
     private final ReceiverRepository receiverRepository;
-    private final AuthCodeMessageService authCodeMessageService;
+    private final ApplicationEventPublisher eventPublisher;
     private final S3Service s3Service;
     private final DeliveryVerificationService deliveryVerificationService;
     private final com.afternote.domain.auth.service.TokenService tokenService;
@@ -222,18 +221,14 @@ public class UserService {
 
         userReceiverRepository.save(userReceiver);
 
-        if (receiver.getEmail() != null && !receiver.getEmail().isBlank()) {
-            try {
-                authCodeMessageService.sendAuthCode(
-                        receiver.getEmail(),
-                        receiver.getAuthCode(),
-                        user.getName(),
-                        receiver.getName()
-                );
-            } catch (Exception e) {
-                log.warn("Failed to send auth code via email for receiver {}: {}", receiver.getId(), e.getMessage());
-            }
-        }
+        // SMTP는 커밋 후 비동기로 보내 요청 지연을 줄인다.
+        eventPublisher.publishEvent(new ReceiverAuthCodeEmailRequestedEvent(
+                receiver.getId(),
+                receiver.getEmail(),
+                receiver.getAuthCode(),
+                user.getName(),
+                receiver.getName()
+        ));
 
         return UserCreateReceiverResponse.from(receiver.getId(), receiver.getAuthCode());
     }

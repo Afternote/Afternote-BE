@@ -6,7 +6,7 @@ import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.receiver.model.Receiver;
 import com.afternote.domain.receiver.repository.ReceiverRepository;
 import com.afternote.domain.receiver.repository.UserReceiverRepository;
-import com.afternote.domain.receiver.service.AuthCodeMessageService;
+import com.afternote.domain.receiver.event.ReceiverAuthCodeEmailRequestedEvent;
 import com.afternote.domain.receiver.service.DeliveryVerificationService;
 import com.afternote.domain.user.dto.UserCreateReceiverRequest;
 import com.afternote.domain.user.model.AuthProvider;
@@ -19,9 +19,11 @@ import com.afternote.global.exception.ErrorCode;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
@@ -47,7 +49,7 @@ class UserServiceCreateReceiverTest {
     @Mock
     private ReceiverRepository receiverRepository;
     @Mock
-    private AuthCodeMessageService authCodeMessageService;
+    private ApplicationEventPublisher eventPublisher;
     @Mock
     private S3Service s3Service;
     @Mock
@@ -144,6 +146,14 @@ class UserServiceCreateReceiverTest {
 
         assertThat(response.receiverId()).isEqualTo(100L);
         verify(receiverRepository).save(any(Receiver.class));
+
+        ArgumentCaptor<ReceiverAuthCodeEmailRequestedEvent> eventCaptor =
+                ArgumentCaptor.forClass(ReceiverAuthCodeEmailRequestedEvent.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue().receiverId()).isEqualTo(100L);
+        assertThat(eventCaptor.getValue().email()).isEqualTo("jieun@naver.com");
+        assertThat(eventCaptor.getValue().senderName()).isEqualTo("tester");
+        assertThat(eventCaptor.getValue().receiverName()).isEqualTo("김지은");
     }
 
     private static User sampleUser(Long id) {

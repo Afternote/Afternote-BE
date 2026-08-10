@@ -12,7 +12,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.util.concurrent.Executor;
 
 /**
- * 비동기 작업 설정 (감정 분석용)
+ * 비동기 작업 설정 (감정 분석, 인증메일 등)
  */
 @Configuration
 @EnableAsync
@@ -24,7 +24,7 @@ public class AsyncConfig implements AsyncConfigurer {
         executor.setCorePoolSize(2);  // 기본 스레드 수
         executor.setMaxPoolSize(5);   // 최대 스레드 수
         executor.setQueueCapacity(100);  // 큐 크기
-        executor.setThreadNamePrefix("emotion-analysis-");
+        executor.setThreadNamePrefix("async-");
         executor.initialize();
         return executor;
     }

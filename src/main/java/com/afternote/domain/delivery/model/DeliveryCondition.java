@@ -1,6 +1,7 @@
 package com.afternote.domain.delivery.model;
 
 import com.afternote.domain.user.model.DeliveryConditionType;
+import com.afternote.global.common.BaseEntity;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import jakarta.persistence.*;
@@ -8,8 +9,6 @@ import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDateTime;
 
@@ -27,7 +26,7 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class DeliveryCondition {
+public class DeliveryCondition extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -60,14 +59,6 @@ public class DeliveryCondition {
 
     @Column(name = "fulfilled_at")
     private LocalDateTime fulfilledAt;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
-
-    @UpdateTimestamp
-    @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
 
     @Builder
     public DeliveryCondition(Long userId, Long receiverId, DeliveryContentType contentType,

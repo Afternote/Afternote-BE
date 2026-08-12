@@ -2,15 +2,19 @@
 #
 #   cp terraform.tfvars.example terraform.tfvars
 
-aws_region    = "ap-northeast-2"
-project_name  = "afternote"
-environment   = "dev"
+aws_region   = "ap-northeast-2"
+project_name = "afternote"
+environment  = "dev"
 
-# AWS Console → EC2 → Instance ID
-ec2_instance_id = "i-xxxxxxxxxxxxxxxxx"
+# Existing EC2 key pair name in the region (NOT the .pem filename)
+# aws ec2 describe-key-pairs --query 'KeyPairs[].KeyName'
+ec2_key_name = "your-keypair-name"
 
-# AWS Console → RDS → DB identifier
-rds_instance_id = "your-rds-identifier"
+# Prefer your public IP/32 for SSH
+ssh_ingress_cidr = "0.0.0.0/0"
+
+# RDS master password — never commit terraform.tfvars
+db_password = "change-me-strong-password"
 
 # SNS alert email
 alert_email = "you@example.com"
@@ -18,6 +22,12 @@ alert_email = "you@example.com"
 # EC2 deploy path (default: ec2-user ~/deploy)
 deploy_path = "/home/ec2-user/deploy"
 ec2_user    = "ec2-user"
+
+# Optional sizing
+# ec2_instance_type   = "t3.small"
+# db_instance_class   = "db.t4g.micro"
+# db_name             = "afternote"
+# db_username         = "afternote"
 
 # Existing Elastic IP allocation ID (eipalloc-xxx), or "" to create new
 existing_eip_allocation_id = ""

@@ -1,6 +1,7 @@
 package com.afternote.domain.receiver.model;
 
 import com.afternote.domain.timeletter.model.TimeLetter;
+import com.afternote.global.common.CreatedAtEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
@@ -13,18 +14,16 @@ import java.time.LocalDateTime;
 @Table(name = "time_letter_receiver")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class TimeLetterReceiver {
+public class TimeLetterReceiver extends CreatedAtEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // 어떤 편지인지 (TimeLetter FK)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "time_letter_id", nullable = false)
     private TimeLetter timeLetter;
 
-    // 누구에게 보내는지 (Receiver FK)
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receiver_id", nullable = false)
     private Receiver receiver;
@@ -34,9 +33,6 @@ public class TimeLetterReceiver {
 
     @Column(name = "read_at")
     private LocalDateTime readAt;
-
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private LocalDateTime createdAt;
 
     @Builder
     public TimeLetterReceiver(TimeLetter timeLetter, Receiver receiver, LocalDateTime deliveredAt) {

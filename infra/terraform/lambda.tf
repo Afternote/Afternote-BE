@@ -33,8 +33,8 @@ resource "aws_lambda_function" "stop_env" {
 
   environment {
     variables = {
-      EC2_INSTANCE_ID = var.ec2_instance_id
-      RDS_INSTANCE_ID = var.rds_instance_id
+      EC2_INSTANCE_ID = local.ec2_instance_id
+      RDS_INSTANCE_ID = local.rds_instance_id
     }
   }
 
@@ -54,8 +54,8 @@ resource "aws_lambda_function" "start_env" {
 
   environment {
     variables = {
-      EC2_INSTANCE_ID = var.ec2_instance_id
-      RDS_INSTANCE_ID = var.rds_instance_id
+      EC2_INSTANCE_ID = local.ec2_instance_id
+      RDS_INSTANCE_ID = local.rds_instance_id
       DEPLOY_PATH     = var.deploy_path
       EC2_USER        = var.ec2_user
       SNS_TOPIC_ARN   = aws_sns_topic.scheduler_alerts.arn

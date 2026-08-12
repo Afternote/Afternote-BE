@@ -1,0 +1,51 @@
+#!/bin/bash
+set -euxo pipefail
+
+dnf update -y
+dnf install -y docker
+systemctl enable --now docker
+usermod -aG docker ${ec2_user}
+
+mkdir -p ${deploy_path}
+chown ${ec2_user}:${ec2_user} ${deploy_path}
+
+cat >/usr/local/bin/afternote-compose-boot.sh <<'SCRIPT'
+#!/bin/bash
+set -euo pipefail
+DEPLOY_PATH='${deploy_path}'
+if [ ! -f "$DEPLOY_PATH/docker-compose.yml" ]; then
+  echo "compose not present yet at $DEPLOY_PATH"
+  exit 0
+fi
+cd "$DEPLOY_PATH"
+for i in $(seq 1 30); do
+  docker info >/dev/null 2>&1 && break
+  sleep 2
+done
+if [ -f .env.production ]; then
+  docker compose --env-file .env.production up -d --remove-orphans
+else
+  docker compose up -d --remove-orphans
+fi
+SCRIPT
+chmod +x /usr/local/bin/afternote-compose-boot.sh
+
+cat >/etc/systemd/system/afternote-compose.service <<UNIT
+[Unit]
+Description=AfterNote docker compose boot
+After=docker.service network-online.target
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+User=${ec2_user}
+ExecStart=/usr/local/bin/afternote-compose-boot.sh
+
+[Install]
+WantedBy=multi-user.target
+UNIT
+
+systemctl daemon-reload
+systemctl enable afternote-compose.service

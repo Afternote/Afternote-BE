@@ -113,19 +113,37 @@ jobs:
             docker compose pull
             docker compose up -d --remove-orphans --pull always
 
-            # Real cert after HTTP is up (webroot challenge)
-            if [ -n "${CERTBOT_EMAIL:-}" ] && [ -x scripts/bootstrap-certs.sh ]; then
-              echo "[INFO] requesting/renewing Let's Encrypt cert..."
+            # Real cert: self-signed in live/ blocks certbot webroot ("live directory exists").
+            # Free port 80, remove bootstrap lineage, issue with standalone, then bring nginx back.
+            if [ -n "${CERTBOT_EMAIL:-}" ]; then
+              echo "[INFO] requesting/renewing Let's Encrypt cert (standalone)..."
               cd ~/deploy
-              docker compose --profile cert run --rm --entrypoint certbot certbot certonly \
-                --webroot -w /var/www/certbot \
+              DOMAIN="${TLS_DOMAIN:-afternote.kro.kr}"
+              docker compose stop nginx || true
+              rm -rf "data/certbot/conf/live/${DOMAIN}" \
+                     "data/certbot/conf/archive/${DOMAIN}" \
+                     "data/certbot/conf/renewal/${DOMAIN}.conf" || true
+              if docker compose --profile cert run --rm --entrypoint certbot certbot certonly \
+                --standalone \
+                --preferred-challenges http \
                 --email "${CERTBOT_EMAIL}" \
                 --agree-tos \
                 --no-eff-email \
                 --non-interactive \
-                -d "${TLS_DOMAIN:-afternote.kro.kr}" \
-                --keep-until-expiring \
-                || echo "[WARN] certbot failed; continuing with existing cert"
+                -d "${DOMAIN}" \
+                --keep-until-expiring; then
+                echo "[INFO] Let's Encrypt certificate ready"
+              else
+                echo "[WARN] certbot failed; restoring temporary self-signed so nginx can start"
+                mkdir -p "data/certbot/conf/live/${DOMAIN}"
+                openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+                  -keyout "data/certbot/conf/live/${DOMAIN}/privkey.pem" \
+                  -out "data/certbot/conf/live/${DOMAIN}/fullchain.pem" \
+                  -subj "/CN=${DOMAIN}" 2>/dev/null || true
+                cp "data/certbot/conf/live/${DOMAIN}/fullchain.pem" "data/certbot/conf/live/${DOMAIN}/cert.pem" 2>/dev/null || true
+                cp "data/certbot/conf/live/${DOMAIN}/fullchain.pem" "data/certbot/conf/live/${DOMAIN}/chain.pem" 2>/dev/null || true
+              fi
+              docker compose up -d nginx
               docker compose exec -T nginx nginx -s reload || true
             fi
 

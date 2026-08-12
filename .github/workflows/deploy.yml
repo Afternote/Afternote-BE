@@ -60,6 +60,17 @@ jobs:
           script: |
             set -euo pipefail
             sudo systemctl start docker 2>/dev/null || true
+
+            # AL2023 greenfield image may have docker without compose plugin
+            if ! docker compose version >/dev/null 2>&1; then
+              echo "[INFO] installing docker compose plugin..."
+              sudo mkdir -p /usr/libexec/docker/cli-plugins
+              sudo curl -fsSL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-x86_64" \
+                -o /usr/libexec/docker/cli-plugins/docker-compose
+              sudo chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+              docker compose version
+            fi
+
             cd ~/deploy
 
             SYNC_ROOT=/tmp/afternote-deploy-sync

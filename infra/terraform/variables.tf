@@ -16,14 +16,62 @@ variable "aws_region" {
   default     = "ap-northeast-2"
 }
 
-variable "ec2_instance_id" {
-  description = "EC2 instance ID to schedule (e.g. i-0abc123)"
+variable "vpc_cidr" {
+  description = "CIDR for the greenfield VPC"
+  type        = string
+  default     = "10.40.0.0/16"
+}
+
+variable "public_subnet_cidrs" {
+  description = "Two public subnet CIDRs in different AZs (RDS subnet group requires 2 AZs)"
+  type        = list(string)
+  default     = ["10.40.1.0/24", "10.40.2.0/24"]
+}
+
+variable "ssh_ingress_cidr" {
+  description = "CIDR allowed to SSH into EC2 (prefer your IP/32)"
   type        = string
 }
 
-variable "rds_instance_id" {
-  description = "RDS DB instance identifier (e.g. afternote-dev)"
+variable "ec2_key_name" {
+  description = "Existing EC2 key pair name for SSH"
   type        = string
+}
+
+variable "ec2_instance_type" {
+  description = "EC2 instance type"
+  type        = string
+  default     = "t3.small"
+}
+
+variable "db_instance_class" {
+  description = "RDS instance class"
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "db_name" {
+  description = "Initial MySQL database name"
+  type        = string
+  default     = "afternote"
+}
+
+variable "db_username" {
+  description = "RDS master username"
+  type        = string
+  default     = "afternote"
+}
+
+variable "db_password" {
+  description = "RDS master password (store in terraform.tfvars, never commit)"
+  type        = string
+  sensitive   = true
+}
+
+variable "db_allocated_storage" {
+  description = "RDS allocated storage in GB"
+  type        = number
+  default     = 20
 }
 
 variable "existing_eip_allocation_id" {
@@ -65,10 +113,4 @@ variable "ec2_user" {
 variable "alert_email" {
   description = "Email for SNS alerts on Lambda failures"
   type        = string
-}
-
-variable "create_ec2_ssm_role" {
-  description = "Create IAM instance profile for SSM (attach to EC2 manually or via CLI once)"
-  type        = bool
-  default     = true
 }

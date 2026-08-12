@@ -1,11 +1,10 @@
 package com.afternote.domain.user.model;
 
+import com.afternote.global.common.CreatedAtEntity;
 import jakarta.persistence.*;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(
@@ -14,7 +13,7 @@ import java.time.LocalDateTime;
 )
 @Getter
 @NoArgsConstructor
-public class UserProvider {
+public class UserProvider extends CreatedAtEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -30,9 +29,6 @@ public class UserProvider {
 
     @Column(name = "provider_id")
     private String providerId;
-
-    @Column(name = "created_at", nullable = false, insertable = false, updatable = false)
-    private LocalDateTime createdAt;
 
     @Builder
     public UserProvider(User user, AuthProvider provider, String providerId) {

@@ -43,31 +43,24 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
-          source: "deploy/nginx/nginx.conf,deploy/docker-compose.yml"
+          source: "deploy/nginx/nginx.conf,deploy/docker-compose.yml,deploy/scripts/bootstrap-certs.sh"
           target: "/tmp/afternote-deploy-sync/"
           overwrite: true
           strip_components: 1
 
       - name: Deploy to EC2
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          CERTBOT_EMAIL: ${{ secrets.CERTBOT_EMAIL }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
+          envs: CERTBOT_EMAIL
           script: |
             set -euo pipefail
             sudo systemctl start docker 2>/dev/null || true
             cd ~/deploy
-
-            if [ ! -d data/certbot/conf ]; then
-              echo "[ERROR] data/certbot/conf directory not found"
-              exit 1
-            fi
-
-            if [ ! -d data/certbot/www ]; then
-              echo "[ERROR] data/certbot/www directory not found"
-              exit 1
-            fi
 
             SYNC_ROOT=/tmp/afternote-deploy-sync
             if [ ! -f "${SYNC_ROOT}/nginx/nginx.conf" ]; then
@@ -80,7 +73,7 @@ jobs:
               exit 1
             fi
 
-            mkdir -p ~/deploy/nginx
+            mkdir -p ~/deploy/nginx ~/deploy/scripts
             TS=$(date +%Y%m%d%H%M%S)
             if [ -f nginx/nginx.conf ]; then
               cp nginx/nginx.conf "nginx/nginx.conf.bak.${TS}"
@@ -91,9 +84,39 @@ jobs:
 
             cp "${SYNC_ROOT}/nginx/nginx.conf" nginx/nginx.conf
             cp "${SYNC_ROOT}/docker-compose.yml" docker-compose.yml
+            if [ -f "${SYNC_ROOT}/scripts/bootstrap-certs.sh" ]; then
+              cp "${SYNC_ROOT}/scripts/bootstrap-certs.sh" scripts/bootstrap-certs.sh
+              chmod +x scripts/bootstrap-certs.sh
+            fi
+
+            # Ensure TLS dirs + temporary self-signed if Let's Encrypt missing (greenfield)
+            export DEPLOY_ROOT="$HOME/deploy"
+            export TLS_DOMAIN="${TLS_DOMAIN:-afternote.kro.kr}"
+            export CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
+            if [ -x scripts/bootstrap-certs.sh ]; then
+              ./scripts/bootstrap-certs.sh
+            else
+              mkdir -p data/certbot/conf data/certbot/www
+            fi
 
             docker compose pull
             docker compose up -d --remove-orphans --pull always
+
+            # Real cert after HTTP is up (webroot challenge)
+            if [ -n "${CERTBOT_EMAIL:-}" ] && [ -x scripts/bootstrap-certs.sh ]; then
+              echo "[INFO] requesting/renewing Let's Encrypt cert..."
+              cd ~/deploy
+              docker compose --profile cert run --rm --entrypoint certbot certbot certonly \
+                --webroot -w /var/www/certbot \
+                --email "${CERTBOT_EMAIL}" \
+                --agree-tos \
+                --no-eff-email \
+                --non-interactive \
+                -d "${TLS_DOMAIN:-afternote.kro.kr}" \
+                --keep-until-expiring \
+                || echo "[WARN] certbot failed; continuing with existing cert"
+              docker compose exec -T nginx nginx -s reload || true
+            fi
 
             echo "[INFO] validating nginx config..."
             if ! docker compose exec -T nginx nginx -t; then

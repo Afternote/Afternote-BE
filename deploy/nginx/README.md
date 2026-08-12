@@ -3,6 +3,13 @@
 이 디렉터리의 `nginx.conf`가 운영 EC2 `~/deploy/nginx/nginx.conf`의 **정본**입니다.  
 `main` 브랜치 배포 시 GitHub Actions가 서버로 동기화한 뒤 `nginx -t` + reload 합니다.
 
+그린필드 EC2처럼 `data/certbot`이 비어 있으면 배포 스크립트가:
+
+1. 디렉터리를 만들고
+2. nginx 기동용 **임시 self-signed**를 넣은 뒤
+3. GitHub Secret `CERTBOT_EMAIL`이 있으면 Let's Encrypt를 webroot로 발급/갱신합니다.
+
+
 ## 포함 내용
 
 - HTTPS / ACME / upstream keepalive

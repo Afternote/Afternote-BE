@@ -1,11 +1,37 @@
 output "elastic_ip" {
-  description = "Fixed public IP — set domain A record and GitHub secret EC2_HOST once"
+  description = "Fixed public IP — set domain A record and GitHub secret EC2_HOST"
   value       = data.aws_eip.associated.public_ip
 }
 
 output "elastic_ip_allocation_id" {
   description = "Elastic IP allocation ID"
   value       = local.eip_allocation_id
+}
+
+output "ec2_instance_id" {
+  value = aws_instance.app.id
+}
+
+output "rds_endpoint" {
+  description = "RDS hostname:port for DB_URL"
+  value       = aws_db_instance.main.endpoint
+}
+
+output "rds_address" {
+  value = aws_db_instance.main.address
+}
+
+output "db_name" {
+  value = aws_db_instance.main.db_name
+}
+
+output "db_username" {
+  value = aws_db_instance.main.username
+}
+
+output "jdbc_url_hint" {
+  description = "Paste into .env.production as DB_URL (password from tfvars)"
+  value       = "jdbc:mysql://${aws_db_instance.main.address}:3306/${aws_db_instance.main.db_name}?serverTimezone=Asia/Seoul&characterEncoding=UTF-8"
 }
 
 output "stop_lambda_function_name" {
@@ -30,11 +56,6 @@ output "cloudwatch_dashboard_name" {
 
 output "sns_topic_arn" {
   value = aws_sns_topic.scheduler_alerts.arn
-}
-
-output "ec2_ssm_instance_profile_name" {
-  description = "Attach this profile to EC2 if SSM is not Online yet (see README)"
-  value       = var.create_ec2_ssm_role ? aws_iam_instance_profile.ec2_ssm[0].name : null
 }
 
 output "manual_test_commands" {

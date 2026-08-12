@@ -1,14 +1,12 @@
 package com.afternote.domain.receiver.model;
 
 import com.afternote.domain.deepthought.model.DeepThought;
+import com.afternote.global.common.CreatedAtEntity;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
-
-import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "deep_thought_receiver", uniqueConstraints = {
@@ -16,7 +14,7 @@ import java.time.LocalDateTime;
 })
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class DeepThoughtReceiver {
+public class DeepThoughtReceiver extends CreatedAtEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,10 +27,6 @@ public class DeepThoughtReceiver {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "receiver_id", nullable = false)
     private Receiver receiver;
-
-    @CreationTimestamp
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
 
     @Builder
     public DeepThoughtReceiver(DeepThought deepThought, Receiver receiver) {

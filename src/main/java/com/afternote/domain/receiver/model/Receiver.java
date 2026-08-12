@@ -1,10 +1,10 @@
 package com.afternote.domain.receiver.model;
 
 import com.afternote.domain.afternote.model.AfternoteReceiver;
+import com.afternote.global.common.BaseEntity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -14,7 +14,7 @@ import java.util.UUID;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
-public class Receiver {
+public class Receiver extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -27,10 +27,10 @@ public class Receiver {
     private String name;
 
     @Column(length = 50)
-    private String relation;  // 관계 (친구, 가족 등)
+    private String relation;
 
     @Column(length = 20)
-    private String phone;  // 전화번호
+    private String phone;
 
     @Column(length = 50)
     private String email;
@@ -41,8 +41,11 @@ public class Receiver {
     @Column(name = "auth_code", unique = true, length = 36)
     private String authCode;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "sort_order", nullable = false)
+    private Integer sortOrder;
+
+    @OneToMany(mappedBy = "receiver", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<AfternoteReceiver> afternoteReceivers = new ArrayList<>();
 
     @Builder
     public Receiver(String name, String relation, String phone, String email, String message, Long userId) {
@@ -53,7 +56,6 @@ public class Receiver {
         this.message = message;
         this.userId = userId;
         this.sortOrder = 0;
-        this.createdAt = LocalDateTime.now();
         this.authCode = UUID.randomUUID().toString();
     }
 
@@ -61,17 +63,10 @@ public class Receiver {
         this.message = message;
     }
 
-    @Column(name = "sort_order", nullable = false)
-    private Integer sortOrder;
-
-    @OneToMany(mappedBy = "receiver", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<AfternoteReceiver> afternoteReceivers = new ArrayList<>();
-
     public void updateInfo(String name, String relation, String phone, String email) {
         this.name = name;
         this.relation = relation;
         this.phone = phone;
         this.email = email;
     }
-
 }

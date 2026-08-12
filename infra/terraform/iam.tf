@@ -90,10 +90,9 @@ resource "aws_iam_role_policy" "scheduler_invoke" {
   })
 }
 
-# EC2 SSM — Start Lambda runs docker compose via SSM Run Command
+# EC2 SSM — Start Lambda may still Run Command compose; boot also uses systemd
 resource "aws_iam_role" "ec2_ssm" {
-  count = var.create_ec2_ssm_role ? 1 : 0
-  name  = "${var.project_name}-ec2-ssm"
+  name = "${var.project_name}-ec2-ssm"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -106,13 +105,11 @@ resource "aws_iam_role" "ec2_ssm" {
 }
 
 resource "aws_iam_role_policy_attachment" "ec2_ssm" {
-  count      = var.create_ec2_ssm_role ? 1 : 0
-  role       = aws_iam_role.ec2_ssm[0].name
+  role       = aws_iam_role.ec2_ssm.name
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
 resource "aws_iam_instance_profile" "ec2_ssm" {
-  count = var.create_ec2_ssm_role ? 1 : 0
-  name  = "${var.project_name}-ec2-ssm"
-  role  = aws_iam_role.ec2_ssm[0].name
+  name = "${var.project_name}-ec2-ssm"
+  role = aws_iam_role.ec2_ssm.name
 }

@@ -9,10 +9,12 @@ resource "aws_eip" "app" {
 
 locals {
   eip_allocation_id = var.existing_eip_allocation_id != "" ? var.existing_eip_allocation_id : aws_eip.app[0].id
+  ec2_instance_id   = aws_instance.app.id
+  rds_instance_id   = aws_db_instance.main.identifier
 }
 
 resource "aws_eip_association" "app" {
-  instance_id   = var.ec2_instance_id
+  instance_id   = aws_instance.app.id
   allocation_id = local.eip_allocation_id
 }
 

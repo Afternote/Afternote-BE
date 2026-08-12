@@ -2,9 +2,16 @@
 set -euxo pipefail
 
 dnf update -y
-dnf install -y docker
+dnf install -y docker curl
 systemctl enable --now docker
 usermod -aG docker ${ec2_user}
+
+# docker compose v2 plugin (AL2023 docker package often omits it)
+mkdir -p /usr/libexec/docker/cli-plugins
+curl -fsSL "https://github.com/docker/compose/releases/download/v2.29.7/docker-compose-linux-x86_64" \
+  -o /usr/libexec/docker/cli-plugins/docker-compose
+chmod +x /usr/libexec/docker/cli-plugins/docker-compose
+docker compose version
 
 mkdir -p ${deploy_path}
 chown ${ec2_user}:${ec2_user} ${deploy_path}

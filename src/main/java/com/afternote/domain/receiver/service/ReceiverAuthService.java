@@ -4,6 +4,7 @@ import com.afternote.domain.delivery.service.DeliveryConditionService;
 import com.afternote.domain.image.dto.PresignedUrlResponse;
 import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.receiver.dto.*;
+import com.afternote.domain.receiver.event.ReceiverAuthCodeEmailRunner;
 import com.afternote.domain.receiver.model.DeliveryVerification;
 import com.afternote.domain.receiver.model.ReceivedRecordStatus;
 import com.afternote.domain.receiver.model.Receiver;
@@ -49,7 +50,7 @@ public class ReceiverAuthService {
     private final ReceivedService receivedService;
     private final DeliveryVerificationService deliveryVerificationService;
     private final S3Service s3Service;
-    private final AuthCodeMessageService authCodeMessageService;
+    private final ReceiverAuthCodeEmailRunner receiverAuthCodeEmailRunner;
     private final StringRedisTemplate stringRedisTemplate;
     private final DeliveryVerificationRepository deliveryVerificationRepository;
     private final DeliveryConditionService deliveryConditionService;
@@ -155,17 +156,19 @@ public class ReceiverAuthService {
                     redisValue,
                     EMAIL_AUTH_CODE_TTL
             );
-
-            authCodeMessageService.sendAuthCode(
-                    receiver.getEmail(),
-                    emailAuthCode,
-                    sender.getName(),
-                    receiver.getName()
-            );
         } catch (Exception e) {
-            stringRedisTemplate.delete(redisKey);
             throw new CustomException(ErrorCode.RECEIVER_EMAIL_SEND_FAILED);
         }
+
+        // SMTP는 비동기. 실패 시 Runner가 redisKey를 지워 재요청 가능하게 한다.
+        receiverAuthCodeEmailRunner.sendEmailAuthCode(
+                receiver.getEmail(),
+                emailAuthCode,
+                sender.getName(),
+                receiver.getName(),
+                receiver.getId(),
+                redisKey
+        );
 
         return ReceiverEmailAuthCodeSendResponse.of(expiresAt);
     }

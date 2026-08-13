@@ -1,0 +1,16 @@
+---
+description: Java enum 값 추가 시 DB ENUM/CHECK 에 의존하지 않는다
+alwaysApply: true
+---
+
+# Enum · 스키마 변경
+
+MySQL native ENUM/CHECK 는 `ddl-auto=update` 가 값을 추가하지 않는다. Java enum 상수만 늘리면 INSERT 가 500/1004 가 난다 (#110 → #167).
+
+- `@Enumerated(EnumType.STRING)` 은 VARCHAR 로 저장한다. `hibernate.type.preferred_enum_jdbc_type=VARCHAR` 가 전역 고정이다. 컬럼을 MySQL `ENUM(...)` 으로 되돌리지 않는다.
+- **enum 상수 추가**(예: `ESTATE`)는 Java enum·검증·관계 전략만 바꾼다. `ALTER TABLE` / `deploy/sql` 수동 실행을 요구하지 않는다.
+- Hibernate 가 안 바꾸는 DDL(NOT NULL→NULL, 컬럼 타입, 인덱스)은 같은 PR 에서 `MysqlSchemaCompatibilityMigrator` 에 멱등 스텝을 넣는다. RDS 에 수동 SQL 을 전제로 하지 않는다.
+- 스키마 보정 실패는 기동을 실패시킨다. `ApplicationRunner` 에서 예외를 삼키지 않는다.
+
+- ❌ BAD: `ALTER TABLE ... ENUM('SOCIAL',...,'ESTATE')` 를 배포 전제로 두거나, `ddl-auto=update` 가 ENUM 값을 갱신한다고 가정한다.
+- ✅ GOOD: Java enum·검증·관계 전략만 추가한다. 기존 DB ENUM/CHECK 는 `MysqlSchemaCompatibilityMigrator` 가 VARCHAR 로 정규화한다.

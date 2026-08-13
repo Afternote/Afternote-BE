@@ -112,7 +112,7 @@ class AuthServiceTest {
         given(userRepository.existsByEmail("test@test.com")).willReturn(false);
         given(emailService.consumeVerified("test@test.com", EmailVerificationPurpose.SIGNUP)).willReturn(true);
         given(passwordEncoder.encode("Password1!")).willReturn("encoded");
-        given(userRepository.save(any(User.class))).willAnswer(invocation -> {
+        given(userRepository.saveAndFlush(any(User.class))).willAnswer(invocation -> {
             User u = invocation.getArgument(0);
             ReflectionTestUtils.setField(u, "id", 1L);
             return u;
@@ -124,6 +124,29 @@ class AuthServiceTest {
         assertThat(user.getEmail()).isEqualTo("test@test.com");
         verify(emailService).consumeVerified("test@test.com", EmailVerificationPurpose.SIGNUP);
         verify(tokenService, org.mockito.Mockito.never()).saveToken(any(), any());
+    }
+
+    @Test
+    @DisplayName("회원가입 실패 - exists 통과 후 unique 제약(동시 가입 레이스)")
+    void signup_DataIntegrityRace_DuplicateEmail() {
+        SignupRequest request = org.mockito.Mockito.mock(SignupRequest.class);
+        given(request.getEmail()).willReturn("race@test.com");
+        given(request.getPassword()).willReturn("Password1!");
+        given(request.getName()).willReturn("tester");
+
+        given(userRepository.existsByEmail("race@test.com")).willReturn(false);
+        given(emailService.consumeVerified("race@test.com", EmailVerificationPurpose.SIGNUP)).willReturn(true);
+        given(passwordEncoder.encode("Password1!")).willReturn("encoded");
+        given(userRepository.saveAndFlush(any(User.class))).willThrow(
+                new org.springframework.dao.DataIntegrityViolationException(
+                        "Duplicate entry 'race@test.com' for key 'users.email'"
+                )
+        );
+
+        assertThatThrownBy(() -> authService.signup(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.DUPLICATE_EMAIL));
     }
 
     @Test
@@ -350,7 +373,7 @@ class AuthServiceTest {
         given(socialLoginFactory.getService("KAKAO")).willReturn(socialLoginService);
         given(socialLoginService.getUserInfo("kakao-token")).willReturn(socialUserInfo);
         given(userRepository.findByEmail("kakao@test.com")).willReturn(Optional.empty());
-        given(userRepository.save(any(User.class))).willAnswer(invocation -> {
+        given(userRepository.saveAndFlush(any(User.class))).willAnswer(invocation -> {
             User saved = invocation.getArgument(0);
             ReflectionTestUtils.setField(saved, "id", 77L);
             return saved;

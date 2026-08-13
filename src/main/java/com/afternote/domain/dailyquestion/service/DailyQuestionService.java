@@ -223,5 +223,6 @@ public class DailyQuestionService {
 
         userDailyQuestionReceiverRepository.deleteByUserDailyQuestionId(userDailyQuestionId);
         userDailyQuestionRepository.delete(userDailyQuestion);
+        userDailyQuestionRepository.flush();
     }
 }

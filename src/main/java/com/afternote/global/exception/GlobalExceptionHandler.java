@@ -1,12 +1,18 @@
 package com.afternote.global.exception;
 
 import com.afternote.global.common.ApiResponse;
+import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.hibernate.StaleObjectStateException;
 import org.springframework.beans.TypeMismatchException;
 import org.springframework.core.convert.ConversionFailedException;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -91,6 +97,45 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(errorCode));
     }
 
+    /**
+     * 동시 회원가입 등: exists 검사 통과 후 unique 제약에 걸린 경우.
+     * DB 무결성은 지켜지므로 500 대신 중복 이메일(409)로 응답한다.
+     */
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException e) {
+        if (looksLikeDuplicateEmail(e)) {
+            log.info("Duplicate email constraint: {}", rootMessage(e));
+            ErrorCode errorCode = ErrorCode.DUPLICATE_EMAIL;
+            return ResponseEntity
+                    .status(errorCode.getHttpStatus())
+                    .body(ApiResponse.error(errorCode));
+        }
+        log.error("Data integrity violation", e);
+        ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
+        return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .body(ApiResponse.error(errorCode));
+    }
+
+    /**
+     * 동시 삭제: 한쪽이 이미 지운 행을 다른 쪽이 delete 할 때 row count 0 / stale.
+     * 500 대신 404(이미 없음)로 응답한다.
+     */
+    @ExceptionHandler({
+            ObjectOptimisticLockingFailureException.class,
+            OptimisticLockingFailureException.class,
+            OptimisticLockException.class,
+            StaleObjectStateException.class,
+            EmptyResultDataAccessException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleConcurrentDelete(Exception e) {
+        log.info("Concurrent modification / already deleted: {}", e.toString());
+        ErrorCode errorCode = ErrorCode.RESOURCE_ALREADY_DELETED;
+        return ResponseEntity
+                .status(errorCode.getHttpStatus())
+                .body(ApiResponse.error(errorCode));
+    }
+
     // 6. 그 외 예상치 못한 에러 — 상세는 로그에만, 응답은 일반 메시지
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
@@ -99,6 +144,22 @@ public class GlobalExceptionHandler {
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
                 .body(ApiResponse.error(errorCode));
+    }
+
+    private static boolean looksLikeDuplicateEmail(DataIntegrityViolationException e) {
+        String msg = rootMessage(e).toLowerCase();
+        return msg.contains("email")
+                || msg.contains("users.email")
+                || msg.contains("uk_users")
+                || (msg.contains("duplicate") && msg.contains("users"));
+    }
+
+    private static String rootMessage(Throwable e) {
+        Throwable cur = e;
+        while (cur.getCause() != null && cur.getCause() != cur) {
+            cur = cur.getCause();
+        }
+        return cur.getMessage() == null ? "" : cur.getMessage();
     }
 
 }

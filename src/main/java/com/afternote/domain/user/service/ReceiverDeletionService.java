@@ -59,6 +59,7 @@ public class ReceiverDeletionService {
         Receiver receiver = userReceiver.getReceiver();
         userReceiverRepository.delete(userReceiver);
         receiverRepository.delete(receiver);
+        receiverRepository.flush();
     }
 
     private boolean isLinkedToContent(Long receiverId) {

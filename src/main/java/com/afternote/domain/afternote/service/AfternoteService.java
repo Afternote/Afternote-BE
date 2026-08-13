@@ -303,5 +303,6 @@ public class AfternoteService {
             throw new CustomException(ErrorCode.AFTERNOTE_ACCESS_DENIED);
         }
         afternoteRepository.delete(afternote);
+        afternoteRepository.flush();
     }
 }

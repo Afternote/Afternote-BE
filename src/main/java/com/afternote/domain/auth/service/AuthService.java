@@ -13,6 +13,7 @@ import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import com.afternote.global.jwt.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -51,7 +52,7 @@ public class AuthService {
                 .provider(AuthProvider.LOCAL)
                 .build();
 
-        return userRepository.save(user);
+        return saveNewUser(user);
     }
 
     @Transactional
@@ -266,7 +267,7 @@ public class AuthService {
                     .status(UserStatus.ACTIVE)
                     .provider(socialUserInfo.getProvider())
                     .build();
-            user = userRepository.save(user);
+            user = saveNewUser(user);
             isNewUser = true;
         }
         
@@ -281,6 +282,18 @@ public class AuthService {
                 .expiresIn(jwtTokenProvider.getAccessTokenExpirationSeconds())
                 .isNewUser(isNewUser)
                 .build();
+    }
+
+    /**
+     * existsByEmail 레이스에서 진 요청은 unique 제약으로 실패한다.
+     * 500 대신 중복 이메일로 변환한다.
+     */
+    private User saveNewUser(User user) {
+        try {
+            return userRepository.saveAndFlush(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new CustomException(ErrorCode.DUPLICATE_EMAIL);
+        }
     }
 
 }

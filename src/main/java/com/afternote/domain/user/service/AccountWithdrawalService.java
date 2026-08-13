@@ -126,6 +126,7 @@ public class AccountWithdrawalService {
         // 6) 탈퇴 이력 저장 후 User hard delete (잔여 cascade: timeLetters, diaries, ...)
         withdrawnUserRepository.save(WithdrawnUser.of(email, userId));
         userRepository.delete(user);
+        userRepository.flush();
 
         log.info("Account withdrawn. previousUserId={}, email={}", userId, email);
     }

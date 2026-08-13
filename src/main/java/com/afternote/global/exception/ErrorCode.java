@@ -17,6 +17,8 @@ public enum ErrorCode {
     ENDPOINT_NOT_FOUND(HttpStatus.NOT_FOUND, 1003, "존재하지 않는 엔드포인트입니다."),
     INTERNAL_SERVER_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, 1004, "서버 내부 오류가 발생했습니다."),
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, 1005, "허용되지 않은 HTTP 메서드입니다."),
+    /** 동시 삭제 등으로 대상이 이미 사라진 경우 (멱등 삭제 경쟁) */
+    RESOURCE_ALREADY_DELETED(HttpStatus.NOT_FOUND, 1006, "이미 삭제되었거나 존재하지 않는 리소스입니다."),
 
     // ======================================
     // 2. 토큰 관련 오류 (code: 1100 ~ 1199)

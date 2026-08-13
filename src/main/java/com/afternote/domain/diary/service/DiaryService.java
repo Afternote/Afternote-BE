@@ -171,5 +171,6 @@ public class DiaryService {
                 .orElseThrow(() -> new CustomException(ErrorCode.DIARY_NOT_FOUND));
         diaryReceiverRepository.deleteByDiaryId(diaryId);
         diaryRepository.delete(diary);
+        diaryRepository.flush();
     }
 }

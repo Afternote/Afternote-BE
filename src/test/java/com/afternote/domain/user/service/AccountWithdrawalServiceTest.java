@@ -104,5 +104,6 @@ class AccountWithdrawalServiceTest {
         assertThat(captor.getValue().getPreviousUserId()).isEqualTo(10L);
 
         verify(userRepository).delete(eq(user));
+        verify(userRepository).flush();
     }
 }

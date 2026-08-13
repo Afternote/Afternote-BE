@@ -20,7 +20,7 @@ public record AfternoteCreateRequest(
         @Getter
         String title,
 
-        @Schema(description = "체크리스트 (선택, SOCIAL/GALLERY 전용). 생략 또는 빈 배열 가능")
+        @Schema(description = "체크리스트 (선택, SOCIAL/BUSINESS/GALLERY 전용). 생략 또는 빈 배열 가능")
         @Getter
         List<String> actions,
 
@@ -29,7 +29,7 @@ public record AfternoteCreateRequest(
         @Valid
         List<LeaveMessageBlock> leaveMessage,
 
-        @Schema(description = "계정 정보 (SOCIAL 전용, 생성 시 필수)")
+        @Schema(description = "계정 정보 (SOCIAL/BUSINESS 전용, 정식 등록 시 필수)")
         @Getter
         CredentialsRequest credentials,
 

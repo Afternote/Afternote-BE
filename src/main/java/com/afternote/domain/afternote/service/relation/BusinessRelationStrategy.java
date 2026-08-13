@@ -8,13 +8,13 @@ import org.springframework.stereotype.Component;
 
 @Component
 @RequiredArgsConstructor
-public class SocialRelationStrategy implements AfternoteCategoryRelationStrategy {
+public class BusinessRelationStrategy implements AfternoteCategoryRelationStrategy {
 
     private final CredentialsRelationSupport credentialsRelationSupport;
 
     @Override
     public AfternoteCategoryType category() {
-        return AfternoteCategoryType.SOCIAL;
+        return AfternoteCategoryType.BUSINESS;
     }
 
     @Override

@@ -92,7 +92,7 @@ public class AfternoteService {
         
         // 카테고리별 데이터 조회 및 응답 생성
         switch (afternote.getCategoryType()) {
-            case SOCIAL:
+            case SOCIAL, BUSINESS:
                 // secureContents에서 credentials 가져오고 복호화
                 AfternoteCreateRequest.CredentialsRequest credentials = null;
                 
@@ -236,9 +236,10 @@ public class AfternoteService {
                 .sortOrder(nextSortOrder)
                 .leaveMessage(request.getLeaveMessage());
 
-        // SOCIAL/GALLERY 전용 필드
-        if (request.getCategory() == AfternoteCategoryType.SOCIAL ||
-            request.getCategory() == AfternoteCategoryType.GALLERY) {
+        // SOCIAL/BUSINESS/GALLERY 전용 필드
+        if (request.getCategory() == AfternoteCategoryType.SOCIAL
+                || request.getCategory() == AfternoteCategoryType.BUSINESS
+                || request.getCategory() == AfternoteCategoryType.GALLERY) {
             builder.actions(request.getActions() != null ? new ArrayList<>(request.getActions()) : new ArrayList<>());
         }
 
@@ -278,6 +279,7 @@ public class AfternoteService {
                 ? new ArrayList<>()
                 : new ArrayList<>(afternote.getActions());
         if ((afternote.getCategoryType() == AfternoteCategoryType.SOCIAL
+                || afternote.getCategoryType() == AfternoteCategoryType.BUSINESS
                 || afternote.getCategoryType() == AfternoteCategoryType.GALLERY)
                 && request.getActions() != null) {
             actions = new ArrayList<>(request.getActions());

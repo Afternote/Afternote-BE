@@ -25,7 +25,7 @@ public record ReceivedAfternoteDetailResponse(
         @Getter
         String title,
 
-        @Schema(description = "체크리스트 (SOCIAL/GALLERY 전용)")
+        @Schema(description = "체크리스트 (SOCIAL/BUSINESS/GALLERY 전용)")
         @Getter
         List<String> actions,
 

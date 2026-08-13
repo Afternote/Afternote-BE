@@ -5,11 +5,11 @@ import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import org.springframework.stereotype.Component;
 
 @Component
-public class SocialValidationStrategy implements AfternoteCategoryValidationStrategy {
+public class BusinessValidationStrategy implements AfternoteCategoryValidationStrategy {
 
     @Override
     public AfternoteCategoryType category() {
-        return AfternoteCategoryType.SOCIAL;
+        return AfternoteCategoryType.BUSINESS;
     }
 
     @Override

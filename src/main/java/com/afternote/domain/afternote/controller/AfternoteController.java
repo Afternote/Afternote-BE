@@ -36,7 +36,7 @@ public class AfternoteController {
     @GetMapping
     public ApiResponse<AfternotePageResponse> getAfternotes(
             @Parameter(hidden = true) @UserId Long userId,
-            @Parameter(description = "카테고리 필터 (SOCIAL, GALLERY, PLAYLIST)", example = "SOCIAL")
+            @Parameter(description = "카테고리 필터 (SOCIAL, BUSINESS, GALLERY, PLAYLIST)", example = "SOCIAL")
             @RequestParam(required = false) AfternoteCategoryType category,
             
             @Parameter(description = "페이지 번호 (0부터 시작)", example = "0")

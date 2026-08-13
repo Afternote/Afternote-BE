@@ -70,6 +70,21 @@ class AfternoteControllerTest {
     }
 
     @Test
+    @DisplayName("애프터노트 목록 조회 API 성공 - BUSINESS 필터")
+    void getAfternotes_BusinessCategory_Success() throws Exception {
+        given(afternoteService.getAfternotes(USER_ID, AfternoteCategoryType.BUSINESS, 0, 10, null)).willReturn(null);
+
+        mockMvc.perform(get("/api/v1/afternotes")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .param("category", "BUSINESS")
+                        .param("page", "0")
+                        .param("size", "10"))
+                .andExpect(status().isOk());
+
+        verify(afternoteService).getAfternotes(USER_ID, AfternoteCategoryType.BUSINESS, 0, 10, null);
+    }
+
+    @Test
     @DisplayName("애프터노트 목록 조회 API 실패 - 잘못된 category")
     void getAfternotes_InvalidCategory_Fail() throws Exception {
         mockMvc.perform(get("/api/v1/afternotes")
@@ -107,6 +122,20 @@ class AfternoteControllerTest {
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"category\":\"SOCIAL\",\"title\":\"title\"}"))
+                .andExpect(status().isOk());
+
+        verify(afternoteService).createAfternote(eq(USER_ID), any());
+    }
+
+    @Test
+    @DisplayName("애프터노트 생성 API 성공 - BUSINESS")
+    void createAfternote_Business_Success() throws Exception {
+        given(afternoteService.createAfternote(eq(USER_ID), any())).willReturn(null);
+
+        mockMvc.perform(post("/api/v1/afternotes")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"category\":\"BUSINESS\",\"title\":\"네이버 메일\"}"))
                 .andExpect(status().isOk());
 
         verify(afternoteService).createAfternote(eq(USER_ID), any());

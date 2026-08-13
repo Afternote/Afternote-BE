@@ -158,7 +158,7 @@ public class ReceivedService {
         String senderName = sender.getName();
 
         return switch (afternote.getCategoryType()) {
-            case SOCIAL -> ReceivedAfternoteDetailResponse.fromSocial(afternote, senderName);
+            case SOCIAL, BUSINESS -> ReceivedAfternoteDetailResponse.fromSocial(afternote, senderName);
             case GALLERY -> ReceivedAfternoteDetailResponse.fromGallery(afternote, senderName);
             case PLAYLIST -> ReceivedAfternoteDetailResponse.fromPlaylist(
                     afternote,

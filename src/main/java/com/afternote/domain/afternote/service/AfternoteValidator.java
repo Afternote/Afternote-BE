@@ -66,15 +66,15 @@ public class AfternoteValidator {
         }
 
         switch (afternote.getCategoryType()) {
-            case SOCIAL -> validateSocialPublish(request, afternote);
+            case SOCIAL, BUSINESS -> validateCredentialsPublish(request, afternote);
             case PLAYLIST -> validatePlaylistPublish(request, afternote);
-            default -> {
-                // GALLERY: 추가 필수 없음
+            case GALLERY -> {
+                // 추가 필수 없음
             }
         }
     }
 
-    private void validateSocialPublish(AfternoteCreateRequest request, Afternote afternote) {
+    private void validateCredentialsPublish(AfternoteCreateRequest request, Afternote afternote) {
         boolean hasId = hasNonBlank(request.getCredentials() != null ? request.getCredentials().getId() : null)
                 || hasSecureKey(afternote, EncryptedKey.ACCOUNT_ID);
         boolean hasPassword = hasNonBlank(request.getCredentials() != null ? request.getCredentials().getPassword() : null)

@@ -126,6 +126,36 @@ class AfternoteServiceTest {
     }
 
     @Test
+    @DisplayName("BUSINESS 애프터노트 생성 성공 - actions 저장")
+    void createAfternote_Business_Success() {
+        AfternoteCreateRequest request = org.mockito.Mockito.mock(AfternoteCreateRequest.class);
+        given(request.getCategory()).willReturn(AfternoteCategoryType.BUSINESS);
+        given(request.getTitle()).willReturn("네이버 메일");
+        given(request.getActions()).willReturn(List.of("만기 후 해지"));
+        given(request.getLeaveMessage()).willReturn(List.of(
+                LeaveMessageBlock.builder().title("남김").body("본문").build()
+        ));
+
+        User user = sampleUser(1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(afternoteRepository.findMaxSortOrderByUserId(1L)).willReturn(Optional.of(1));
+        given(afternoteRepository.save(any(Afternote.class))).willAnswer(invocation -> {
+            Afternote saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 110L);
+            return saved;
+        });
+
+        AfternoteCreateResponse response = afternoteService.createAfternote(1L, request);
+
+        assertThat(response.getAfternoteId()).isEqualTo(110L);
+        ArgumentCaptor<Afternote> captor = ArgumentCaptor.forClass(Afternote.class);
+        verify(afternoteRepository).save(captor.capture());
+        assertThat(captor.getValue().getCategoryType()).isEqualTo(AfternoteCategoryType.BUSINESS);
+        assertThat(captor.getValue().getActions()).containsExactly("만기 후 해지");
+        verify(relationService).saveRelationsByCategory(any(Afternote.class), eq(request));
+    }
+
+    @Test
     @DisplayName("애프터노트 임시저장 생성 성공")
     void createAfternote_Draft_Success() {
         AfternoteCreateRequest request = org.mockito.Mockito.mock(AfternoteCreateRequest.class);

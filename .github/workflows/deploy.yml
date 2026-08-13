@@ -100,7 +100,7 @@ jobs:
               chmod +x scripts/bootstrap-certs.sh
             fi
 
-            # Ensure TLS dirs + temporary self-signed if Let's Encrypt missing (greenfield)
+            # Ensure TLS dirs + temporary self-signed if missing (greenfield)
             export DEPLOY_ROOT="$HOME/deploy"
             export TLS_DOMAIN="${TLS_DOMAIN:-afternote.kro.kr}"
             export CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
@@ -113,38 +113,47 @@ jobs:
             docker compose pull
             docker compose up -d --remove-orphans --pull always
 
-            # Real cert: self-signed in live/ blocks certbot webroot ("live directory exists").
-            # Free port 80, remove bootstrap lineage, issue with standalone, then bring nginx back.
+            # Issue LE only when missing. Do NOT wipe an existing lineage every deploy.
+            # Certbot container writes as root — chown afterwards so next bootstrap can see files.
             if [ -n "${CERTBOT_EMAIL:-}" ]; then
-              echo "[INFO] requesting/renewing Let's Encrypt cert (standalone)..."
-              cd ~/deploy
               DOMAIN="${TLS_DOMAIN:-afternote.kro.kr}"
-              docker compose stop nginx || true
-              rm -rf "data/certbot/conf/live/${DOMAIN}" \
-                     "data/certbot/conf/archive/${DOMAIN}" \
-                     "data/certbot/conf/renewal/${DOMAIN}.conf" || true
-              if docker compose --profile cert run --rm --entrypoint certbot certbot certonly \
-                --standalone \
-                --preferred-challenges http \
-                --email "${CERTBOT_EMAIL}" \
-                --agree-tos \
-                --no-eff-email \
-                --non-interactive \
-                -d "${DOMAIN}" \
-                --keep-until-expiring; then
-                echo "[INFO] Let's Encrypt certificate ready"
+              LIVE="data/certbot/conf/live/${DOMAIN}"
+              if sudo test -f "${LIVE}/fullchain.pem" \
+                && sudo openssl x509 -in "${LIVE}/fullchain.pem" -noout -issuer 2>/dev/null \
+                  | grep -qi "Let's Encrypt"; then
+                echo "[INFO] Let's Encrypt cert already present; skip issuance"
+                sudo chown -R "$(id -u)":"$(id -g)" data/certbot/conf data/certbot/www 2>/dev/null || true
               else
-                echo "[WARN] certbot failed; restoring temporary self-signed so nginx can start"
-                mkdir -p "data/certbot/conf/live/${DOMAIN}"
-                openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-                  -keyout "data/certbot/conf/live/${DOMAIN}/privkey.pem" \
-                  -out "data/certbot/conf/live/${DOMAIN}/fullchain.pem" \
-                  -subj "/CN=${DOMAIN}" 2>/dev/null || true
-                cp "data/certbot/conf/live/${DOMAIN}/fullchain.pem" "data/certbot/conf/live/${DOMAIN}/cert.pem" 2>/dev/null || true
-                cp "data/certbot/conf/live/${DOMAIN}/fullchain.pem" "data/certbot/conf/live/${DOMAIN}/chain.pem" 2>/dev/null || true
+                echo "[INFO] requesting Let's Encrypt cert (standalone)..."
+                cd ~/deploy
+                docker compose stop nginx || true
+                # Remove non-LE / broken live dir only
+                sudo rm -rf "data/certbot/conf/live/${DOMAIN}" \
+                       "data/certbot/conf/archive/${DOMAIN}" \
+                       "data/certbot/conf/renewal/${DOMAIN}.conf" || true
+                if docker compose --profile cert run --rm --entrypoint certbot certbot certonly \
+                  --standalone \
+                  --preferred-challenges http \
+                  --email "${CERTBOT_EMAIL}" \
+                  --agree-tos \
+                  --no-eff-email \
+                  --non-interactive \
+                  -d "${DOMAIN}"; then
+                  echo "[INFO] Let's Encrypt certificate ready"
+                else
+                  echo "[WARN] certbot failed; restoring temporary self-signed so nginx can start"
+                  sudo mkdir -p "data/certbot/conf/live/${DOMAIN}"
+                  sudo openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
+                    -keyout "data/certbot/conf/live/${DOMAIN}/privkey.pem" \
+                    -out "data/certbot/conf/live/${DOMAIN}/fullchain.pem" \
+                    -subj "/CN=${DOMAIN}" 2>/dev/null || true
+                  sudo cp "data/certbot/conf/live/${DOMAIN}/fullchain.pem" "data/certbot/conf/live/${DOMAIN}/cert.pem" 2>/dev/null || true
+                  sudo cp "data/certbot/conf/live/${DOMAIN}/fullchain.pem" "data/certbot/conf/live/${DOMAIN}/chain.pem" 2>/dev/null || true
+                fi
+                sudo chown -R "$(id -u)":"$(id -g)" data/certbot/conf data/certbot/www 2>/dev/null || true
+                docker compose up -d nginx
+                docker compose exec -T nginx nginx -s reload || true
               fi
-              docker compose up -d nginx
-              docker compose exec -T nginx nginx -s reload || true
             fi
 
             echo "[INFO] validating nginx config..."

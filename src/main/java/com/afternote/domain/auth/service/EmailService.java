@@ -1,12 +1,12 @@
 package com.afternote.domain.auth.service;
 
+import com.afternote.domain.auth.event.EmailVerificationMailRunner;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
@@ -27,14 +27,14 @@ public class EmailService {
     private static final Duration VERIFIED_TTL = Duration.ofMinutes(10);
     private static final long MAX_SENDS_PER_HOUR = 5L;
 
-    private final JavaMailSender javaMailSender;
     private final RedisTemplate<String, String> redisTemplate;
+    private final EmailVerificationMailRunner emailVerificationMailRunner;
 
     @Value("${spring.mail.username}")
     private String senderEmail;
 
     /**
-     * 인증번호를 발송하고 Redis에 저장한다.
+     * 인증번호를 Redis에 저장한 뒤 SMTP는 비동기로 발송한다.
      * @return 인증번호 만료 시각 (UTC)
      */
     public Instant sendCode(String toEmail, EmailVerificationPurpose purpose) {
@@ -55,6 +55,14 @@ public class EmailService {
 
         String authCode = createCode();
         String codeKey = buildCodeKey(toEmail, purpose);
+        Instant expiresAt = Instant.now().plus(CODE_TTL);
+
+        redisTemplate.opsForValue().set(codeKey, authCode, CODE_TTL);
+
+        Long newCount = redisTemplate.opsForValue().increment(hourlyKey);
+        if (newCount != null && newCount == 1L) {
+            redisTemplate.expire(hourlyKey, HOURLY_LIMIT_WINDOW);
+        }
 
         SimpleMailMessage message = new SimpleMailMessage();
         message.setTo(toEmail);
@@ -63,20 +71,7 @@ public class EmailService {
                 + CODE_TTL.toMinutes() + "분 안에 입력해주세요.");
         message.setFrom(senderEmail);
 
-        try {
-            javaMailSender.send(message);
-        } catch (RuntimeException e) {
-            redisTemplate.delete(cooldownKey);
-            throw e;
-        }
-
-        Instant expiresAt = Instant.now().plus(CODE_TTL);
-        redisTemplate.opsForValue().set(codeKey, authCode, CODE_TTL);
-
-        Long newCount = redisTemplate.opsForValue().increment(hourlyKey);
-        if (newCount != null && newCount == 1L) {
-            redisTemplate.expire(hourlyKey, HOURLY_LIMIT_WINDOW);
-        }
+        emailVerificationMailRunner.send(message, codeKey, cooldownKey);
 
         return expiresAt;
     }

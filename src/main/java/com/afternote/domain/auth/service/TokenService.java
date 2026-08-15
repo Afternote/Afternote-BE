@@ -1,54 +1,115 @@
 package com.afternote.domain.auth.service;
 
+import com.afternote.domain.auth.dto.ReissueResponse;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.concurrent.TimeUnit;
 
+@Slf4j
 @Service
 public class TokenService {
 
     private static final String ACCESS_REVOKED_PREFIX = "AT:REVOKED:";
+    private static final String REFRESH_PREFIX = "RT:";
+    private static final String REISSUE_GRACE_PREFIX = "RT:GRACE:";
 
     private final RedisTemplate<String, Long> redisTemplate;
+    private final RedisTemplate<String, String> stringRedisTemplate;
+    private final ObjectMapper objectMapper;
     private final long accessTokenExpirationMs;
+    private final long reissueGraceSeconds;
 
     public TokenService(
             RedisTemplate<String, Long> redisTemplate,
-            @Value("${jwt.access-token-expiration}") long accessTokenExpirationMs
+            RedisTemplate<String, String> stringRedisTemplate,
+            ObjectMapper objectMapper,
+            @Value("${jwt.access-token-expiration}") long accessTokenExpirationMs,
+            @Value("${jwt.reissue-grace-seconds:30}") long reissueGraceSeconds
     ) {
         this.redisTemplate = redisTemplate;
+        this.stringRedisTemplate = stringRedisTemplate;
+        this.objectMapper = objectMapper;
         this.accessTokenExpirationMs = accessTokenExpirationMs;
+        this.reissueGraceSeconds = reissueGraceSeconds;
     }
 
     // Refresh Token 저장 (예: 7일간 유효)
-    // Key를 "RT:사용자ID" 또는 "RT:이메일" 형태로 지정하여 구분하기 쉽게 함
     public void saveToken(String refreshToken, Long userId) {
         redisTemplate.opsForValue()
-                     .set("RT:"+refreshToken,userId, 7, TimeUnit.DAYS);
+                .set(REFRESH_PREFIX + refreshToken, userId, 7, TimeUnit.DAYS);
     }
 
-    //조회
     public Long getUserId(String refreshToken) {
-        return redisTemplate.opsForValue().get("RT:" + refreshToken);
+        return redisTemplate.opsForValue().get(REFRESH_PREFIX + refreshToken);
     }
-    
-    // 원자적 조회 및 삭제 (TOCTOU 방지)
-    // reissue 시 동시성 문제를 방지하기 위해 사용
+
+    /**
+     * 원자적 조회 및 삭제 (RTR). 동시 reissue 중 하나만 RT 키를 가져간다.
+     */
     public Long getUserIdAndDelete(String refreshToken) {
-        return redisTemplate.opsForValue().getAndDelete("RT:" + refreshToken);
+        return redisTemplate.opsForValue().getAndDelete(REFRESH_PREFIX + refreshToken);
     }
-    
-    // 로그아웃 시 Refresh Token 삭제
+
     public void deleteToken(String refreshToken) {
-        redisTemplate.delete("RT:" + refreshToken);
+        redisTemplate.delete(REFRESH_PREFIX + refreshToken);
     }
-    
-    // 회원탈퇴 시 해당 유저의 모든 Refresh Token 삭제
+
+    /**
+     * 회전 직후·동시 재발급이 같은 새 토큰 쌍을 받도록 grace 캐시를 남긴다.
+     */
+    public void saveReissueGrace(String oldRefreshToken, ReissueResponse response) {
+        if (oldRefreshToken == null || response == null) {
+            return;
+        }
+        try {
+            String json = objectMapper.writeValueAsString(response);
+            stringRedisTemplate.opsForValue().set(
+                    REISSUE_GRACE_PREFIX + oldRefreshToken,
+                    json,
+                    reissueGraceSeconds,
+                    TimeUnit.SECONDS
+            );
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to serialize reissue grace: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 이미 회전된 refresh에 대한 grace 조회.
+     * 승자가 아직 grace를 쓰기 전일 수 있어 짧게 재시도한다.
+     */
+    public ReissueResponse findReissueGrace(String oldRefreshToken) {
+        if (oldRefreshToken == null) {
+            return null;
+        }
+        String key = REISSUE_GRACE_PREFIX + oldRefreshToken;
+        for (int attempt = 0; attempt < 10; attempt++) {
+            String json = stringRedisTemplate.opsForValue().get(key);
+            if (json != null && !json.isBlank()) {
+                try {
+                    return objectMapper.readValue(json, ReissueResponse.class);
+                } catch (JsonProcessingException e) {
+                    log.warn("Failed to parse reissue grace: {}", e.getMessage());
+                    return null;
+                }
+            }
+            try {
+                Thread.sleep(20L);
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                return null;
+            }
+        }
+        return null;
+    }
+
     public void deleteAllUserTokens(Long userId) {
-        // RT:* 패턴의 모든 키를 조회
-        var keys = redisTemplate.keys("RT:*");
+        var keys = redisTemplate.keys(REFRESH_PREFIX + "*");
         if (keys != null && !keys.isEmpty()) {
             for (String key : keys) {
                 Long storedUserId = redisTemplate.opsForValue().get(key);
@@ -59,10 +120,6 @@ public class TokenService {
         }
     }
 
-    /**
-     * 탈퇴/강제 만료 시 accessToken 을 즉시 무효화한다.
-     * TTL 은 access token 최대 수명과 동일하게 둔다.
-     */
     public void revokeUserAccess(Long userId) {
         redisTemplate.opsForValue().set(
                 ACCESS_REVOKED_PREFIX + userId,

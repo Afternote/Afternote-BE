@@ -249,6 +249,31 @@ class AuthServiceTest {
         assertThat(response.getExpiresIn()).isEqualTo(3600L);
         verify(activityTouchService).touch(11L);
         verify(tokenService).saveToken("newRt", 11L);
+        verify(tokenService).saveReissueGrace(org.mockito.ArgumentMatchers.eq("oldRt"), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("재발급 - 동시 패자는 grace로 동일 새 토큰 반환")
+    void reissue_ConcurrentLoser_ReturnsGrace() {
+        ReissueRequest request = org.mockito.Mockito.mock(ReissueRequest.class);
+        given(request.getRefreshToken()).willReturn("oldRt");
+
+        given(jwtTokenProvider.validateToken("oldRt")).willReturn(true);
+        given(jwtTokenProvider.getUserId("oldRt")).willReturn(11L);
+        given(tokenService.getUserIdAndDelete("oldRt")).willReturn(null);
+        ReissueResponse grace = ReissueResponse.builder()
+                .accessToken("sharedAccess")
+                .refreshToken("sharedRt")
+                .expiresIn(3600L)
+                .build();
+        given(tokenService.findReissueGrace("oldRt")).willReturn(grace);
+
+        ReissueResponse response = authService.reissue(request);
+
+        assertThat(response.getAccessToken()).isEqualTo("sharedAccess");
+        assertThat(response.getRefreshToken()).isEqualTo("sharedRt");
+        verify(activityTouchService, never()).touch(any());
+        verify(tokenService, never()).saveToken(any(), any());
     }
 
     @Test

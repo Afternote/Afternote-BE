@@ -57,3 +57,7 @@ db_data/
 
 ### certbot (인증서 폴더)
 data/
+
+### Local QA notes (개인용, 커밋하지 않음)
+docs/QA-회귀-체크리스트.md
+.cursor/rules/qa-regression-checklist.mdc

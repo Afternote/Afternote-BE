@@ -10,6 +10,7 @@ import com.afternote.domain.mindrecord.emotion.event.DailyQuestionEmotionAnalysi
 import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.domain.receiver.repository.UserDailyQuestionReceiverRepository;
 import com.afternote.domain.receiver.service.MindRecordReceiverService;
+import com.afternote.domain.user.event.UserActivityTouchedEvent;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
@@ -106,7 +107,7 @@ public class DailyQuestionService {
             throw new CustomException(ErrorCode.DAILY_QUESTION_ALREADY_ANSWERED);
         }
 
-        userDailyQuestion.getUser().touchActivity();
+        eventPublisher.publishEvent(new UserActivityTouchedEvent(userId));
 
         boolean isDraft = request.getIsDraft() != null ? request.getIsDraft() : false;
         userDailyQuestion.updateAnswer(

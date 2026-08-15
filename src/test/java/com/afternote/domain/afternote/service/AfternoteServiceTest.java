@@ -11,6 +11,7 @@ import com.afternote.domain.afternote.model.AfternoteReceiver;
 import com.afternote.domain.afternote.repository.AfternoteRepository;
 import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.receiver.model.Receiver;
+import com.afternote.domain.user.event.UserActivityTouchedEvent;
 import com.afternote.domain.user.model.AuthProvider;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserStatus;
@@ -25,6 +26,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -64,6 +66,9 @@ class AfternoteServiceTest {
 
     @Mock
     private S3Service s3Service;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @Test
     @DisplayName("애프터노트 목록 조회 성공 - 카테고리 필터")
@@ -123,6 +128,7 @@ class AfternoteServiceTest {
         assertThat(captor.getValue().getLeaveMessage().get(0).getBody()).isEqualTo("message");
         verify(validator).validateCreateRequest(request);
         verify(relationService).saveRelationsByCategory(any(Afternote.class), eq(request));
+        verify(eventPublisher).publishEvent(any(UserActivityTouchedEvent.class));
     }
 
     @Test

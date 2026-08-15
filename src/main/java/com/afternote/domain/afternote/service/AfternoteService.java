@@ -5,10 +5,12 @@ import com.afternote.domain.afternote.model.*;
 import com.afternote.domain.afternote.repository.AfternoteRepository;
 import com.afternote.domain.afternote.service.relation.EncryptedKey;
 import com.afternote.domain.image.service.S3Service;
+import com.afternote.domain.user.event.UserActivityTouchedEvent;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import com.afternote.global.util.ChaChaEncryptionUtil;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -30,6 +32,7 @@ public class AfternoteService {
     private final AfternoteValidator validator;
     private final ChaChaEncryptionUtil chaChaEncryptionUtil;
     private final S3Service s3Service;
+    private final ApplicationEventPublisher eventPublisher;
 
     public AfternotePageResponse getAfternotes(
             Long userId,
@@ -220,7 +223,7 @@ public class AfternoteService {
         // 사용자 조회
         com.afternote.domain.user.model.User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        user.touchActivity();
+        eventPublisher.publishEvent(new UserActivityTouchedEvent(userId));
         
         // sortOrder 자동 계산 (해당 사용자의 최대값 + 1)
         Integer nextSortOrder = afternoteRepository.findMaxSortOrderByUserId(userId)

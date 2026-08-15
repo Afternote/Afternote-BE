@@ -25,6 +25,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
@@ -63,6 +64,9 @@ class TimeLetterServiceTest {
 
     @Mock
     private S3Service s3Service;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     private User testUser;
     private TimeLetter testTimeLetter;

@@ -133,9 +133,11 @@ public class User extends BaseEntity {
     }
 
     /**
-     * 사용자의 마지막 활동 시각을 현재 시각으로 갱신한다.
-     * - 앱 실행/로그인/콘텐츠 작성 시 호출되어 미사용 자동 전달 타이머를 리셋한다.
+     * @deprecated 콘텐츠 TX에서 호출하면 users 행 dirty로 동시 create 데드락이 난다.
+     *             {@link com.afternote.domain.user.service.ActivityTouchService} 또는
+     *             {@link com.afternote.domain.user.event.UserActivityTouchedEvent}를 사용한다.
      */
+    @Deprecated
     public void touchActivity() {
         this.lastActiveAt = LocalDateTime.now();
     }

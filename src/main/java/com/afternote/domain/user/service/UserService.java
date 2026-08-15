@@ -42,6 +42,7 @@ public class UserService {
     private final UserProviderRepository userProviderRepository;
     private final AccountWithdrawalService accountWithdrawalService;
     private final ReceiverDeletionService receiverDeletionService;
+    private final ActivityTouchService activityTouchService;
 
     public UserResponse getMyProfile(Long userId) {
 
@@ -184,8 +185,8 @@ public class UserService {
 
     @Transactional
     public void recordActivity(Long userId) {
-        User user = findUserById(userId);
-        user.touchActivity();
+        findUserById(userId); // 존재 확인
+        activityTouchService.touch(userId);
     }
 
     @Transactional

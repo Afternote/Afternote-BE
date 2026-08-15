@@ -91,8 +91,11 @@ public class TimeLetterService {
      */
     @Transactional
     public TimeLetterResponse createTimeLetter(Long userId, TimeLetterCreateRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+        if (!userRepository.existsById(userId)) {
+            throw new CustomException(ErrorCode.USER_NOT_FOUND);
+        }
+        // 프록시만 사용해 users 행 dirty/공유 락 면적을 줄인다 (동시 create)
+        User user = userRepository.getReferenceById(userId);
 
         // 콘텐츠 작성은 활동으로 간주 — last_active_at 은 커밋 후 벌크 갱신
         eventPublisher.publishEvent(new UserActivityTouchedEvent(userId));
@@ -184,7 +187,11 @@ public class TimeLetterService {
         List<TimeLetter> timeLetters = timeLetterRepository
                 .findByIdInAndUserId(request.getTimeLetterIds(), userId);
 
-        // 요청한 ID 개수와 실제 조회된 개수가 다르면 권한이 없거나 존재하지 않는 항목이 포함된 것
+        // 동시 삭제: 이미 지워진 경우 500 대신 1006
+        if (timeLetters.isEmpty()) {
+            throw new CustomException(ErrorCode.RESOURCE_ALREADY_DELETED);
+        }
+        // 일부만 없으면 잘못된 ID 포함(기존 계약) — 전부 못 찾은 경우와 구분
         if (timeLetters.size() != request.getTimeLetterIds().size()) {
             throw new CustomException(ErrorCode.TIME_LETTER_NOT_FOUND);
         }
@@ -201,6 +208,8 @@ public class TimeLetterService {
 
         // TimeLetter 삭제 시 blocks는 cascade + orphanRemoval로 함께 삭제된다.
         timeLetterRepository.deleteAll(timeLetters);
+        // 동시 삭제 stale를 요청 스레드에서 즉시 표면화 → GlobalExceptionHandler 1006
+        timeLetterRepository.flush();
     }
     /**
      * 임시저장된 타임레터 전체 삭제
@@ -233,7 +242,9 @@ public class TimeLetterService {
      */
     @Transactional
     public TimeLetterResponse updateTimeLetter(Long userId, Long timeLetterId, TimeLetterUpdateRequest request) {
-        TimeLetter timeLetter = findTimeLetterWithOwnership(userId, timeLetterId);
+        // 동일 ID 동시 PATCH: 행 락으로 blocks 교체를 직렬화 (둘 다 200, 나중 요청이 최종 반영)
+        TimeLetter timeLetter = timeLetterRepository.findByIdAndUserIdForUpdate(timeLetterId, userId)
+                .orElseThrow(() -> new CustomException(ErrorCode.TIME_LETTER_NOT_FOUND));
 
         // SENT 상태면 수정 불가
         if (!timeLetter.isModifiable()) {

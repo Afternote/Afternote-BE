@@ -118,7 +118,8 @@ class TimeLetterServiceTest {
                 .build();
         ReflectionTestUtils.setField(draftTimeLetter, "id", 2L);
 
-        given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
+        given(userRepository.existsById(1L)).willReturn(true);
+        given(userRepository.getReferenceById(1L)).willReturn(testUser);
         given(timeLetterRepository.save(any(TimeLetter.class))).willReturn(draftTimeLetter);
 
         TimeLetterResponse response = timeLetterService.createTimeLetter(1L, request);
@@ -157,7 +158,8 @@ class TimeLetterServiceTest {
                         .build()
         ));
 
-        given(userRepository.findById(1L)).willReturn(Optional.of(testUser));
+        given(userRepository.existsById(1L)).willReturn(true);
+        given(userRepository.getReferenceById(1L)).willReturn(testUser);
         given(timeLetterRepository.save(any(TimeLetter.class))).willReturn(scheduledTimeLetter);
 
         TimeLetterResponse response = timeLetterService.createTimeLetter(1L, request);
@@ -180,7 +182,8 @@ class TimeLetterServiceTest {
         given(request.getBlocks()).willReturn(List.of(textBlock));
         given(request.getSendAt()).willReturn(LocalDateTime.now().plusDays(1));
         lenient().when(request.getReceiverIds()).thenReturn(List.of(1L));
-        lenient().when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        lenient().when(userRepository.existsById(1L)).thenReturn(true);
+        lenient().when(userRepository.getReferenceById(1L)).thenReturn(testUser);
 
         assertThatThrownBy(() -> timeLetterService.createTimeLetter(1L, request))
                 .isInstanceOf(CustomException.class)
@@ -199,7 +202,8 @@ class TimeLetterServiceTest {
         given(request.getBlocks()).willReturn(List.of(textBlock));
         given(request.getSendAt()).willReturn(LocalDateTime.now().minusDays(1));
         lenient().when(request.getReceiverIds()).thenReturn(List.of(1L));
-        lenient().when(userRepository.findById(1L)).thenReturn(Optional.of(testUser));
+        lenient().when(userRepository.existsById(1L)).thenReturn(true);
+        lenient().when(userRepository.getReferenceById(1L)).thenReturn(testUser);
 
         assertThatThrownBy(() -> timeLetterService.createTimeLetter(1L, request))
                 .isInstanceOf(CustomException.class)
@@ -230,7 +234,7 @@ class TimeLetterServiceTest {
         ReflectionTestUtils.setField(sentTimeLetter, "id", 5L);
 
         TimeLetterUpdateRequest request = mock(TimeLetterUpdateRequest.class);
-        given(timeLetterRepository.findByIdAndUserId(5L, 1L)).willReturn(Optional.of(sentTimeLetter));
+        given(timeLetterRepository.findByIdAndUserIdForUpdate(5L, 1L)).willReturn(Optional.of(sentTimeLetter));
 
         assertThatThrownBy(() -> timeLetterService.updateTimeLetter(1L, 5L, request))
                 .isInstanceOf(CustomException.class)
@@ -250,6 +254,20 @@ class TimeLetterServiceTest {
                 .isInstanceOf(CustomException.class)
                 .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
                         .isEqualTo(ErrorCode.TIME_LETTER_NOT_FOUND));
+    }
+
+    @Test
+    @DisplayName("이미 삭제된 타임레터 동시 삭제 시 1006")
+    void deleteTimeLetters_AlreadyDeleted_Returns1006() {
+        TimeLetterDeleteRequest request = mock(TimeLetterDeleteRequest.class);
+        given(request.getTimeLetterIds()).willReturn(List.of(1L));
+        given(timeLetterRepository.findByIdInAndUserId(anyList(), anyLong()))
+                .willReturn(List.of());
+
+        assertThatThrownBy(() -> timeLetterService.deleteTimeLetters(1L, request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.RESOURCE_ALREADY_DELETED));
     }
 
     @Test
@@ -294,7 +312,7 @@ class TimeLetterServiceTest {
         given(request.getSendAt()).willReturn(null);
         given(request.getStatus()).willReturn(null);
 
-        given(timeLetterRepository.findByIdAndUserId(1L, 1L)).willReturn(Optional.of(testTimeLetter));
+        given(timeLetterRepository.findByIdAndUserIdForUpdate(1L, 1L)).willReturn(Optional.of(testTimeLetter));
         given(timeLetterReceiverRepository.existsByTimeLetterId(1L)).willReturn(true);
         given(timeLetterReceiverRepository.findByTimeLetterId(1L)).willReturn(new ArrayList<>());
 

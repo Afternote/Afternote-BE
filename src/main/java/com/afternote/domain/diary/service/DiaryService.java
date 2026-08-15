@@ -12,6 +12,7 @@ import com.afternote.domain.mindrecord.emotion.event.DiaryEmotionAnalysisRequest
 import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.domain.receiver.repository.DiaryReceiverRepository;
 import com.afternote.domain.receiver.service.MindRecordReceiverService;
+import com.afternote.domain.user.event.UserActivityTouchedEvent;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
@@ -47,7 +48,7 @@ public class DiaryService {
     public DiaryResponse createDiary(Long userId, DiaryCreateRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        user.touchActivity();
+        eventPublisher.publishEvent(new UserActivityTouchedEvent(userId));
 
         Diary diary = Diary.create(
                 user,

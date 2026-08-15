@@ -3,10 +3,12 @@ package com.afternote.domain.user.repository;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserStatus;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -27,5 +29,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("SELECT DISTINCT u FROM User u LEFT JOIN FETCH u.providers WHERE u.id = :id")
     Optional<User> findWithProvidersById(@Param("id") Long id);
+
+    /**
+     * 활동 시각만 벌크 갱신. 콘텐츠 TX에서 User 엔티티 dirty 없이 호출한다.
+     */
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE User u SET u.lastActiveAt = :at, u.updatedAt = :at WHERE u.id = :userId")
+    int updateLastActiveAt(@Param("userId") Long userId, @Param("at") LocalDateTime at);
 
 }

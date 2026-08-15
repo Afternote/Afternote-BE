@@ -13,6 +13,7 @@ import com.afternote.domain.mindrecord.emotion.event.DeepThoughtEmotionAnalysisR
 import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.domain.receiver.repository.DeepThoughtReceiverRepository;
 import com.afternote.domain.receiver.service.MindRecordReceiverService;
+import com.afternote.domain.user.event.UserActivityTouchedEvent;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
@@ -45,7 +46,7 @@ public class DeepThoughtService {
     public DeepThoughtResponse createDeepThought(Long userId, DeepThoughtCreateRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
-        user.touchActivity();
+        eventPublisher.publishEvent(new UserActivityTouchedEvent(userId));
         DeepThoughtCategory category = getCategory(userId, request.getCategory());
 
         DeepThought deepThought = DeepThought.create(

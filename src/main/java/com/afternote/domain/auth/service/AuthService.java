@@ -8,6 +8,7 @@ import com.afternote.domain.user.model.AuthProvider;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserStatus;
 import com.afternote.domain.user.repository.UserRepository;
+import com.afternote.domain.user.service.ActivityTouchService;
 import com.afternote.domain.user.service.WithdrawalCooldownService;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
@@ -32,6 +33,7 @@ public class AuthService {
     
     // 🎯 핵심: SocialLoginFactory 주입
     private final SocialLoginFactory socialLoginFactory;
+    private final ActivityTouchService activityTouchService;
 
     @Transactional
     public User signup(SignupRequest request) {
@@ -69,7 +71,7 @@ public class AuthService {
             throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
         }
 
-        user.touchActivity();
+        activityTouchService.touch(user.getId());
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
@@ -102,7 +104,7 @@ public class AuthService {
         }
 
         // 4. 로그인 상태 확정을 활동으로 집계 (클라이언트 ping 의존 제거)
-        userRepository.findById(userId).ifPresent(User::touchActivity);
+        activityTouchService.touch(userId);
         
         // 5. 신규 토큰 발급 (RTR 전략)
         String newAccessToken = jwtTokenProvider.generateAccessToken(userId);

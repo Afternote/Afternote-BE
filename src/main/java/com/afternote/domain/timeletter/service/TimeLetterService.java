@@ -15,11 +15,13 @@ import com.afternote.domain.timeletter.model.TimeLetterBlockType;
 import com.afternote.domain.timeletter.model.TimeLetterDeliveryMode;
 import com.afternote.domain.timeletter.model.TimeLetterStatus;
 import com.afternote.domain.timeletter.repository.TimeLetterRepository;
+import com.afternote.domain.user.event.UserActivityTouchedEvent;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,6 +38,7 @@ public class TimeLetterService {
     private final UserRepository userRepository;
     private final ReceivedService receivedService;
     private final S3Service s3Service;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 정식 등록된 타임레터 전체 조회
@@ -91,8 +94,8 @@ public class TimeLetterService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        // 콘텐츠 작성은 활동으로 간주하여 미사용 타이머를 리셋한다.
-        user.touchActivity();
+        // 콘텐츠 작성은 활동으로 간주 — last_active_at 은 커밋 후 벌크 갱신
+        eventPublisher.publishEvent(new UserActivityTouchedEvent(userId));
 
         TimeLetterDeliveryMode deliveryMode = request.getDeliveryMode() != null
                 ? request.getDeliveryMode()

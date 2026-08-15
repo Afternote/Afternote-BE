@@ -281,7 +281,8 @@ public class ReceivedService {
      */
     @Transactional
     public List<Long> createDiaryReceivers(Long userId, CreateDiaryReceiverRequest request) {
-        Diary diary = diaryRepository.findByIdAndUserId(request.getDiaryId(), userId)
+        // 동일 일기 동시 연결: DELETE-all + INSERT 레이스를 행 락으로 직렬화 (#171)
+        Diary diary = diaryRepository.findByIdAndUserIdForUpdate(request.getDiaryId(), userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DIARY_NOT_FOUND));
 
         mindRecordReceiverService.replaceDiaryReceivers(

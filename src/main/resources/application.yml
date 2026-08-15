@@ -36,6 +36,8 @@ spring:
 jwt:
   secret: ${JWT_SECRET}
   access-token-expiration: ${JWT_ACCESS_EXPIRATION}
+  # 동일 refresh 동시·직후 reissue가 같은 새 토큰 쌍을 받게 하는 grace (초)
+  reissue-grace-seconds: ${JWT_REISSUE_GRACE_SECONDS:30}
   refresh-token-expiration: ${JWT_REFRESH_EXPIRATION}
 
 # ChaCha20-Poly1305 암호화 설정 (SOCIAL credentials 보호)

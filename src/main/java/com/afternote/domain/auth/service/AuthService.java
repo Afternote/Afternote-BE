@@ -87,35 +87,44 @@ public class AuthService {
     @Transactional
     public ReissueResponse reissue(ReissueRequest request) {
         String refreshToken = request.getRefreshToken();
-        
+
         // 1. JWT 자체의 유효성 먼저 검증 (서명, 만료시간)
         if (!jwtTokenProvider.validateToken(refreshToken)) {
             throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
-        
+
         // 2. JWT에서 userId 추출
         Long userId = jwtTokenProvider.getUserId(refreshToken);
-        
-        // 3. Redis에서 원자적으로 조회 및 삭제 (TOCTOU 방지)
-        // 동시 요청이 들어와도 하나만 성공하도록 보장
+
+        // 3. Redis에서 원자적으로 조회 및 삭제 (RTR)
         Long storedUserId = tokenService.getUserIdAndDelete(refreshToken);
-        if (storedUserId == null || !storedUserId.equals(userId)) {
+        if (storedUserId == null) {
+            // 동시·직후 재발급: 승자가 남긴 같은 새 토큰 쌍 반환
+            ReissueResponse grace = tokenService.findReissueGrace(refreshToken);
+            if (grace != null) {
+                return grace;
+            }
+            throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
+        }
+        if (!storedUserId.equals(userId)) {
             throw new CustomException(ErrorCode.INVALID_REFRESH_TOKEN);
         }
 
         // 4. 로그인 상태 확정을 활동으로 집계 (클라이언트 ping 의존 제거)
         activityTouchService.touch(userId);
-        
-        // 5. 신규 토큰 발급 (RTR 전략)
+
+        // 5. 신규 토큰 발급 (RTR) + grace 캐시 (동시 패자용)
         String newAccessToken = jwtTokenProvider.generateAccessToken(userId);
         String newRefreshToken = jwtTokenProvider.generateRefreshToken(userId);
         tokenService.saveToken(newRefreshToken, userId);
 
-        return ReissueResponse.builder()
+        ReissueResponse response = ReissueResponse.builder()
                 .accessToken(newAccessToken)
                 .refreshToken(newRefreshToken)
                 .expiresIn(jwtTokenProvider.getAccessTokenExpirationSeconds())
                 .build();
+        tokenService.saveReissueGrace(refreshToken, response);
+        return response;
     }
 
     @Transactional

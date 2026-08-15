@@ -24,15 +24,15 @@ deploy_path = "/home/ec2-user/deploy"
 ec2_user    = "ec2-user"
 
 # Optional sizing
-# ec2_instance_type   = "t3.small"
-# db_instance_class   = "db.t4g.micro"
+ec2_instance_type = "t3.micro"
+db_instance_class = "db.t4g.micro"
 # db_name             = "afternote"
 # db_username         = "afternote"
 
 # Existing Elastic IP allocation ID (eipalloc-xxx), or "" to create new
 existing_eip_allocation_id = ""
 
-# off 03:00 KST, on 12:00 KST
-stop_schedule     = "cron(0 3 * * ? *)"
+# off 01:00 KST, on 12:00 KST
+stop_schedule     = "cron(0 1 * * ? *)"
 start_schedule    = "cron(0 12 * * ? *)"
 schedule_timezone = "Asia/Seoul"

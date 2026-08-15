@@ -41,7 +41,7 @@ variable "ec2_key_name" {
 variable "ec2_instance_type" {
   description = "EC2 instance type"
   type        = string
-  default     = "t3.small"
+  default     = "t3.micro"
 }
 
 variable "db_instance_class" {
@@ -83,7 +83,7 @@ variable "existing_eip_allocation_id" {
 variable "stop_schedule" {
   description = "EventBridge cron for stop (timezone applied separately)"
   type        = string
-  default     = "cron(0 3 * * ? *)"
+  default     = "cron(0 1 * * ? *)"
 }
 
 variable "start_schedule" {

@@ -11,7 +11,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
-import java.security.GeneralSecurityException;
 import java.util.Collections;
 
 /**
@@ -47,6 +46,7 @@ public class GoogleLoginService implements SocialLoginService {
 
     @Override
     public SocialUserInfo getUserInfo(String idTokenString) {
+        requireLooksLikeGoogleIdToken(idTokenString);
         try {
             GoogleIdToken idToken = verifier.verify(idTokenString);
             if (idToken == null) {
@@ -84,8 +84,24 @@ public class GoogleLoginService implements SocialLoginService {
                     .build();
         } catch (CustomException e) {
             throw e;
-        } catch (GeneralSecurityException | java.io.IOException e) {
-            log.error("Google ID Token verify failed: {} - {}", e.getClass().getSimpleName(), e.getMessage(), e);
+        } catch (Exception e) {
+            // IllegalArgumentException 등: 깨진 JWT는 클라이언트 입력이므로 500이 아니라 소셜 실패(400)
+            log.warn("Google ID Token verify failed: {} - {}", e.getClass().getSimpleName(), e.getMessage());
+            throw new CustomException(ErrorCode.SOCIAL_LOGIN_FAILED);
+        }
+    }
+
+    /**
+     * 빈 값·JWT 형태가 아니면 라이브러리 검증 전에 400으로 거절한다.
+     */
+    static void requireLooksLikeGoogleIdToken(String idTokenString) {
+        if (idTokenString == null || idTokenString.isBlank()) {
+            throw new CustomException(ErrorCode.SOCIAL_LOGIN_FAILED);
+        }
+        String trimmed = idTokenString.trim();
+        // Google ID Token 은 header.payload.signature 형태의 JWT
+        String[] parts = trimmed.split("\\.", -1);
+        if (parts.length != 3 || parts[0].isEmpty() || parts[1].isEmpty() || parts[2].isEmpty()) {
             throw new CustomException(ErrorCode.SOCIAL_LOGIN_FAILED);
         }
     }

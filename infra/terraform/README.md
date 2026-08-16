@@ -134,5 +134,12 @@ vpc + 2 public subnets
 ec2 (AL2023, docker, compose systemd) + EIP
 rds mysql 8 (EC2 SG only)
 eventbridge scheduler → stop/start lambda
-sns + cloudwatch alarms/dashboard
+sns + cloudwatch alarms/dashboard (afternote-ops)
+  - EC2: StatusCheckFailed, CPU>80%
+  - RDS: FreeStorage<2GiB, Connections>40, CPU>80%
+  - Lambda: stop/start Errors
+  - off-hours stop: missing metrics = notBreaching (no false alarm)
 ```
+
+대시보드: `terraform output cloudwatch_dashboard_url`  
+알람 메일: `alert_email` SNS 구독 Confirm 필요(최초 1회).

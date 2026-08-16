@@ -51,7 +51,13 @@ output "start_schedule" {
 }
 
 output "cloudwatch_dashboard_name" {
-  value = aws_cloudwatch_dashboard.scheduler.dashboard_name
+  description = "CloudWatch dashboard (EC2 + RDS + scheduler Lambda)"
+  value       = aws_cloudwatch_dashboard.scheduler.dashboard_name
+}
+
+output "cloudwatch_dashboard_url" {
+  description = "Open ops dashboard in console"
+  value       = "https://${var.aws_region}.console.aws.amazon.com/cloudwatch/home?region=${var.aws_region}#dashboards:name=${aws_cloudwatch_dashboard.scheduler.dashboard_name}"
 }
 
 output "sns_topic_arn" {

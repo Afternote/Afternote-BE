@@ -111,6 +111,6 @@ variable "ec2_user" {
 }
 
 variable "alert_email" {
-  description = "Email for SNS alerts on Lambda failures"
+  description = "Email for SNS alerts (EC2/RDS/Lambda CloudWatch alarms)"
   type        = string
 }

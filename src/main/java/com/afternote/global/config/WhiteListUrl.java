@@ -26,7 +26,10 @@ public enum WhiteListUrl {
     RECEIVER_AUTH("/api/receiver-auth/**"),
 
     // 앱 버전 확인 (스플래시)
-    APP_VERSION("/api/v1/app/version");
+    APP_VERSION("/api/v1/app/version"),
+
+    // 의존성 헬스 (db / redis)
+    ACTUATOR_HEALTH("/actuator/health");
 
     private final String url;
 

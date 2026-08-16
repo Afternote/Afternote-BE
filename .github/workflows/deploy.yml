@@ -284,6 +284,9 @@ jobs:
           echo "Checking /nginx-health ..."
           curl -sf "${BASE_URL}/nginx-health" | grep -q ok
 
+          echo "Checking /actuator/health ..."
+          curl -sf "${BASE_URL}/actuator/health" | grep -q '"status":"UP"'
+
           echo "Smoke OK"
 
   contract:

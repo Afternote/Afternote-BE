@@ -328,6 +328,25 @@ docker compose --env-file .env.production logs -f afternote-server
 
 ---
 
+## 🚨 운영 모니터링 · 장애 플레이북
+
+장애 메일/이상 징후가 보이면 **이 순서**로 본다.
+
+1. **CloudWatch 대시보드** — EC2 / RDS / Lambda 중 어디가 이상한지  
+   https://ap-northeast-2.console.aws.amazon.com/cloudwatch/home?region=ap-northeast-2#dashboards:name=afternote-ops
+2. **Sentry Issues** — 예외 스택·URL·release  
+   https://sentry.io → 프로젝트 `java-spring-boot` → **Issues → Feed**
+3. **앱 로그** — 같은 시각 전후 stdout  
+   https://ap-northeast-2.console.aws.amazon.com/cloudwatch/home?region=ap-northeast-2#logsV2:log-groups/log-group/%2Fafternote%2Fapp
+4. **헬스** — 앱·DB·Redis 분리  
+   `GET https://afternote.kro.kr/actuator/health`  
+   `db` / `redis` 중 DOWN이면 그쪽부터 본다. (`nginx-health`는 리버스 프록시만 살아 있는지)
+
+알람 메일: Terraform `alert_email` → SNS `afternote-scheduler-alerts`  
+env 변경: `deploy/production.env` 수정 → `./scripts/push-deploy-env-secret.sh` → main 배포
+
+---
+
 ## 📖 API 문서
 
 - Swagger UI (local 프로파일): http://localhost:8080/swagger-ui.html

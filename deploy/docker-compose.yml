@@ -27,6 +27,14 @@ services:
       - afternote-redis
     networks:
       - afternote-net
+    logging:
+      driver: awslogs
+      options:
+        awslogs-region: ap-northeast-2
+        awslogs-group: /afternote/app
+        awslogs-stream: afternote-server
+        awslogs-create-group: "false"
+        tag: "{{.Name}}"
 
   afternote-redis:
     image: redis:7-alpine

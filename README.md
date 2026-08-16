@@ -226,21 +226,24 @@ APP_ANDROID_STORE_URL=https://play.google.com/store/apps/details?id=your.package
 
 #### 2) 배포 환경 (Docker + RDS)
 
-1. `.env.production.example` 파일을 복사하여 `.env.production` 파일을 생성합니다.
+운영 EC2의 `~/deploy/.env` 는 레포의 **`deploy/production.env`(로컬, gitignore)** 를  
+GitHub Secret `DEPLOY_PRODUCTION_ENV` 로 올린 뒤, `main` Deploy 워크플로가 덮어쓴다.
+
+```bash
+cp deploy/production.env.example deploy/production.env   # 값 채우기 (Sentry DSN 포함)
+./scripts/push-deploy-env-secret.sh                      # Secret 갱신
+# 이후 main push → EC2 ~/deploy/.env 동기화 + 컨테이너 재기동
+```
+
+> **Afternote-BE는 public 레포**라 DB/JWT 등 시크릿을 git에 커밋하지 않는다.  
+> 로컬에서 `deploy/production.env`만 수정하고, 배포 전에 위 스크립트로 Secret을 갱신하면 된다.
+
+레거시 로컬 compose용:
 
 ```bash
 cp .env.production.example .env.production
-```
-
-2. RDS 접속 정보 및 운영 환경 시크릿을 `.env.production`에 설정합니다.
-3. 아래 명령으로 배포 스택을 실행합니다.
-
-```bash
 docker compose --env-file .env.production up -d
 ```
-
-> 배포 스택 구성: `nginx + spring + redis + certbot`  
-> DB는 Docker 컨테이너가 아닌 AWS RDS를 사용합니다.
 
 #### 3) AWS 그린필드 + off-hours 스케줄 (Terraform)
 

@@ -81,6 +81,9 @@ dependencies {
 
     // Google ID Token 검증 (구글 소셜 로그인)
     implementation 'com.google.api-client:google-api-client:2.7.0'
+
+    // Sentry (error monitoring only; DSN empty = no-op)
+    implementation 'io.sentry:sentry-spring-boot-starter-jakarta:8.53.0'
 }
 
 tasks.named('test') {

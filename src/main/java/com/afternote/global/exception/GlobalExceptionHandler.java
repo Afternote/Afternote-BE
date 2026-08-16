@@ -1,6 +1,7 @@
 package com.afternote.global.exception;
 
 import com.afternote.global.common.ApiResponse;
+import io.sentry.Sentry;
 import jakarta.persistence.OptimisticLockException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -30,6 +31,9 @@ public class GlobalExceptionHandler {
     // 1. CustomException 처리
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ApiResponse<Void>> handleCustomException(CustomException e) {
+        if (e.getErrorCode().getHttpStatus().is5xxServerError()) {
+            Sentry.captureException(e);
+        }
         return ResponseEntity
                 .status(e.getErrorCode().getHttpStatus())
                 .body(ApiResponse.error(e.getErrorCode()));
@@ -111,6 +115,7 @@ public class GlobalExceptionHandler {
                     .body(ApiResponse.error(errorCode));
         }
         log.error("Data integrity violation", e);
+        Sentry.captureException(e);
         ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
         return ResponseEntity
                 .status(errorCode.getHttpStatus())
@@ -140,6 +145,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleException(Exception e) {
         log.error("Unhandled exception", e);
+        Sentry.captureException(e);
         ErrorCode errorCode = ErrorCode.INTERNAL_SERVER_ERROR;
         return ResponseEntity
                 .status(errorCode.getHttpStatus())

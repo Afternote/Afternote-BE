@@ -64,6 +64,19 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
+      - name: Materialize deploy/production.env from secret
+        env:
+          DEPLOY_PRODUCTION_ENV: ${{ secrets.DEPLOY_PRODUCTION_ENV }}
+        run: |
+          set -euo pipefail
+          if [ -z "${DEPLOY_PRODUCTION_ENV:-}" ]; then
+            echo "[WARN] DEPLOY_PRODUCTION_ENV secret empty — keep existing EC2 ~/deploy/.env"
+            rm -f deploy/production.env
+          else
+            printf '%s\n' "$DEPLOY_PRODUCTION_ENV" > deploy/production.env
+            echo "[INFO] wrote deploy/production.env from secret ($(wc -l < deploy/production.env) lines)"
+          fi
+
       - name: Sync deploy configs to EC2
         uses: appleboy/scp-action@v0.1.7
         with:
@@ -71,6 +84,18 @@ jobs:
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
           source: "deploy/nginx/nginx.conf,deploy/docker-compose.yml,deploy/scripts/bootstrap-certs.sh"
+          target: "/tmp/afternote-deploy-sync/"
+          overwrite: true
+          strip_components: 1
+
+      - name: Sync production.env to EC2
+        if: hashFiles('deploy/production.env') != ''
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_KEY }}
+          source: "deploy/production.env"
           target: "/tmp/afternote-deploy-sync/"
           overwrite: true
           strip_components: 1
@@ -119,12 +144,21 @@ jobs:
             if [ -f docker-compose.yml ]; then
               cp docker-compose.yml "docker-compose.yml.bak.${TS}"
             fi
+            if [ -f .env ]; then
+              cp .env ".env.bak.${TS}"
+            fi
 
             cp "${SYNC_ROOT}/nginx/nginx.conf" nginx/nginx.conf
             cp "${SYNC_ROOT}/docker-compose.yml" docker-compose.yml
             if [ -f "${SYNC_ROOT}/scripts/bootstrap-certs.sh" ]; then
               cp "${SYNC_ROOT}/scripts/bootstrap-certs.sh" scripts/bootstrap-certs.sh
               chmod +x scripts/bootstrap-certs.sh
+            fi
+            if [ -f "${SYNC_ROOT}/production.env" ]; then
+              cp "${SYNC_ROOT}/production.env" .env
+              echo "[INFO] updated ~/deploy/.env from DEPLOY_PRODUCTION_ENV"
+            else
+              echo "[INFO] no production.env in sync bundle; left ~/deploy/.env unchanged"
             fi
 
             # Ensure TLS dirs + temporary self-signed if missing (greenfield)

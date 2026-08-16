@@ -84,6 +84,9 @@ dependencies {
 
     // Sentry (error monitoring only; DSN empty = no-op)
     implementation 'io.sentry:sentry-spring-boot-starter-jakarta:8.53.0'
+
+    // Actuator (health: db / redis)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
 }
 
 tasks.named('test') {

@@ -139,7 +139,9 @@ sns + cloudwatch alarms/dashboard (afternote-ops)
   - RDS: FreeStorage<2GiB, Connections>40, CPU>80%
   - Lambda: stop/start Errors
   - off-hours stop: missing metrics = notBreaching (no false alarm)
+  - app logs: /afternote/app (retention 14d) via docker awslogs
 ```
 
 대시보드: `terraform output cloudwatch_dashboard_url`  
+앱 로그: `terraform output app_log_group_url`  
 알람 메일: `alert_email` SNS 구독 Confirm 필요(최초 1회).

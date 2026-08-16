@@ -109,6 +109,30 @@ resource "aws_iam_role_policy_attachment" "ec2_ssm" {
   policy_arn = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
 }
 
+# Docker awslogs driver → CloudWatch Logs
+resource "aws_iam_role_policy" "ec2_cloudwatch_logs" {
+  name = "${var.project_name}-ec2-cloudwatch-logs"
+  role = aws_iam_role.ec2_ssm.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "logs:CreateLogStream",
+          "logs:DescribeLogStreams",
+          "logs:PutLogEvents",
+        ]
+        Resource = [
+          "${aws_cloudwatch_log_group.app.arn}",
+          "${aws_cloudwatch_log_group.app.arn}:*",
+        ]
+      },
+    ]
+  })
+}
+
 resource "aws_iam_instance_profile" "ec2_ssm" {
   name = "${var.project_name}-ec2-ssm"
   role = aws_iam_role.ec2_ssm.name

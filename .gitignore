@@ -61,3 +61,6 @@ data/
 ### Local QA notes (개인용, 커밋하지 않음)
 docs/QA-회귀-체크리스트.md
 .cursor/rules/qa-regression-checklist.mdc
+
+# Deploy env (secrets). Synced via GitHub Secret DEPLOY_PRODUCTION_ENV
+deploy/production.env

@@ -101,6 +101,15 @@ firebase:
   android-package-name: ${FIREBASE_ANDROID_PACKAGE_NAME:com.afternote.app}
   service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
 
+# Passkeys (WebAuthn). SHA-256 은 FE 키스토어 지문. 비어 있으면 assetlinks 배열만 빈 채 200.
+passkey:
+  rp-id: ${PASSKEY_RP_ID:afternote.kro.kr}
+  rp-name: ${PASSKEY_RP_NAME:AfterNote}
+  origin: ${PASSKEY_ORIGIN:https://afternote.kro.kr}
+  challenge-ttl-seconds: ${PASSKEY_CHALLENGE_TTL_SECONDS:300}
+  android-package-name: ${PASSKEY_ANDROID_PACKAGE_NAME:${FIREBASE_ANDROID_PACKAGE_NAME:com.afternote.app}}
+  android-sha256: ${PASSKEY_ANDROID_SHA256:}
+
 cloud:
   aws:
     s3:

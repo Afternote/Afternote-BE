@@ -241,7 +241,16 @@ public enum ErrorCode {
     // 16. 푸시/FCM 관련 오류 (code: 2600 ~ 2699)
     // ======================================
     FCM_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, 2600, "푸시 발송이 설정되지 않았습니다."),
-    PUSH_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, 2601, "등록된 푸시 토큰이 없습니다.");
+    PUSH_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, 2601, "등록된 푸시 토큰이 없습니다."),
+
+    // ======================================
+    // 17. 패스키/WebAuthn 관련 오류 (code: 2700 ~ 2799)
+    // ======================================
+    PASSKEY_CHALLENGE_INVALID(HttpStatus.BAD_REQUEST, 2700, "패스키 인증 요청이 만료되었거나 유효하지 않습니다."),
+    PASSKEY_VERIFICATION_FAILED(HttpStatus.UNAUTHORIZED, 2701, "패스키 검증에 실패했습니다."),
+    PASSKEY_CREDENTIAL_NOT_FOUND(HttpStatus.NOT_FOUND, 2702, "등록되지 않은 패스키입니다."),
+    PASSKEY_CREDENTIAL_ALREADY_REGISTERED(HttpStatus.CONFLICT, 2703, "이미 등록된 패스키입니다."),
+    PASSKEY_NOT_FOUND(HttpStatus.NOT_FOUND, 2704, "패스키를 찾을 수 없습니다.");
 
     private final HttpStatus httpStatus;
     private final int code;

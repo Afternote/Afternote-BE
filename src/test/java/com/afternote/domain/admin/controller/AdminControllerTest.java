@@ -1,6 +1,7 @@
 package com.afternote.domain.admin.controller;
 
 import com.afternote.domain.admin.service.AdminService;
+import com.afternote.domain.notification.service.AdminPushTestService;
 import com.afternote.global.resolver.UserId;
 import com.afternote.global.resolver.UserIdArgumentResolver;
 import org.junit.jupiter.api.BeforeEach;
@@ -39,6 +40,9 @@ class AdminControllerTest {
 
     @Mock
     private AdminService adminService;
+
+    @Mock
+    private AdminPushTestService adminPushTestService;
 
     private MockMvc mockMvc;
 
@@ -106,6 +110,20 @@ class AdminControllerTest {
                 .andExpect(status().isOk());
 
         verify(adminService).rejectVerification(eq(USER_ID), eq(5L), any());
+    }
+
+    @Test
+    @DisplayName("FCM 테스트 푸시 발송 API 성공")
+    void sendTestPush_Success() throws Exception {
+        given(adminPushTestService.sendTest(eq(USER_ID), any())).willReturn(null);
+
+        mockMvc.perform(post("/api/v1/admin/push-tokens/test")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"userId\":2,\"title\":\"t\",\"body\":\"b\"}"))
+                .andExpect(status().isOk());
+
+        verify(adminPushTestService).sendTest(eq(USER_ID), any());
     }
 
     private static class UserIdTestArgumentResolver implements HandlerMethodArgumentResolver {

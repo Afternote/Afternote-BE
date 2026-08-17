@@ -3,11 +3,15 @@ package com.afternote.domain.admin.controller;
 import com.afternote.domain.admin.dto.AdminVerificationActionRequest;
 import com.afternote.domain.admin.dto.AdminVerificationResponse;
 import com.afternote.domain.admin.service.AdminService;
+import com.afternote.domain.notification.dto.AdminPushTestRequest;
+import com.afternote.domain.notification.dto.AdminPushTestResponse;
+import com.afternote.domain.notification.service.AdminPushTestService;
 import com.afternote.global.common.ApiResponse;
 import com.afternote.global.resolver.UserId;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
@@ -20,6 +24,7 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+    private final AdminPushTestService adminPushTestService;
 
     @Operation(
             summary = "대기 중인 인증 요청 목록 조회",
@@ -128,5 +133,30 @@ public class AdminController {
     ) {
         String adminNote = request != null ? request.getAdminNote() : null;
         return ApiResponse.success(adminService.rejectVerification(userId, id, adminNote));
+    }
+
+    @Operation(
+            summary = "FCM 테스트 푸시 발송",
+            description = """
+                    등록된 기기 토큰으로 원격 푸시가 가는지 확인합니다. **ADMIN만** 호출할 수 있습니다.
+
+                    - `userId` 생략 시 관리자 본인에게 발송합니다.
+                    - 운영에 `FIREBASE_SERVICE_ACCOUNT_JSON`이 없으면 HTTP 503, `code 2600`.
+                    - 대상 사용자에게 등록된 토큰이 없으면 HTTP 404, `code 2601`.
+                    """
+    )
+    @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "발송 시도 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "관리자 권한 필요 (code: 2005)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "등록된 푸시 토큰 없음 (code: 2601)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "FCM 미설정 (code: 2600)")
+    })
+    @PostMapping("/push-tokens/test")
+    public ApiResponse<AdminPushTestResponse> sendTestPush(
+            @Parameter(hidden = true) @UserId Long userId,
+            @RequestBody(required = false) @Valid AdminPushTestRequest request
+    ) {
+        return ApiResponse.success(adminPushTestService.sendTest(userId, request));
     }
 }

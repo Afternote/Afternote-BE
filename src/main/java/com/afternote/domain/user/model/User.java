@@ -81,6 +81,18 @@ public class User extends BaseEntity {
     @Column(nullable = false)
     private boolean afterNotePushEnabled;
 
+    /** 마케팅/광고 문자. 기존 인증·수신자 메일과 무관. 기본 거부(opt-in). */
+    @Column(name = "marketing_sms_enabled", nullable = false, columnDefinition = "tinyint(1) not null default 0")
+    private boolean marketingSmsEnabled;
+
+    /** 마케팅/광고 이메일. 가입·찾기·수신자 인증 메일은 이 값과 관계없이 발송한다. */
+    @Column(name = "marketing_email_enabled", nullable = false, columnDefinition = "tinyint(1) not null default 0")
+    private boolean marketingEmailEnabled;
+
+    /** 마케팅/광고 푸시. 서비스 알림 3종(/push-settings)과 별개. */
+    @Column(name = "marketing_push_enabled", nullable = false, columnDefinition = "tinyint(1) not null default 0")
+    private boolean marketingPushEnabled;
+
     public void updatePassword(String encryptedPassword) {
         this.password = encryptedPassword;
     }
@@ -103,6 +115,9 @@ public class User extends BaseEntity {
         this.timeLetterPushEnabled = true;
         this.mindRecordPushEnabled = true;
         this.afterNotePushEnabled = true;
+        this.marketingSmsEnabled = false;
+        this.marketingEmailEnabled = false;
+        this.marketingPushEnabled = false;
     }
 
     public void updateProfile(String name, String phone, String profileImageUrl) {
@@ -124,6 +139,12 @@ public class User extends BaseEntity {
         if (timeLetter != null) { this.timeLetterPushEnabled = timeLetter; }
         if (mindRecord != null) { this.mindRecordPushEnabled = mindRecord; }
         if (afterNote != null) { this.afterNotePushEnabled = afterNote; }
+    }
+
+    public void updateMarketingConsents(Boolean sms, Boolean email, Boolean push) {
+        if (sms != null) { this.marketingSmsEnabled = sms; }
+        if (email != null) { this.marketingEmailEnabled = email; }
+        if (push != null) { this.marketingPushEnabled = push; }
     }
 
     public void updateRole(UserRole role) {

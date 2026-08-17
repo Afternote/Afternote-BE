@@ -19,6 +19,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.contains;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -77,6 +78,8 @@ class MysqlSchemaCompatibilityMigratorTest {
                 });
         given(jdbcTemplate.query(contains("emotion_category"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
                 .willReturn("YES");
+        given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("users"), anyString()))
+                .willReturn(1);
 
         new MysqlSchemaCompatibilityMigrator(jdbcTemplate, dataSource)
                 .run(new DefaultApplicationArguments());

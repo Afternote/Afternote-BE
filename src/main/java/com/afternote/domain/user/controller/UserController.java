@@ -60,7 +60,7 @@ public class UserController {
 
     @Operation(
             summary = "푸시 알림 설정 조회 API",
-            description = "로그인한 사용자의 푸시 알림 수신 설정을 불러옵니다."
+            description = "서비스 알림 3종(타임레터·마음기록·애프터노트) 수신 설정입니다. 마케팅 SMS/이메일/푸시는 GET /marketing-consents 입니다."
     )
     @GetMapping("/push-settings")
     public ApiResponse<UserPushSettingResponse> getMyPushSettings(
@@ -122,7 +122,7 @@ public class UserController {
 
     @Operation(
             summary = "푸시 알림 설정 수정 API",
-            description = "로그인한 사용자의 푸시 알림 수신 설정을 수정합니다."
+            description = "서비스 알림 3종만 수정합니다. 마케팅 채널 동의는 PATCH /marketing-consents 입니다."
     )
     @PatchMapping("/push-settings")
     public ApiResponse<UserPushSettingResponse> updateMyPushSettings(
@@ -132,6 +132,36 @@ public class UserController {
         return ApiResponse.success(
                 userService.updateMyPushSettings(userId, request)
         );
+    }
+
+    @Operation(
+            summary = "마케팅 수신 동의 조회 API",
+            description = """
+                    마케팅·광고 알림 채널(문자·이메일·푸시) 수신 동의를 조회합니다.
+                    가입·비밀번호 찾기·수신자 인증 메일과 서비스 알림 3종(/push-settings)은 이 값과 무관합니다.
+                    """
+    )
+    @GetMapping("/marketing-consents")
+    public ApiResponse<UserMarketingConsentResponse> getMyMarketingConsents(
+            @Parameter(hidden = true) @UserId Long userId
+    ) {
+        return ApiResponse.success(userService.getMyMarketingConsents(userId));
+    }
+
+    @Operation(
+            summary = "마케팅 수신 동의 수정 API",
+            description = """
+                    보낸 채널만 변경합니다. 생략한 필드는 유지됩니다.
+                    동의해도 지금 당장 광고 메일/문자가 나가지 않습니다. 나중에 마케팅 발송 시 이 값을 봅니다.
+                    마케팅 이메일은 기존 SMTP(EmailService와 동일 파이프)를 재사용할 예정이며, 인증 메일은 계속 동의 없이 발송됩니다.
+                    """
+    )
+    @PatchMapping("/marketing-consents")
+    public ApiResponse<UserMarketingConsentResponse> updateMyMarketingConsents(
+            @Parameter(hidden = true) @UserId Long userId,
+            @Valid @RequestBody UserUpdateMarketingConsentRequest request
+    ) {
+        return ApiResponse.success(userService.updateMyMarketingConsents(userId, request));
     }
 
     @Operation(

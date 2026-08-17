@@ -152,6 +152,21 @@ public class UserService {
         return UserPushSettingResponse.from(user);
     }
 
+    public UserMarketingConsentResponse getMyMarketingConsents(Long userId) {
+        User user = findUserById(userId);
+        return UserMarketingConsentResponse.from(user);
+    }
+
+    @Transactional
+    public UserMarketingConsentResponse updateMyMarketingConsents(
+            Long userId,
+            UserUpdateMarketingConsentRequest request
+    ) {
+        User user = findUserById(userId);
+        user.updateMarketingConsents(request.getSms(), request.getEmail(), request.getPush());
+        return UserMarketingConsentResponse.from(user);
+    }
+
     public List<ReceiverListResponse> getReceivers(Long userId) {
 
         User user = findUserById(userId);

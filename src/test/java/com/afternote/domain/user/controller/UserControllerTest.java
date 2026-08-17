@@ -120,6 +120,32 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("마케팅 수신 동의 조회 API 성공")
+    void getMyMarketingConsents_Success() throws Exception {
+        given(userService.getMyMarketingConsents(USER_ID)).willReturn(null);
+
+        mockMvc.perform(get("/api/v1/users/marketing-consents")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
+                .andExpect(status().isOk());
+
+        verify(userService).getMyMarketingConsents(USER_ID);
+    }
+
+    @Test
+    @DisplayName("마케팅 수신 동의 수정 API 성공")
+    void updateMyMarketingConsents_Success() throws Exception {
+        given(userService.updateMyMarketingConsents(eq(USER_ID), any())).willReturn(null);
+
+        mockMvc.perform(patch("/api/v1/users/marketing-consents")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sms\":true,\"email\":true,\"push\":false}"))
+                .andExpect(status().isOk());
+
+        verify(userService).updateMyMarketingConsents(eq(USER_ID), any());
+    }
+
+    @Test
     @DisplayName("FCM 기기 토큰 등록 API 성공")
     void registerPushToken_Success() throws Exception {
         given(userPushTokenService.registerOrRefresh(eq(USER_ID), any())).willReturn(null);

@@ -34,6 +34,8 @@ public class EmailService {
     private String senderEmail;
 
     /**
+     * 가입·비밀번호 찾기 등 거래성(transactional) 인증메일을 발송한다.
+     * {@code users.marketing_email_enabled} 와 무관하다. 마케팅 메일은 별도 경로에서 동의 값을 본다.
      * 인증번호를 Redis에 저장한 뒤 SMTP는 비동기로 발송한다.
      * @return 인증번호 만료 시각 (UTC)
      */

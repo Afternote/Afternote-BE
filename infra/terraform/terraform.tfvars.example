@@ -24,7 +24,7 @@ deploy_path = "/home/ec2-user/deploy"
 ec2_user    = "ec2-user"
 
 # Optional sizing
-ec2_instance_type = "t3.micro"
+ec2_instance_type = "t3.small"
 db_instance_class = "db.t4g.micro"
 # db_name             = "afternote"
 # db_username         = "afternote"

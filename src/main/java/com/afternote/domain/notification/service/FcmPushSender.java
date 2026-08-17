@@ -23,6 +23,10 @@ public class FcmPushSender {
     private final ObjectProvider<FirebaseMessaging> firebaseMessagingProvider;
     private final UserPushTokenRepository userPushTokenRepository;
 
+    public boolean isEnabled() {
+        return firebaseMessagingProvider.getIfAvailable() != null;
+    }
+
     /**
      * 사용자의 등록된 모든 기기로 푸시를 보낸다. FCM 미설정·발송 실패는 본 트랜잭션을 실패시키지 않는다.
      */

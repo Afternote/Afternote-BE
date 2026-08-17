@@ -235,7 +235,13 @@ public enum ErrorCode {
     UNSUPPORTED_APP_PLATFORM(HttpStatus.BAD_REQUEST, 2500, "지원하지 않는 앱 플랫폼입니다."),
     APP_VERSION_NOT_CONFIGURED(HttpStatus.INTERNAL_SERVER_ERROR, 2501, "앱 버전 정책이 설정되지 않았습니다."),
     APP_VERSION_RELEASE_DUPLICATE(HttpStatus.CONFLICT, 2502, "이미 등록된 versionCode입니다."),
-    APP_VERSION_RELEASE_VERSION_CODE_NOT_GREATER(HttpStatus.BAD_REQUEST, 2503, "새 versionCode는 현재 최신보다 커야 합니다.");
+    APP_VERSION_RELEASE_VERSION_CODE_NOT_GREATER(HttpStatus.BAD_REQUEST, 2503, "새 versionCode는 현재 최신보다 커야 합니다."),
+
+    // ======================================
+    // 16. 푸시/FCM 관련 오류 (code: 2600 ~ 2699)
+    // ======================================
+    FCM_NOT_CONFIGURED(HttpStatus.SERVICE_UNAVAILABLE, 2600, "푸시 발송이 설정되지 않았습니다."),
+    PUSH_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, 2601, "등록된 푸시 토큰이 없습니다.");
 
     private final HttpStatus httpStatus;
     private final int code;

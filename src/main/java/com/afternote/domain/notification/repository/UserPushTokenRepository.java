@@ -12,6 +12,8 @@ public interface UserPushTokenRepository extends JpaRepository<UserPushToken, Lo
 
     List<UserPushToken> findAllByUser_Id(Long userId);
 
+    long countByUser_Id(Long userId);
+
     void deleteByUser_Id(Long userId);
 
     void deleteByUser_IdAndToken(Long userId, String token);

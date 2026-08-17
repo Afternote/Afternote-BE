@@ -26,3 +26,14 @@ FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 ```
 
 `FIREBASE_SERVICE_ACCOUNT_JSON`이 비어 있으면 토큰 등록 API는 동작하고, 실제 FCM 발송만 비활성(no-op)됩니다.
+
+## 테스트 발송 (관리자)
+
+```http
+POST /api/v1/admin/push-tokens/test
+Authorization: Bearer {ADMIN_ACCESS_TOKEN}
+
+{ "userId": 1, "title": "AfterNote", "body": "서버에서 보낸 테스트 푸시입니다." }
+```
+
+`userId`를 생략하면 관리자 본인에게 보냅니다. 앱이 먼저 `PUT /api/v1/users/push-tokens`로 토큰을 등록해야 합니다.

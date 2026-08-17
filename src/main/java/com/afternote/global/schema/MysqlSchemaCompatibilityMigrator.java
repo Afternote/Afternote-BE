@@ -21,6 +21,7 @@ import java.util.regex.Pattern;
  *   <li>기존 ENUM 컬럼 → VARCHAR (Java enum 값 추가가 INSERT 500 으로 이어지지 않게)</li>
  *   <li>CHECK 제약 제거 (Hibernate 6 가 VARCHAR enum 에 만든 IN (...) 도 값을 갱신하지 않음)</li>
  *   <li>emotions.emotion_category NULL 허용 (#139)</li>
+ *   <li>users 마케팅 동의 컬럼 tinyint(1) NOT NULL DEFAULT 0</li>
  * </ul>
  * 실패하면 기동을 중단한다. 조용히 삼키면 배포는 성공하고 런타임만 500 이 난다.
  */
@@ -45,6 +46,7 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
             convertEnumColumnsToVarchar();
             dropCheckConstraints();
             ensureEmotionCategoryNullable();
+            ensureMarketingConsentColumns();
         } catch (RuntimeException e) {
             throw new IllegalStateException("MySQL schema compatibility migration failed", e);
         }
@@ -124,6 +126,38 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
         }
         jdbcTemplate.execute("ALTER TABLE emotions MODIFY COLUMN emotion_category VARCHAR(30) NULL");
         log.info("[SchemaCompat] altered emotions.emotion_category to NULL");
+    }
+
+    /**
+     * 기존 users 행에 NOT NULL 컬럼을 붙일 때 DEFAULT 가 없으면 ALTER 가 실패한다.
+     * Hibernate ddl-auto 가 놓치면 여기서 tinyint(1) NOT NULL DEFAULT 0 을 보장한다.
+     */
+    private void ensureMarketingConsentColumns() {
+        ensureTinyintNotNullDefaultFalse("users", "marketing_sms_enabled");
+        ensureTinyintNotNullDefaultFalse("users", "marketing_email_enabled");
+        ensureTinyintNotNullDefaultFalse("users", "marketing_push_enabled");
+    }
+
+    private void ensureTinyintNotNullDefaultFalse(String table, String column) {
+        Integer count = jdbcTemplate.queryForObject(
+                """
+                        SELECT COUNT(*) FROM information_schema.COLUMNS
+                        WHERE TABLE_SCHEMA = DATABASE()
+                          AND TABLE_NAME = ?
+                          AND COLUMN_NAME = ?
+                        """,
+                Integer.class,
+                table,
+                column
+        );
+        if (count != null && count > 0) {
+            return;
+        }
+        jdbcTemplate.execute(
+                "ALTER TABLE `" + quote(table) + "` ADD COLUMN `" + quote(column)
+                        + "` tinyint(1) not null default 0"
+        );
+        log.info("[SchemaCompat] added {}.{} tinyint(1) not null default 0", table, column);
     }
 
     static String quote(String identifier) {

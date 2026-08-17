@@ -1,5 +1,9 @@
 package com.afternote.domain.user.controller;
 
+import com.afternote.domain.notification.dto.DeletePushTokenRequest;
+import com.afternote.domain.notification.dto.PushTokenResponse;
+import com.afternote.domain.notification.dto.RegisterPushTokenRequest;
+import com.afternote.domain.notification.service.UserPushTokenService;
 import com.afternote.domain.user.dto.*;
 import com.afternote.domain.user.service.UserService;
 import com.afternote.global.common.ApiResponse;
@@ -21,6 +25,7 @@ import java.util.List;
 public class UserController {
 
     private final UserService userService;
+    private final UserPushTokenService userPushTokenService;
 
     @Operation(
             summary = "내 프로필 조회 API",
@@ -127,6 +132,36 @@ public class UserController {
         return ApiResponse.success(
                 userService.updateMyPushSettings(userId, request)
         );
+    }
+
+    @Operation(
+            summary = "FCM 기기 토큰 등록·갱신 API",
+            description = """
+                    로그인한 사용자의 FCM registration token을 등록하거나 갱신합니다.
+                    앱 최초 실행·로그인·onNewToken 시 호출합니다. 동일 token은 upsert(멱등)됩니다.
+                    """
+    )
+    @PutMapping("/push-tokens")
+    public ApiResponse<PushTokenResponse> registerPushToken(
+            @Parameter(hidden = true) @UserId Long userId,
+            @Valid @RequestBody RegisterPushTokenRequest request
+    ) {
+        return ApiResponse.success(
+                userPushTokenService.registerOrRefresh(userId, request)
+        );
+    }
+
+    @Operation(
+            summary = "FCM 기기 토큰 해제 API",
+            description = "로그아웃·알림 권한 철회 시 해당 기기 token을 서버에서 제거합니다. 없는 token도 200(멱등)입니다."
+    )
+    @DeleteMapping("/push-tokens")
+    public ApiResponse<Void> deletePushToken(
+            @Parameter(hidden = true) @UserId Long userId,
+            @Valid @RequestBody DeletePushTokenRequest request
+    ) {
+        userPushTokenService.unregister(userId, request);
+        return ApiResponse.success(null);
     }
 
     @Operation(

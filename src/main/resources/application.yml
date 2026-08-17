@@ -95,6 +95,12 @@ afternote:
     backfill-batch-size: 20
     backfill-delay-ms: 300000
 
+# FCM — google-services.json 의 project_id / package 와 동일해야 함
+firebase:
+  project-id: ${FIREBASE_PROJECT_ID:afternote-7471f}
+  android-package-name: ${FIREBASE_ANDROID_PACKAGE_NAME:com.afternote.app}
+  service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
+
 cloud:
   aws:
     s3:

@@ -1,6 +1,7 @@
 package com.afternote.domain.user.controller;
 
 import com.afternote.domain.user.service.UserService;
+import com.afternote.domain.notification.service.UserPushTokenService;
 import com.afternote.global.resolver.UserId;
 import com.afternote.global.resolver.UserIdArgumentResolver;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,6 +30,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -42,6 +44,9 @@ class UserControllerTest {
 
     @Mock
     private UserService userService;
+
+    @Mock
+    private UserPushTokenService userPushTokenService;
 
     private MockMvc mockMvc;
 
@@ -112,6 +117,32 @@ class UserControllerTest {
                 .andExpect(status().isOk());
 
         verify(userService).updateMyPushSettings(eq(USER_ID), any());
+    }
+
+    @Test
+    @DisplayName("FCM 기기 토큰 등록 API 성공")
+    void registerPushToken_Success() throws Exception {
+        given(userPushTokenService.registerOrRefresh(eq(USER_ID), any())).willReturn(null);
+
+        mockMvc.perform(put("/api/v1/users/push-tokens")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"abc\",\"platform\":\"ANDROID\"}"))
+                .andExpect(status().isOk());
+
+        verify(userPushTokenService).registerOrRefresh(eq(USER_ID), any());
+    }
+
+    @Test
+    @DisplayName("FCM 기기 토큰 해제 API 성공")
+    void deletePushToken_Success() throws Exception {
+        mockMvc.perform(delete("/api/v1/users/push-tokens")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"token\":\"abc\"}"))
+                .andExpect(status().isOk());
+
+        verify(userPushTokenService).unregister(eq(USER_ID), any());
     }
 
     @Test

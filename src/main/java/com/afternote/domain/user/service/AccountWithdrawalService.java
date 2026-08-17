@@ -2,6 +2,7 @@ package com.afternote.domain.user.service;
 
 import com.afternote.domain.afternote.repository.AfternoteRepository;
 import com.afternote.domain.auth.service.TokenService;
+import com.afternote.domain.notification.service.UserPushTokenService;
 import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
 import com.afternote.domain.deepthought.repository.DeepThoughtCategoryRepository;
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
@@ -70,6 +71,7 @@ public class AccountWithdrawalService {
 
     private final UserReceiverRepository userReceiverRepository;
     private final ReceiverRepository receiverRepository;
+    private final UserPushTokenService userPushTokenService;
 
     @Transactional
     public void withdraw(Long userId) {
@@ -122,6 +124,8 @@ public class AccountWithdrawalService {
         // 5) 수신자 (UserReceiver → Receiver). 다른 조인이 이미 정리된 뒤 삭제.
         userReceiverRepository.deleteByUser_Id(userId);
         receiverRepository.deleteByUserId(userId);
+
+        userPushTokenService.deleteAllForUser(userId);
 
         // 6) 탈퇴 이력 저장 후 User hard delete (잔여 cascade: timeLetters, diaries, ...)
         withdrawnUserRepository.save(WithdrawnUser.of(email, userId));

@@ -21,6 +21,8 @@ public enum WhiteListUrl {
     AUTH_FIND_SEND_CODE("/auth/find/send/code"),
     AUTH_EMAIL_FIND("/auth/email/find"),
     AUTH_PASSWORD_FIND("/auth/password/find"),
+    AUTH_PASSKEY_AUTHENTICATE("/api/v1/auth/passkey/authenticate/**"),
+    WELL_KNOWN_ASSETLINKS("/.well-known/assetlinks.json"),
 
     // 수신자 인증
     RECEIVER_AUTH("/api/receiver-auth/**"),

@@ -1,6 +1,7 @@
 package com.afternote.domain.user.service;
 
 import com.afternote.domain.afternote.repository.AfternoteRepository;
+import com.afternote.domain.auth.service.PasskeyService;
 import com.afternote.domain.auth.service.TokenService;
 import com.afternote.domain.notification.service.UserPushTokenService;
 import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
@@ -71,6 +72,7 @@ class AccountWithdrawalServiceTest {
     @Mock private UserReceiverRepository userReceiverRepository;
     @Mock private ReceiverRepository receiverRepository;
     @Mock private UserPushTokenService userPushTokenService;
+    @Mock private PasskeyService passkeyService;
 
     @Test
     @DisplayName("탈퇴 시 타임레터 수신자 조인을 먼저 삭제하고 이력을 남긴다")
@@ -99,6 +101,7 @@ class AccountWithdrawalServiceTest {
         verify(timeLetterMediaRepository).deleteByTimeLetterIdIn(List.of(100L, 101L));
         verify(receiverRepository).deleteByUserId(10L);
         verify(userPushTokenService).deleteAllForUser(10L);
+        verify(passkeyService).deleteAllForUser(10L);
 
         ArgumentCaptor<com.afternote.domain.user.model.WithdrawnUser> captor =
                 ArgumentCaptor.forClass(com.afternote.domain.user.model.WithdrawnUser.class);

@@ -85,6 +85,9 @@ dependencies {
     // Firebase Cloud Messaging (서버 발송)
     implementation 'com.google.firebase:firebase-admin:9.4.3'
 
+    // Passkeys (WebAuthn 서명 검증만. JWT/API 는 우리 코드)
+    implementation 'com.webauthn4j:webauthn4j-core:0.29.7.RELEASE'
+
     // Sentry (error monitoring only; DSN empty = no-op)
     implementation 'io.sentry:sentry-spring-boot-starter-jakarta:8.53.0'
 

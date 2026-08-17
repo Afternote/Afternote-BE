@@ -71,6 +71,10 @@ public class AuthService {
             throw new CustomException(ErrorCode.PASSWORD_MISMATCH);
         }
 
+        return issueTokens(user);
+    }
+
+    public LoginResponse issueTokens(User user) {
         activityTouchService.touch(user.getId());
 
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId());

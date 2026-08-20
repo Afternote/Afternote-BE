@@ -42,3 +42,22 @@ sentry:
   send-default-pii: false
   traces-sample-rate: 0.0
   exception-resolver-order: 2147483647
+
+management:
+  server:
+    port: 8081
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        readiness:
+          include: readinessState,db,redis
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  health:
+    mail:
+      enabled: false

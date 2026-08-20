@@ -15,9 +15,35 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  dependency_submission:
+    name: dependency-submission
+    if: >-
+      github.event_name == 'pull_request' &&
+      github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Generate and submit dependency graph
+        uses: gradle/actions/dependency-submission@v6
+        with:
+          cache-provider: basic
+
   dependency_review:
     name: dependency-review
     if: github.event_name == 'pull_request'
+    needs: dependency_submission
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -29,6 +55,8 @@ jobs:
         uses: actions/dependency-review-action@v5
         with:
           fail-on-severity: high
+          retry-on-snapshot-warnings: true
+          retry-on-snapshot-warnings-timeout: 600
 
   gradle_test:
     name: gradle-test

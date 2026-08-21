@@ -24,6 +24,7 @@ repositories {
 dependencyManagement {
     imports {
         mavenBom "org.springframework.ai:spring-ai-bom:1.1.2"
+        mavenBom "org.testcontainers:testcontainers-bom:1.21.4"
     }
 }
 
@@ -53,6 +54,8 @@ dependencies {
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
+    testImplementation 'org.testcontainers:junit-jupiter'
+    testImplementation 'org.testcontainers:mysql'
 
     //스웨거
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'

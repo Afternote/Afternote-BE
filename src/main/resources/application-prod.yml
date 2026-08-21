@@ -8,6 +8,14 @@ spring:
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    # db.t4g.small(2GB) max_connections ≈ 150~170. 단일 앱 + 여유분 → 80.
+    # (CloudWatch connections 알람이 40이면 같이 올리세요.)
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:80}
+      minimum-idle: ${HIKARI_MIN_IDLE:10}
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
 
   jpa:
     hibernate:

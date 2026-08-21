@@ -25,7 +25,6 @@ CI는 작성하지 않은 테스트를 발견할 수 없다. PR CI를 실행하�
 
 다음 항목은 규운 또는 팀과 운영 계약을 합의하고 각 선행 이슈가 구현된 뒤 #198에서 `CI / build`에 연결한다.
 
-- #192의 Flyway migration과 `mysqlTest`
 - #194의 운영 Compose·Datadog 관측성 통합 검증
 - #195의 배포·롤백 스크립트와 최종 운영 이미지 build
 - 합의 후 별도 산출물이 생긴 경우의 Sentry 전용 Actions·release·DSN·운영 전송 검증

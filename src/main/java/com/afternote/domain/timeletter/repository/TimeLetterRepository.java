@@ -10,7 +10,6 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -37,7 +36,4 @@ public interface TimeLetterRepository extends JpaRepository<TimeLetter, Long> {
     List<TimeLetter> findByIdInAndUserId(List<Long> ids, Long userId);
 
     void deleteByUserIdAndStatus(Long userId, TimeLetterStatus status);
-
-    @EntityGraph(attributePaths = {"blocks"})
-    List<TimeLetter> findByStatusAndSendAtBefore(TimeLetterStatus status, LocalDateTime dateTime);
 }

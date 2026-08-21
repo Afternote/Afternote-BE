@@ -411,5 +411,4 @@ class TimeLetterServiceTest {
         given(block.getTextContent()).willReturn(content);
         return block;
     }
-
 }

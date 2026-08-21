@@ -10,12 +10,15 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class TimeLetterScheduler {
+
+    private static final ZoneId TIME_LETTER_ZONE = ZoneId.of("Asia/Seoul");
 
     private final TimeLetterRepository timeLetterRepository;
 
@@ -26,7 +29,10 @@ public class TimeLetterScheduler {
     @Transactional
     public void updateScheduledToSent() {
         List<TimeLetter> letters = timeLetterRepository
-                .findByStatusAndSendAtBefore(TimeLetterStatus.SCHEDULED, LocalDateTime.now())
+                .findByStatusAndSendAtBefore(
+                        TimeLetterStatus.SCHEDULED,
+                        LocalDateTime.now(TIME_LETTER_ZONE)
+                )
                 .stream()
                 // POST_DEATH 모드는 날짜가 아닌 사후 조건으로 전달되므로 제외한다.
                 .filter(letter -> !letter.isPostDeath())

@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import lombok.Getter;
 
-import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
 import java.util.List;
 
 @Schema(description = "타임레터 수정 요청")
@@ -15,9 +15,14 @@ public record TimeLetterUpdateRequest(
         @Getter
         String title,
 
-        @Schema(description = "발송 예정 시간 (DATE 모드에서만 사용)", example = "2025-12-31T23:59:59")
+        @Schema(
+                type = "string",
+                format = "date-time",
+                description = "발송 예정 시간 (DATE 모드 전용, UTC 오프셋 포함)",
+                example = "2025-12-31T23:59:59+09:00"
+        )
         @Getter
-        LocalDateTime sendAt,
+        OffsetDateTime sendAt,
 
         @Schema(description = "전달 방식 (DATE: 날짜 기반, POST_DEATH: 사후 전달)", example = "DATE")
         @Getter

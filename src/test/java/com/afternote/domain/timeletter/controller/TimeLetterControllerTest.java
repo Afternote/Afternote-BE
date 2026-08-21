@@ -140,6 +140,68 @@ class TimeLetterControllerTest {
         verify(timeLetterService).createTimeLetter(org.mockito.ArgumentMatchers.eq(USER_ID), org.mockito.ArgumentMatchers.any());
     }
 
+    @ParameterizedTest(name = "{0} sendAt={1}")
+    @CsvSource({
+            "DRAFT,     2026-09-03T10:13:48Z",
+            "DRAFT,     2026-09-03T10:13:48+00:00",
+            "DRAFT,     2026-09-03T10:13:48.123Z",
+            "SCHEDULED, 2026-09-03T10:13:48Z",
+            "SCHEDULED, 2026-09-03T10:13:48+00:00"
+    })
+    @DisplayName("생성 API는 오프셋이 포함된 sendAt을 OffsetDateTime으로 역직렬화한다")
+    void createTimeLetter_DeserializesOffsetSendAt(
+            String statusValue,
+            String sendAtValue
+    ) throws Exception {
+        given(timeLetterService.createTimeLetter(org.mockito.ArgumentMatchers.eq(USER_ID), org.mockito.ArgumentMatchers.any()))
+                .willReturn(sampleResponse(22L, "created"));
+
+        String requestBody = """
+                {
+                  "status": "%s",
+                  "sendAt": "%s"
+                }
+                """.formatted(statusValue, sendAtValue);
+
+        mockMvc.perform(post("/api/v1/time-letters")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<TimeLetterCreateRequest> requestCaptor =
+                ArgumentCaptor.forClass(TimeLetterCreateRequest.class);
+        verify(timeLetterService).createTimeLetter(
+                org.mockito.ArgumentMatchers.eq(USER_ID),
+                requestCaptor.capture()
+        );
+        org.assertj.core.api.Assertions.assertThat(requestCaptor.getValue().getSendAt())
+                .isEqualTo(OffsetDateTime.parse(sendAtValue));
+    }
+
+    @ParameterizedTest(name = "invalid sendAt={0}")
+    @ValueSource(strings = {
+            "2026-09-03T19:13:48",
+            "2026-09-03 10:13:48+00:00"
+    })
+    @DisplayName("생성 API는 OffsetDateTime으로 해석할 수 없는 sendAt을 400으로 거부한다")
+    void createTimeLetter_InvalidSendAt_Fail(String sendAtValue) throws Exception {
+        String requestBody = """
+                {
+                  "status": "DRAFT",
+                  "sendAt": "%s"
+                }
+                """.formatted(sendAtValue);
+
+        mockMvc.perform(post("/api/v1/time-letters")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isBadRequest());
+
+        org.mockito.Mockito.verifyNoInteractions(timeLetterService);
+    }
+
                 @Test
                 @DisplayName("타임레터 생성 API 실패 - status 누락")
                 void createTimeLetter_MissingStatus_Fail() throws Exception {
@@ -218,6 +280,43 @@ class TimeLetterControllerTest {
                 .andExpect(jsonPath("$.data.id").value(10));
 
         verify(timeLetterService).updateTimeLetter(org.mockito.ArgumentMatchers.eq(USER_ID), org.mockito.ArgumentMatchers.eq(10L), org.mockito.ArgumentMatchers.any());
+    }
+
+    @ParameterizedTest(name = "PATCH sendAt={0}")
+    @CsvSource({
+            "2026-09-03T10:13:48Z",
+            "2026-09-03T10:13:48+00:00"
+    })
+    @DisplayName("수정 API도 생성 API와 동일한 sendAt 입력 계약을 사용한다")
+    void updateTimeLetter_DeserializesRfc3339SendAt(String sendAtValue) throws Exception {
+        given(timeLetterService.updateTimeLetter(
+                org.mockito.ArgumentMatchers.eq(USER_ID),
+                org.mockito.ArgumentMatchers.eq(10L),
+                org.mockito.ArgumentMatchers.any()
+        )).willReturn(sampleResponse(10L, "updated"));
+
+        String requestBody = """
+                {
+                  "status": "DRAFT",
+                  "sendAt": "%s"
+                }
+                """.formatted(sendAtValue);
+
+        mockMvc.perform(patch("/api/v1/time-letters/{timeLetterId}", 10L)
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<TimeLetterUpdateRequest> requestCaptor =
+                ArgumentCaptor.forClass(TimeLetterUpdateRequest.class);
+        verify(timeLetterService).updateTimeLetter(
+                org.mockito.ArgumentMatchers.eq(USER_ID),
+                org.mockito.ArgumentMatchers.eq(10L),
+                requestCaptor.capture()
+        );
+        org.assertj.core.api.Assertions.assertThat(requestCaptor.getValue().getSendAt())
+                .isEqualTo(OffsetDateTime.parse(sendAtValue));
     }
 
     private TimeLetterResponse sampleResponse(Long id, String title) {

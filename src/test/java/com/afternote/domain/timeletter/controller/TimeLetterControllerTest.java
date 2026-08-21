@@ -87,16 +87,14 @@ class TimeLetterControllerTest {
     }
 
     @Test
-    @DisplayName("타임레터 생성 API 성공")
-    void createTimeLetter_Success() throws Exception {
+    @DisplayName("DRAFT 생성 API는 수신자 목록을 생략할 수 있다")
+    void createTimeLetter_DraftWithoutReceivers_Success() throws Exception {
         given(timeLetterService.createTimeLetter(org.mockito.ArgumentMatchers.eq(USER_ID), org.mockito.ArgumentMatchers.any()))
                 .willReturn(sampleResponse(20L, "created"));
 
         String requestBody = """
                 {
-                  "title": "임시 제목",
-                  "status": "DRAFT",
-                  "receiverIds": [1]
+                  "status": "DRAFT"
                 }
                 """;
 
@@ -107,6 +105,30 @@ class TimeLetterControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data.id").value(20));
+
+        verify(timeLetterService).createTimeLetter(org.mockito.ArgumentMatchers.eq(USER_ID), org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    @DisplayName("DRAFT 생성 API는 빈 수신자 목록을 허용한다")
+    void createTimeLetter_DraftWithEmptyReceivers_Success() throws Exception {
+        given(timeLetterService.createTimeLetter(org.mockito.ArgumentMatchers.eq(USER_ID), org.mockito.ArgumentMatchers.any()))
+                .willReturn(sampleResponse(21L, "created"));
+
+        String requestBody = """
+                {
+                  "status": "DRAFT",
+                  "receiverIds": []
+                }
+                """;
+
+        mockMvc.perform(post("/api/v1/time-letters")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.id").value(21));
 
         verify(timeLetterService).createTimeLetter(org.mockito.ArgumentMatchers.eq(USER_ID), org.mockito.ArgumentMatchers.any());
     }

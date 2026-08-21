@@ -129,6 +129,53 @@ class TimeLetterServiceTest {
     }
 
     @Test
+    @DisplayName("DRAFT는 제목, 본문, 발송일시, 수신자 없이 생성할 수 있다")
+    void createTimeLetter_DRAFT_WithoutOptionalFields_Success() {
+        TimeLetterCreateRequest request = mock(TimeLetterCreateRequest.class);
+        given(request.getStatus()).willReturn(TimeLetterStatus.DRAFT);
+
+        given(userRepository.existsById(1L)).willReturn(true);
+        given(userRepository.getReferenceById(1L)).willReturn(testUser);
+        given(timeLetterRepository.save(any(TimeLetter.class))).willAnswer(invocation -> {
+            TimeLetter saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 3L);
+            return saved;
+        });
+
+        TimeLetterResponse response = timeLetterService.createTimeLetter(1L, request);
+
+        assertThat(response.getStatus()).isEqualTo(TimeLetterStatus.DRAFT.name());
+        assertThat(response.getTitle()).isNull();
+        assertThat(response.getSendAt()).isNull();
+        assertThat(response.getBlocks()).isEmpty();
+        assertThat(response.getReceiverIds()).isEmpty();
+        verify(timeLetterRepository).save(any(TimeLetter.class));
+        verifyNoInteractions(receivedService);
+    }
+
+    @Test
+    @DisplayName("DRAFT는 빈 수신자 목록으로 생성할 수 있다")
+    void createTimeLetter_DRAFT_WithEmptyReceivers_Success() {
+        TimeLetterCreateRequest request = mock(TimeLetterCreateRequest.class);
+        given(request.getStatus()).willReturn(TimeLetterStatus.DRAFT);
+        given(request.getReceiverIds()).willReturn(List.of());
+
+        given(userRepository.existsById(1L)).willReturn(true);
+        given(userRepository.getReferenceById(1L)).willReturn(testUser);
+        given(timeLetterRepository.save(any(TimeLetter.class))).willAnswer(invocation -> {
+            TimeLetter saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 4L);
+            return saved;
+        });
+
+        TimeLetterResponse response = timeLetterService.createTimeLetter(1L, request);
+
+        assertThat(response.getReceiverIds()).isEmpty();
+        verify(timeLetterRepository).save(any(TimeLetter.class));
+        verifyNoInteractions(receivedService);
+    }
+
+    @Test
     @DisplayName("SCHEDULED 상태로 타임레터 생성 성공")
     void createTimeLetter_SCHEDULED_Success() {
         LocalDateTime futureDate = LocalDateTime.now().plusDays(7);
@@ -167,6 +214,43 @@ class TimeLetterServiceTest {
         assertThat(response.getBlocks()).hasSize(1);
         assertThat(response.getBlocks().get(0).getTextContent()).isEqualTo("정식 등록 내용");
         verify(timeLetterRepository).save(any(TimeLetter.class));
+    }
+
+    @Test
+    @DisplayName("SCHEDULED는 수신자 목록을 생략하면 생성할 수 없다")
+    void createTimeLetter_SCHEDULED_WithoutReceivers_Fail() {
+        TimeLetterCreateRequest request = mock(TimeLetterCreateRequest.class);
+        given(request.getStatus()).willReturn(TimeLetterStatus.SCHEDULED);
+
+        given(userRepository.existsById(1L)).willReturn(true);
+        given(userRepository.getReferenceById(1L)).willReturn(testUser);
+
+        assertThatThrownBy(() -> timeLetterService.createTimeLetter(1L, request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.RECEIVERS_REQUIRED));
+
+        verify(timeLetterRepository, never()).save(any(TimeLetter.class));
+        verifyNoInteractions(receivedService);
+    }
+
+    @Test
+    @DisplayName("SCHEDULED는 빈 수신자 목록으로 생성할 수 없다")
+    void createTimeLetter_SCHEDULED_WithEmptyReceivers_Fail() {
+        TimeLetterCreateRequest request = mock(TimeLetterCreateRequest.class);
+        given(request.getStatus()).willReturn(TimeLetterStatus.SCHEDULED);
+        given(request.getReceiverIds()).willReturn(List.of());
+
+        given(userRepository.existsById(1L)).willReturn(true);
+        given(userRepository.getReferenceById(1L)).willReturn(testUser);
+
+        assertThatThrownBy(() -> timeLetterService.createTimeLetter(1L, request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.RECEIVERS_REQUIRED));
+
+        verify(timeLetterRepository, never()).save(any(TimeLetter.class));
+        verifyNoInteractions(receivedService);
     }
 
     @Test

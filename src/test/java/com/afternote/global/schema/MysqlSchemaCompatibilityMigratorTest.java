@@ -93,6 +93,7 @@ class MysqlSchemaCompatibilityMigratorTest {
                 sql.contains("tl.delivery_mode = 'POST_DEATH'")
                         && sql.contains("SET tlr.delivered_at = NULL")
         ));
+        verify(jdbcTemplate, never()).update(contains("dc.state = 'FULFILLED'"));
     }
 
     @Test

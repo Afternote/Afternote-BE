@@ -1,6 +1,6 @@
 package com.afternote.domain.timeletter.service;
 
-import com.afternote.domain.timeletter.repository.TimeLetterScheduledDeliveryRepository;
+import com.afternote.domain.timeletter.repository.TimeLetterRepository;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -20,23 +20,23 @@ import static org.mockito.Mockito.verify;
 class TimeLetterSchedulerTest {
 
     @Mock
-    TimeLetterScheduledDeliveryRepository scheduledDeliveryRepository;
+    TimeLetterRepository timeLetterRepository;
 
     @InjectMocks
     TimeLetterScheduler scheduler;
 
     @Test
-    @DisplayName("현재 시각까지 발송 예정인 타임레터를 SENT 상태로 변경하도록 한 번 요청한다")
-    void delegatesOneBulkTransitionWithTheCurrentCutoff() {
-        given(scheduledDeliveryRepository.markDueDateLettersAsSent(org.mockito.ArgumentMatchers.any()))
+    @DisplayName("현재 시각까지 발송 예정인 타임레터를 한 번에 발송 완료 처리하도록 요청한다")
+    void requestsOneScheduledDeliveryUpdateWithTheCurrentTime() {
+        given(timeLetterRepository.markDueDateLettersAsSent(org.mockito.ArgumentMatchers.any()))
                 .willReturn(3);
         LocalDateTime before = LocalDateTime.now();
 
         scheduler.updateScheduledToSent();
 
         LocalDateTime after = LocalDateTime.now();
-        ArgumentCaptor<LocalDateTime> cutoff = ArgumentCaptor.forClass(LocalDateTime.class);
-        verify(scheduledDeliveryRepository).markDueDateLettersAsSent(cutoff.capture());
-        assertThat(cutoff.getValue()).isBetween(before, after);
+        ArgumentCaptor<LocalDateTime> processedAt = ArgumentCaptor.forClass(LocalDateTime.class);
+        verify(timeLetterRepository).markDueDateLettersAsSent(processedAt.capture());
+        assertThat(processedAt.getValue()).isBetween(before, after);
     }
 }

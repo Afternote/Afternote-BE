@@ -1,8 +1,20 @@
 package com.afternote.domain.timeletter.repository;
 
+import com.afternote.domain.timeletter.schema.TimeLetterScheduleIndexMigrator;
+import jakarta.persistence.EntityManagerFactory;
 import org.junit.jupiter.api.*;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
+import org.springframework.orm.jpa.JpaTransactionManager;
+import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.EnableTransactionManagement;
+import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.DockerClientFactory;
 import org.testcontainers.containers.MySQLContainer;
 
@@ -13,6 +25,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.concurrent.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -20,15 +33,18 @@ import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
 @DisplayName("예약 타임레터 발송 처리 MySQL 통합 테스트")
-class TimeLetterScheduledDeliveryRepositoryMySqlTest {
+class TimeLetterScheduledDeliveryMySqlTest {
 
-    private static final LocalDateTime TRANSITIONED_AT =
+    private static final String SCHEDULE_INDEX_NAME = "idx_time_letters_status_send_at";
+    private static final LocalDateTime PROCESSED_AT =
             LocalDateTime.of(2026, 8, 21, 12, 0, 0, 123_456_000);
 
     private MySQLContainer<?> mysql;
+    private AnnotationConfigApplicationContext context;
     private DataSource dataSource;
     private JdbcTemplate jdbcTemplate;
-    private TimeLetterScheduledDeliveryRepository repository;
+    private TimeLetterRepository repository;
+    private TransactionTemplate transactionTemplate;
     private TimeLetterScheduleIndexMigrator indexMigrator;
 
     @BeforeAll
@@ -48,12 +64,22 @@ class TimeLetterScheduledDeliveryRepositoryMySqlTest {
             );
         }
 
+        context = new AnnotationConfigApplicationContext();
+        context.registerBean(DataSource.class, () -> dataSource);
+        context.register(JpaTestConfiguration.class);
+        context.refresh();
+
         jdbcTemplate = new JdbcTemplate(dataSource);
+        repository = context.getBean(TimeLetterRepository.class);
+        transactionTemplate = new TransactionTemplate(context.getBean(PlatformTransactionManager.class));
         indexMigrator = new TimeLetterScheduleIndexMigrator(jdbcTemplate, dataSource);
     }
 
     @AfterAll
     void stopMysql() {
+        if (context != null) {
+            context.close();
+        }
         if (mysql != null) {
             mysql.stop();
         }
@@ -68,40 +94,36 @@ class TimeLetterScheduledDeliveryRepositoryMySqlTest {
                     status VARCHAR(32) NOT NULL,
                     delivery_mode VARCHAR(20) NOT NULL,
                     send_at DATETIME(6) NULL,
-                    delivered_at DATETIME(6) NULL,
                     created_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
                     updated_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6)
                 ) ENGINE=InnoDB
                 """);
-        repository = new TimeLetterScheduledDeliveryRepository(jdbcTemplate, dataSource);
-        repository.initializeSchemaCompatibility();
     }
 
     @Test
     @DisplayName("발송할 타임레터가 없으면 아무 데이터도 변경하지 않는다")
     void noDueDateLettersLeavesEveryRowUntouched() {
-        insert(1, "SCHEDULED", "DATE", TRANSITIONED_AT.plusMinutes(1), null);
-        insert(2, "SCHEDULED", "POST_DEATH", TRANSITIONED_AT.minusMinutes(1), null);
-        insert(3, "DRAFT", "DATE", TRANSITIONED_AT.minusMinutes(1), null);
+        insert(1, "SCHEDULED", "DATE", PROCESSED_AT.plusMinutes(1));
+        insert(2, "SCHEDULED", "POST_DEATH", PROCESSED_AT.minusMinutes(1));
+        insert(3, "DRAFT", "DATE", PROCESSED_AT.minusMinutes(1));
 
-        int updated = repository.markDueDateLettersAsSent(TRANSITIONED_AT);
+        int updated = markDueDateLettersAsSent();
 
         assertThat(updated).isZero();
         assertThat(countByStatus("SCHEDULED")).isEqualTo(2);
         assertThat(countByStatus("DRAFT")).isOne();
-        assertThat(countDelivered()).isZero();
     }
 
     @Test
-    @DisplayName("발송 시각이 지난 SCHEDULED DATE 타임레터만 한 번에 SENT로 변경한다")
-    void transitionsOnlyDueScheduledDateLettersInOneStatement() {
-        insert(1, "SCHEDULED", "DATE", TRANSITIONED_AT.minusMinutes(2), null);
-        insert(2, "SCHEDULED", "DATE", TRANSITIONED_AT.minusSeconds(1), null);
-        insert(3, "SCHEDULED", "DATE", TRANSITIONED_AT.plusSeconds(1), null);
-        insert(4, "SCHEDULED", "POST_DEATH", TRANSITIONED_AT.minusDays(1), null);
-        insert(5, "DRAFT", "DATE", TRANSITIONED_AT.minusDays(1), null);
+    @DisplayName("발송 시각이 지난 날짜 지정 타임레터만 한 번에 발송 완료 처리한다")
+    void updatesOnlyDueScheduledDateLetters() {
+        insert(1, "SCHEDULED", "DATE", PROCESSED_AT.minusMinutes(2));
+        insert(2, "SCHEDULED", "DATE", PROCESSED_AT.minusSeconds(1));
+        insert(3, "SCHEDULED", "DATE", PROCESSED_AT.plusSeconds(1));
+        insert(4, "SCHEDULED", "POST_DEATH", PROCESSED_AT.minusDays(1));
+        insert(5, "DRAFT", "DATE", PROCESSED_AT.minusDays(1));
 
-        int updated = repository.markDueDateLettersAsSent(TRANSITIONED_AT);
+        int updated = markDueDateLettersAsSent();
 
         assertThat(updated).isEqualTo(2);
         assertThat(statusOf(1)).isEqualTo("SENT");
@@ -109,31 +131,16 @@ class TimeLetterScheduledDeliveryRepositoryMySqlTest {
         assertThat(statusOf(3)).isEqualTo("SCHEDULED");
         assertThat(statusOf(4)).isEqualTo("SCHEDULED");
         assertThat(statusOf(5)).isEqualTo("DRAFT");
-        assertThat(deliveredAtOf(1)).isEqualTo(TRANSITIONED_AT);
-        assertThat(deliveredAtOf(2)).isEqualTo(TRANSITIONED_AT);
-        assertThat(countDelivered()).isEqualTo(2);
+        assertThat(updatedAtOf(1)).isEqualTo(PROCESSED_AT);
+        assertThat(updatedAtOf(2)).isEqualTo(PROCESSED_AT);
     }
 
     @Test
-    @DisplayName("레거시 delivered_at 컬럼 제거 후에도 SENT 상태로 변경한다")
-    void transitionsAfterTheLegacyDeliveredAtColumnIsRemoved() {
-        jdbcTemplate.execute("ALTER TABLE time_letters DROP COLUMN delivered_at");
-        repository = new TimeLetterScheduledDeliveryRepository(jdbcTemplate, dataSource);
-        repository.initializeSchemaCompatibility();
-        insertWithoutDeliveredAt(1, "SCHEDULED", "DATE", TRANSITIONED_AT.minusMinutes(1));
-
-        int updated = repository.markDueDateLettersAsSent(TRANSITIONED_AT);
-
-        assertThat(updated).isOne();
-        assertThat(statusOf(1)).isEqualTo("SENT");
-    }
-
-    @Test
-    @DisplayName("동시에 실행해도 각 타임레터를 정확히 한 번만 SENT 상태로 변경한다")
-    void concurrentRunsTransitionEachLetterExactlyOnce() throws Exception {
+    @DisplayName("동시에 실행해도 각 타임레터를 정확히 한 번만 발송 완료 처리한다")
+    void concurrentRunsUpdateEachLetterExactlyOnce() throws Exception {
         int letterCount = 20;
         for (long id = 1; id <= letterCount; id++) {
-            insert(id, "SCHEDULED", "DATE", TRANSITIONED_AT.minusMinutes(1), null);
+            insert(id, "SCHEDULED", "DATE", PROCESSED_AT.minusMinutes(1));
         }
 
         ExecutorService executor = Executors.newFixedThreadPool(2);
@@ -145,7 +152,7 @@ class TimeLetterScheduledDeliveryRepositoryMySqlTest {
                 results.add(executor.submit(() -> {
                     ready.countDown();
                     assertThat(start.await(5, TimeUnit.SECONDS)).isTrue();
-                    return repository.markDueDateLettersAsSent(TRANSITIONED_AT);
+                    return markDueDateLettersAsSent();
                 }));
             }
 
@@ -161,17 +168,16 @@ class TimeLetterScheduledDeliveryRepositoryMySqlTest {
         }
 
         assertThat(countByStatus("SENT")).isEqualTo(letterCount);
-        assertThat(countDelivered()).isEqualTo(letterCount);
     }
 
     @Test
     @DisplayName("예약 발송 대상 조회용 인덱스는 여러 번 적용해도 중복되지 않고 조회 범위를 줄인다")
-    void migrationIsIdempotentAndChangesThePlanFromTableScanToIndexRange() {
+    void indexCanBeAppliedRepeatedlyAndReducesRowsRead() {
         List<ScheduleRow> rows = new ArrayList<>();
-        rows.add(new ScheduleRow(1, TRANSITIONED_AT.minusMinutes(2)));
-        rows.add(new ScheduleRow(2, TRANSITIONED_AT.minusMinutes(1)));
+        rows.add(new ScheduleRow(1, PROCESSED_AT.minusMinutes(2)));
+        rows.add(new ScheduleRow(2, PROCESSED_AT.minusMinutes(1)));
         for (long id = 3; id <= 2_002; id++) {
-            rows.add(new ScheduleRow(id, TRANSITIONED_AT.plusDays(1).plusSeconds(id)));
+            rows.add(new ScheduleRow(id, PROCESSED_AT.plusDays(1).plusSeconds(id)));
         }
         jdbcTemplate.batchUpdate(
                 """
@@ -194,10 +200,17 @@ class TimeLetterScheduledDeliveryRepositoryMySqlTest {
         Map<String, Object> after = explainDueDateLookup();
 
         assertThat(before.get("key")).isNull();
-        assertThat(after.get("key")).isEqualTo(TimeLetterScheduleIndexMigrator.INDEX_NAME);
+        assertThat(after.get("key")).isEqualTo(SCHEDULE_INDEX_NAME);
         assertThat(((Number) after.get("rows")).longValue())
                 .isLessThan(((Number) before.get("rows")).longValue());
         assertThat(indexColumns()).isEqualTo("status,send_at");
+    }
+
+    private int markDueDateLettersAsSent() {
+        Integer updated = transactionTemplate.execute(
+                status -> repository.markDueDateLettersAsSent(PROCESSED_AT)
+        );
+        return updated == null ? 0 : updated;
     }
 
     private boolean dockerAvailable() {
@@ -208,24 +221,7 @@ class TimeLetterScheduledDeliveryRepositoryMySqlTest {
         }
     }
 
-    private void insert(long id, String status, String deliveryMode, LocalDateTime sendAt,
-                        LocalDateTime deliveredAt) {
-        jdbcTemplate.update(
-                """
-                        INSERT INTO time_letters
-                            (id, status, delivery_mode, send_at, delivered_at)
-                        VALUES (?, ?, ?, ?, ?)
-                        """,
-                id,
-                status,
-                deliveryMode,
-                sendAt,
-                deliveredAt
-        );
-    }
-
-    private void insertWithoutDeliveredAt(long id, String status, String deliveryMode,
-                                          LocalDateTime sendAt) {
+    private void insert(long id, String status, String deliveryMode, LocalDateTime sendAt) {
         jdbcTemplate.update(
                 """
                         INSERT INTO time_letters (id, status, delivery_mode, send_at)
@@ -244,21 +240,15 @@ class TimeLetterScheduledDeliveryRepositoryMySqlTest {
         );
     }
 
-    private long countDelivered() {
-        return jdbcTemplate.queryForObject(
-                "SELECT COUNT(*) FROM time_letters WHERE delivered_at IS NOT NULL", Long.class
-        );
-    }
-
     private String statusOf(long id) {
         return jdbcTemplate.queryForObject(
                 "SELECT status FROM time_letters WHERE id = ?", String.class, id
         );
     }
 
-    private LocalDateTime deliveredAtOf(long id) {
+    private LocalDateTime updatedAtOf(long id) {
         return jdbcTemplate.queryForObject(
-                "SELECT delivered_at FROM time_letters WHERE id = ?", LocalDateTime.class, id
+                "SELECT updated_at FROM time_letters WHERE id = ?", LocalDateTime.class, id
         );
     }
 
@@ -271,7 +261,7 @@ class TimeLetterScheduledDeliveryRepositoryMySqlTest {
                           AND delivery_mode = 'DATE'
                           AND send_at < ?
                         """,
-                TRANSITIONED_AT
+                PROCESSED_AT
         );
     }
 
@@ -286,10 +276,35 @@ class TimeLetterScheduledDeliveryRepositoryMySqlTest {
                         GROUP BY INDEX_NAME
                         """,
                 String.class,
-                TimeLetterScheduleIndexMigrator.INDEX_NAME
+                SCHEDULE_INDEX_NAME
         );
     }
 
     private record ScheduleRow(long id, LocalDateTime sendAt) {
+    }
+
+    @Configuration(proxyBeanMethods = false)
+    @EnableTransactionManagement
+    @EnableJpaRepositories(basePackageClasses = TimeLetterRepository.class)
+    static class JpaTestConfiguration {
+
+        @Bean
+        LocalContainerEntityManagerFactoryBean entityManagerFactory(DataSource dataSource) {
+            LocalContainerEntityManagerFactoryBean factory =
+                    new LocalContainerEntityManagerFactoryBean();
+            factory.setDataSource(dataSource);
+            factory.setPackagesToScan("com.afternote.domain");
+            factory.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+
+            Properties properties = new Properties();
+            properties.setProperty("hibernate.hbm2ddl.auto", "none");
+            factory.setJpaProperties(properties);
+            return factory;
+        }
+
+        @Bean
+        PlatformTransactionManager transactionManager(EntityManagerFactory entityManagerFactory) {
+            return new JpaTransactionManager(entityManagerFactory);
+        }
     }
 }

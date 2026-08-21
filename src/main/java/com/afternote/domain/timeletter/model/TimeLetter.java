@@ -35,10 +35,6 @@ public class TimeLetter extends BaseEntity {
     @Column(name = "send_at")
     private LocalDateTime sendAt;
 
-    // 실제 발송 완료 시간
-    @Column(name = "delivered_at")
-    private LocalDateTime deliveredAt;
-
     // 상태
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

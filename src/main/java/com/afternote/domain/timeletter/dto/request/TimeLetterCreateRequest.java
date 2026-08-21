@@ -4,7 +4,6 @@ import com.afternote.domain.timeletter.model.TimeLetterDeliveryMode;
 import com.afternote.domain.timeletter.model.TimeLetterStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
@@ -35,8 +34,12 @@ public record TimeLetterCreateRequest(
         @Getter
         List<TimeLetterBlockRequest> blocks,
 
-        @Schema(description = "수신자 ID 목록", example = "[1, 2, 3]")
-        @NotEmpty(message = "수신자를 선택해주세요.")
+        @Schema(
+                description = "수신자 ID 목록 (DRAFT는 생략하거나 빈 목록 가능, SCHEDULED는 최소 1명 필수)",
+                example = "[1, 2, 3]",
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         @Getter
         List<Long> receiverIds
 ) {

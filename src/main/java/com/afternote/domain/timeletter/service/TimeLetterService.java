@@ -9,11 +9,7 @@ import com.afternote.domain.timeletter.dto.request.TimeLetterDeleteRequest;
 import com.afternote.domain.timeletter.dto.request.TimeLetterUpdateRequest;
 import com.afternote.domain.timeletter.dto.response.TimeLetterListResponse;
 import com.afternote.domain.timeletter.dto.response.TimeLetterResponse;
-import com.afternote.domain.timeletter.model.TimeLetter;
-import com.afternote.domain.timeletter.model.TimeLetterBlock;
-import com.afternote.domain.timeletter.model.TimeLetterBlockType;
-import com.afternote.domain.timeletter.model.TimeLetterDeliveryMode;
-import com.afternote.domain.timeletter.model.TimeLetterStatus;
+import com.afternote.domain.timeletter.model.*;
 import com.afternote.domain.timeletter.repository.TimeLetterRepository;
 import com.afternote.domain.user.event.UserActivityTouchedEvent;
 import com.afternote.domain.user.model.User;
@@ -137,14 +133,16 @@ public class TimeLetterService {
         // TimeLetter 저장
         TimeLetter savedTimeLetter = timeLetterRepository.save(timeLetter);
 
-        // 수신자 등록
+        // 수신자가 선택된 경우에만 관계를 생성한다.
         // ReceivedService 내부에서 수신자 존재 여부와 소유권 검증을 수행한다.
-        receivedService.createTimeLetterReceivers(
-                savedTimeLetter,
-                userId,
-                receiverIds,
-                request.getSendAt()
-        );
+        if (!receiverIds.isEmpty()) {
+            receivedService.createTimeLetterReceivers(
+                    savedTimeLetter,
+                    userId,
+                    receiverIds,
+                    request.getSendAt()
+            );
+        }
 
         return TimeLetterResponse.from(
                 savedTimeLetter,
@@ -376,7 +374,7 @@ public class TimeLetterService {
                 .distinct()
                 .toList();
 
-        if (normalizedIds.isEmpty()) {
+        if (receiversRequired && normalizedIds.isEmpty()) {
             throw new CustomException(ErrorCode.RECEIVERS_REQUIRED);
         }
 

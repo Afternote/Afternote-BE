@@ -53,10 +53,6 @@ dependencies {
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
-    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
-    testImplementation 'org.testcontainers:junit-jupiter'
-    testImplementation 'org.testcontainers:mysql'
-    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     //스웨거
     implementation 'org.springdoc:springdoc-openapi-starter-webmvc-ui:2.2.0'
@@ -100,36 +96,5 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform {
-        excludeTags 'mysql'
-    }
-    systemProperty 'user.timezone', 'Asia/Seoul'
-}
-
-def verifyDocker = tasks.register('verifyDocker', Exec) {
-    commandLine 'docker', 'info'
-}
-
-tasks.register('mysqlTest', Test) {
-    description = 'Runs tests against a real MySQL container.'
-    group = 'verification'
-    testClassesDirs = sourceSets.test.output.classesDirs
-    classpath = sourceSets.test.runtimeClasspath
-    dependsOn verifyDocker
-    shouldRunAfter tasks.named('test')
-    useJUnitPlatform {
-        includeTags 'mysql'
-    }
-    systemProperty 'user.timezone', 'Asia/Seoul'
-}
-
-tasks.withType(Test).configureEach {
-    testLogging {
-        events 'failed'
-        exceptionFormat = 'full'
-        showExceptions = true
-        showCauses = true
-        showStackTraces = true
-        showStandardStreams = false
-    }
+    useJUnitPlatform()
 }

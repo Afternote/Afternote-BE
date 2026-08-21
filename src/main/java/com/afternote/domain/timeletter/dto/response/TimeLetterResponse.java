@@ -1,6 +1,5 @@
 package com.afternote.domain.timeletter.dto.response;
 
-import com.afternote.domain.timeletter.dto.response.TimeLetterBlockResponse;
 import com.afternote.domain.timeletter.model.TimeLetter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
@@ -21,9 +20,6 @@ public record TimeLetterResponse(
 
         @Getter
         LocalDateTime sendAt,
-
-        @Getter
-        LocalDateTime deliveredAt,
 
         @Getter
         String status,
@@ -47,7 +43,6 @@ public record TimeLetterResponse(
                 .id(timeLetter.getId())
                 .title(timeLetter.getTitle())
                 .sendAt(timeLetter.getSendAt())
-                .deliveredAt(timeLetter.getDeliveredAt())
                 .status(timeLetter.getStatus().name())
                 .blocks(
                         timeLetter.getBlocks().stream()

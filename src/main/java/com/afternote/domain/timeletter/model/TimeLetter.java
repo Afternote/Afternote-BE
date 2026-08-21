@@ -74,7 +74,7 @@ public class TimeLetter extends BaseEntity {
         validateModifiable();
 
         if (title != null) this.title = title;
-        if (sendAt != null) this.sendAt = sendAt;
+        this.sendAt = sendAt;
         if (status != null) this.status = status;
         if (deliveryMode != null) this.deliveryMode = deliveryMode;
     }
@@ -114,6 +114,5 @@ public class TimeLetter extends BaseEntity {
         }
 
         this.status = TimeLetterStatus.SENT;
-        this.deliveredAt = LocalDateTime.now();
     }
 }

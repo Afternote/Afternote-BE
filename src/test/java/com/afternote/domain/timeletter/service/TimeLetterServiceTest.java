@@ -1,9 +1,6 @@
 package com.afternote.domain.timeletter.service;
 
 import com.afternote.domain.image.service.S3Service;
-import com.afternote.domain.receiver.model.Receiver;
-import com.afternote.domain.receiver.model.TimeLetterReceiver;
-import com.afternote.domain.receiver.repository.ReceiverRepository;
 import com.afternote.domain.receiver.repository.TimeLetterReceiverRepository;
 import com.afternote.domain.receiver.service.ReceivedService;
 import com.afternote.domain.timeletter.dto.request.TimeLetterBlockRequest;
@@ -23,7 +20,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -54,9 +50,6 @@ class TimeLetterServiceTest {
     private TimeLetterReceiverRepository timeLetterReceiverRepository;
 
     @Mock
-    private ReceiverRepository receiverRepository;
-
-    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -67,9 +60,6 @@ class TimeLetterServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
-
-    @Mock
-    private TimeLetterDeliveryService timeLetterDeliveryService;
 
     private User testUser;
     private TimeLetter testTimeLetter;
@@ -130,7 +120,12 @@ class TimeLetterServiceTest {
         assertThat(response.getStatus()).isEqualTo(TimeLetterStatus.DRAFT.name());
         assertThat(response.getTitle()).isEqualTo("임시저장 제목");
         verify(timeLetterRepository).save(any(TimeLetter.class));
-        verify(receivedService).createTimeLetterReceivers(any(TimeLetter.class), anyLong(), anyList());
+        verify(receivedService).createTimeLetterReceivers(
+                any(TimeLetter.class),
+                anyLong(),
+                anyList(),
+                isNull()
+        );
     }
 
     @Test
@@ -209,11 +204,8 @@ class TimeLetterServiceTest {
         verify(receivedService).createTimeLetterReceivers(
                 any(TimeLetter.class),
                 eq(1L),
-                eq(List.of(1L))
-        );
-        verify(timeLetterDeliveryService).deliverPostDeathIfConditionAlreadyFulfilled(
-                any(TimeLetter.class),
-                any(LocalDateTime.class)
+                eq(List.of(1L)),
+                isNull()
         );
     }
 
@@ -370,99 +362,19 @@ class TimeLetterServiceTest {
     @Test
     @DisplayName("DATE 타임레터를 POST_DEATH로 바꾸면 기존 발송 예정 시간을 제거한다")
     void updateTimeLetterToPostDeathClearsSendAt() {
-        Receiver receiver = Receiver.builder()
-                .userId(1L)
-                .name("수신자")
-                .email("receiver@example.com")
-                .build();
-        ReflectionTestUtils.setField(receiver, "id", 2L);
-        TimeLetterReceiver timeLetterReceiver = TimeLetterReceiver.builder()
-                .timeLetter(testTimeLetter)
-                .receiver(receiver)
-                .build();
         TimeLetterUpdateRequest request = mock(TimeLetterUpdateRequest.class);
         given(request.getDeliveryMode()).willReturn(TimeLetterDeliveryMode.POST_DEATH);
         given(request.getBlocks()).willReturn(null);
 
-        given(timeLetterReceiverRepository.findByTimeLetterId(1L))
-                .willReturn(List.of(timeLetterReceiver));
-        given(timeLetterReceiverRepository.findByTimeLetterIdForUpdate(1L))
-                .willReturn(List.of(timeLetterReceiver));
-        given(receiverRepository.findAllByIdInOrderByIdForUpdate(List.of(2L)))
-                .willReturn(List.of(receiver));
         given(timeLetterRepository.findByIdAndUserIdForUpdate(1L, 1L))
                 .willReturn(Optional.of(testTimeLetter));
         given(timeLetterReceiverRepository.existsByTimeLetterId(1L)).willReturn(true);
+        given(timeLetterReceiverRepository.findByTimeLetterId(1L)).willReturn(List.of());
 
         timeLetterService.updateTimeLetter(1L, 1L, request);
 
         assertThat(testTimeLetter.getDeliveryMode()).isEqualTo(TimeLetterDeliveryMode.POST_DEATH);
         assertThat(testTimeLetter.getSendAt()).isNull();
-        verify(timeLetterDeliveryService).deliverPostDeathIfConditionAlreadyFulfilled(
-                eq(testTimeLetter),
-                any(LocalDateTime.class)
-        );
-
-        InOrder order = inOrder(
-                receiverRepository,
-                timeLetterRepository,
-                timeLetterReceiverRepository,
-                timeLetterDeliveryService
-        );
-        order.verify(receiverRepository).findAllByIdInOrderByIdForUpdate(List.of(2L));
-        order.verify(timeLetterRepository).findByIdAndUserIdForUpdate(1L, 1L);
-        order.verify(timeLetterReceiverRepository).findByTimeLetterIdForUpdate(1L);
-        order.verify(timeLetterDeliveryService).deliverPostDeathIfConditionAlreadyFulfilled(
-                eq(testTimeLetter),
-                any(LocalDateTime.class)
-        );
-    }
-
-    @Test
-    @DisplayName("TimeLetter 잠금 대기 중 추가된 수신자도 현재 읽기로 다시 반영한다")
-    void updateTimeLetterReloadsReceiversAfterLock() {
-        Receiver receiver2 = Receiver.builder()
-                .userId(1L)
-                .name("기존 수신자")
-                .email("receiver2@example.com")
-                .build();
-        Receiver receiver3 = Receiver.builder()
-                .userId(1L)
-                .name("추가 수신자")
-                .email("receiver3@example.com")
-                .build();
-        ReflectionTestUtils.setField(receiver2, "id", 2L);
-        ReflectionTestUtils.setField(receiver3, "id", 3L);
-        TimeLetterReceiver existingLink = TimeLetterReceiver.builder()
-                .timeLetter(testTimeLetter)
-                .receiver(receiver2)
-                .build();
-        TimeLetterReceiver concurrentlyAddedLink = TimeLetterReceiver.builder()
-                .timeLetter(testTimeLetter)
-                .receiver(receiver3)
-                .build();
-
-        TimeLetterUpdateRequest request = mock(TimeLetterUpdateRequest.class);
-        given(request.getDeliveryMode()).willReturn(TimeLetterDeliveryMode.POST_DEATH);
-        given(request.getBlocks()).willReturn(null);
-        given(timeLetterReceiverRepository.findByTimeLetterId(1L))
-                .willReturn(List.of(existingLink));
-        given(receiverRepository.findAllByIdInOrderByIdForUpdate(List.of(2L)))
-                .willReturn(List.of(receiver2));
-        given(timeLetterRepository.findByIdAndUserIdForUpdate(1L, 1L))
-                .willReturn(Optional.of(testTimeLetter));
-        given(timeLetterReceiverRepository.findByTimeLetterIdForUpdate(1L))
-                .willReturn(List.of(existingLink, concurrentlyAddedLink));
-        given(timeLetterReceiverRepository.existsByTimeLetterId(1L)).willReturn(true);
-
-        TimeLetterResponse response = timeLetterService.updateTimeLetter(1L, 1L, request);
-
-        assertThat(response.getReceiverIds()).containsExactly(2L, 3L);
-        verify(timeLetterReceiverRepository).findByTimeLetterIdForUpdate(1L);
-        verify(timeLetterDeliveryService).deliverPostDeathIfConditionAlreadyFulfilled(
-                eq(testTimeLetter),
-                any(LocalDateTime.class)
-        );
     }
 
     private TimeLetterBlockRequest textBlock(String content, int order) {

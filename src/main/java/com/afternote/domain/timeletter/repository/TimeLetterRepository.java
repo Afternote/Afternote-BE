@@ -34,4 +34,15 @@ public interface TimeLetterRepository extends JpaRepository<TimeLetter, Long> {
     List<TimeLetter> findByIdInAndUserId(List<Long> ids, Long userId);
 
     void deleteByUserIdAndStatus(Long userId, TimeLetterStatus status);
+
+    @Modifying
+    @Query("""
+            UPDATE TimeLetter t
+            SET t.status = com.afternote.domain.timeletter.model.TimeLetterStatus.SENT,
+                t.updatedAt = :processedAt
+            WHERE t.status = com.afternote.domain.timeletter.model.TimeLetterStatus.SCHEDULED
+              AND t.deliveryMode = com.afternote.domain.timeletter.model.TimeLetterDeliveryMode.DATE
+              AND t.sendAt < :processedAt
+            """)
+    int markDueDateLettersAsSent(@Param("processedAt") LocalDateTime processedAt);
 }

@@ -16,13 +16,9 @@ import java.sql.ResultSet;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.contains;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class MysqlSchemaCompatibilityMigratorTest {
@@ -48,6 +44,7 @@ class MysqlSchemaCompatibilityMigratorTest {
 
         verify(jdbcTemplate, never()).query(anyString(), any(RowMapper.class));
         verify(jdbcTemplate, never()).execute(anyString());
+        verify(jdbcTemplate, never()).update(anyString());
     }
 
     @Test
@@ -78,6 +75,11 @@ class MysqlSchemaCompatibilityMigratorTest {
                 });
         given(jdbcTemplate.query(contains("emotion_category"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
                 .willReturn("YES");
+        given(jdbcTemplate.query(contains("time_letter_receiver"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("YES");
+        given(jdbcTemplate.queryForObject(
+                anyString(), eq(Integer.class), eq("time_letters"), eq("delivered_at")))
+                .willReturn(0);
         given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("users"), anyString()))
                 .willReturn(1);
 
@@ -87,6 +89,48 @@ class MysqlSchemaCompatibilityMigratorTest {
         verify(jdbcTemplate).execute(
                 "ALTER TABLE `afternote` MODIFY COLUMN `category_type` VARCHAR(32) NULL");
         verify(jdbcTemplate).execute("ALTER TABLE `afternote` DROP CHECK `afternote_chk_1`");
+        verify(jdbcTemplate, never()).update(argThat((String sql) ->
+                sql.contains("tl.delivery_mode = 'POST_DEATH'")
+                        && sql.contains("SET tlr.delivered_at = NULL")
+        ));
+    }
+
+    @Test
+    @DisplayName("수신자 전달 시각을 정규화하고 중복된 타임레터 전달 시각 컬럼을 제거한다")
+    void makeTimeLetterReceiverDeliveredAtNullable() throws Exception {
+        given(dataSource.getConnection()).willReturn(connection);
+        given(connection.getMetaData()).willReturn(metaData);
+        given(metaData.getDatabaseProductName()).willReturn("MySQL");
+
+        given(jdbcTemplate.query(contains("DATA_TYPE = 'enum'"), any(RowMapper.class)))
+                .willReturn(List.of());
+        given(jdbcTemplate.query(contains("CONSTRAINT_TYPE = 'CHECK'"), any(RowMapper.class)))
+                .willReturn(List.of());
+        given(jdbcTemplate.query(contains("emotion_category"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("YES");
+        given(jdbcTemplate.query(contains("time_letter_receiver"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("NO");
+        given(jdbcTemplate.queryForObject(
+                anyString(), eq(Integer.class), eq("time_letters"), eq("delivered_at")))
+                .willReturn(1);
+        given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("users"), anyString()))
+                .willReturn(1);
+
+        new MysqlSchemaCompatibilityMigrator(jdbcTemplate, dataSource)
+                .run(new DefaultApplicationArguments());
+
+        verify(jdbcTemplate).execute(
+                "ALTER TABLE time_letter_receiver MODIFY COLUMN delivered_at DATETIME(6) NULL"
+        );
+        verify(jdbcTemplate).update(argThat((String sql) ->
+                sql.contains("tl.delivery_mode = 'POST_DEATH'")
+                        && sql.contains("SET tlr.delivered_at = NULL")
+        ));
+        verify(jdbcTemplate).update(contains("tl.status <> 'SENT'"));
+        verify(jdbcTemplate, times(2)).update(contains("tl.status = 'SENT'"));
+        verify(jdbcTemplate, times(2)).update(contains("dc.state = 'FULFILLED'"));
+        verify(jdbcTemplate).update(contains("SELECT DISTINCT tlr.time_letter_id"));
+        verify(jdbcTemplate).execute("ALTER TABLE time_letters DROP COLUMN delivered_at");
     }
 
     @Test

@@ -336,7 +336,7 @@ docker compose --env-file .env.production logs -f afternote-server
    https://ap-northeast-2.console.aws.amazon.com/cloudwatch/home?region=ap-northeast-2#dashboards:name=afternote-ops
 2. **Sentry Issues** — 예외 스택·URL·release  
    https://sentry.io → 프로젝트 `java-spring-boot` → **Issues → Feed**
-3. **앱 로그** — 같은 시각 전후 stdout  
+3. **앱 로그** — 이상 징후가 발생한 시각 전후의 stdout
    https://ap-northeast-2.console.aws.amazon.com/cloudwatch/home?region=ap-northeast-2#logsV2:log-groups/log-group/%2Fafternote%2Fapp
 4. **헬스** — 앱·DB·Redis 분리  
    `GET https://afternote.kro.kr/actuator/health`  

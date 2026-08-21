@@ -9,10 +9,7 @@ import com.afternote.domain.timeletter.dto.request.TimeLetterDeleteRequest;
 import com.afternote.domain.timeletter.dto.request.TimeLetterUpdateRequest;
 import com.afternote.domain.timeletter.dto.response.TimeLetterListResponse;
 import com.afternote.domain.timeletter.dto.response.TimeLetterResponse;
-import com.afternote.domain.timeletter.model.TimeLetter;
-import com.afternote.domain.timeletter.model.TimeLetterBlock;
-import com.afternote.domain.timeletter.model.TimeLetterBlockType;
-import com.afternote.domain.timeletter.model.TimeLetterStatus;
+import com.afternote.domain.timeletter.model.*;
 import com.afternote.domain.timeletter.repository.TimeLetterRepository;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
@@ -22,6 +19,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -35,14 +33,9 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TimeLetterServiceTest {
@@ -67,6 +60,9 @@ class TimeLetterServiceTest {
 
     @Mock
     private ApplicationEventPublisher eventPublisher;
+
+    @Mock
+    private TimeLetterDeliveryService timeLetterDeliveryService;
 
     private User testUser;
     private TimeLetter testTimeLetter;
@@ -127,7 +123,7 @@ class TimeLetterServiceTest {
         assertThat(response.getStatus()).isEqualTo(TimeLetterStatus.DRAFT.name());
         assertThat(response.getTitle()).isEqualTo("임시저장 제목");
         verify(timeLetterRepository).save(any(TimeLetter.class));
-        verify(receivedService).createTimeLetterReceivers(any(TimeLetter.class), anyLong(), anyList(), any());
+        verify(receivedService).createTimeLetterReceivers(any(TimeLetter.class), anyLong(), anyList());
     }
 
     @Test
@@ -169,6 +165,49 @@ class TimeLetterServiceTest {
         assertThat(response.getBlocks()).hasSize(1);
         assertThat(response.getBlocks().get(0).getTextContent()).isEqualTo("정식 등록 내용");
         verify(timeLetterRepository).save(any(TimeLetter.class));
+    }
+
+    @Test
+    @DisplayName("POST_DEATH 타임레터는 발송 예정 시간 없이 생성된다")
+    void createTimeLetter_POST_DEATH_WithoutSendAt_Success() {
+        TimeLetterBlockRequest textBlock = textBlock("사후 전달 내용", 1);
+
+        TimeLetterCreateRequest request = mock(TimeLetterCreateRequest.class);
+        given(request.getStatus()).willReturn(TimeLetterStatus.SCHEDULED);
+        given(request.getTitle()).willReturn("사후 전달 제목");
+        given(request.getBlocks()).willReturn(List.of(textBlock));
+        given(request.getSendAt()).willReturn(null);
+        given(request.getDeliveryMode()).willReturn(TimeLetterDeliveryMode.POST_DEATH);
+        given(request.getReceiverIds()).willReturn(List.of(1L));
+
+        given(userRepository.existsById(1L)).willReturn(true);
+        given(userRepository.getReferenceById(1L)).willReturn(testUser);
+        given(timeLetterRepository.save(any(TimeLetter.class))).willAnswer(invocation -> {
+            TimeLetter saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 4L);
+            return saved;
+        });
+
+        TimeLetterResponse response = timeLetterService.createTimeLetter(1L, request);
+
+        assertThat(response.getStatus()).isEqualTo(TimeLetterStatus.SCHEDULED.name());
+        assertThat(response.getSendAt()).isNull();
+
+        ArgumentCaptor<TimeLetter> timeLetterCaptor = ArgumentCaptor.forClass(TimeLetter.class);
+        verify(timeLetterRepository).save(timeLetterCaptor.capture());
+        assertThat(timeLetterCaptor.getValue().getDeliveryMode())
+                .isEqualTo(TimeLetterDeliveryMode.POST_DEATH);
+        assertThat(timeLetterCaptor.getValue().getSendAt()).isNull();
+
+        verify(receivedService).createTimeLetterReceivers(
+                any(TimeLetter.class),
+                eq(1L),
+                eq(List.of(1L))
+        );
+        verify(timeLetterDeliveryService).deliverPostDeathIfConditionAlreadyFulfilled(
+                any(TimeLetter.class),
+                any(LocalDateTime.class)
+        );
     }
 
     @Test
@@ -319,6 +358,28 @@ class TimeLetterServiceTest {
         TimeLetterResponse response = timeLetterService.updateTimeLetter(1L, 1L, request);
 
         assertThat(response.getTitle()).isEqualTo("수정된 제목");
+    }
+
+    @Test
+    @DisplayName("DATE 타임레터를 POST_DEATH로 바꾸면 기존 발송 예정 시간을 제거한다")
+    void updateTimeLetterToPostDeathClearsSendAt() {
+        TimeLetterUpdateRequest request = mock(TimeLetterUpdateRequest.class);
+        given(request.getDeliveryMode()).willReturn(TimeLetterDeliveryMode.POST_DEATH);
+        given(request.getBlocks()).willReturn(null);
+
+        given(timeLetterRepository.findByIdAndUserIdForUpdate(1L, 1L))
+                .willReturn(Optional.of(testTimeLetter));
+        given(timeLetterReceiverRepository.existsByTimeLetterId(1L)).willReturn(true);
+        given(timeLetterReceiverRepository.findByTimeLetterId(1L)).willReturn(List.of());
+
+        timeLetterService.updateTimeLetter(1L, 1L, request);
+
+        assertThat(testTimeLetter.getDeliveryMode()).isEqualTo(TimeLetterDeliveryMode.POST_DEATH);
+        assertThat(testTimeLetter.getSendAt()).isNull();
+        verify(timeLetterDeliveryService).deliverPostDeathIfConditionAlreadyFulfilled(
+                eq(testTimeLetter),
+                any(LocalDateTime.class)
+        );
     }
 
     private TimeLetterBlockRequest textBlock(String content, int order) {

@@ -1,6 +1,8 @@
 package com.afternote.domain.timeletter.service;
 
 import com.afternote.domain.image.service.S3Service;
+import com.afternote.domain.receiver.model.Receiver;
+import com.afternote.domain.receiver.model.TimeLetterReceiver;
 import com.afternote.domain.receiver.repository.TimeLetterReceiverRepository;
 import com.afternote.domain.receiver.service.ReceivedService;
 import com.afternote.domain.timeletter.dto.request.TimeLetterBlockRequest;
@@ -170,6 +172,33 @@ class TimeLetterServiceTest {
     }
 
     @Test
+    @DisplayName("타임레터 생성 입력의 중복 수신자 ID를 한 번만 등록한다")
+    void createTimeLetter_DeduplicatesReceiverIds() {
+        TimeLetterCreateRequest request = mock(TimeLetterCreateRequest.class);
+        given(request.getStatus()).willReturn(TimeLetterStatus.DRAFT);
+        given(request.getTitle()).willReturn("중복 수신자 정규화");
+        given(request.getReceiverIds()).willReturn(List.of(7L, 7L, 8L, 7L));
+
+        given(userRepository.existsById(1L)).willReturn(true);
+        given(userRepository.getReferenceById(1L)).willReturn(testUser);
+        given(timeLetterRepository.save(any(TimeLetter.class))).willAnswer(invocation -> {
+            TimeLetter saved = invocation.getArgument(0);
+            ReflectionTestUtils.setField(saved, "id", 4L);
+            return saved;
+        });
+
+        TimeLetterResponse response = timeLetterService.createTimeLetter(1L, request);
+
+        assertThat(response.getReceiverIds()).containsExactly(7L, 8L);
+        verify(receivedService).createTimeLetterReceivers(
+                any(TimeLetter.class),
+                eq(1L),
+                eq(List.of(7L, 8L)),
+                isNull()
+        );
+    }
+
+    @Test
     @DisplayName("POST_DEATH 타임레터는 발송 예정 시간 없이 생성된다")
     void createTimeLetter_POST_DEATH_WithoutSendAt_Success() {
         TimeLetterBlockRequest textBlock = textBlock("사후 전달 내용", 1);
@@ -261,6 +290,20 @@ class TimeLetterServiceTest {
     }
 
     @Test
+    @DisplayName("기존 중복 관계가 있어도 타임레터 상세 응답에는 수신자 ID를 한 번만 반환한다")
+    void getTimeLetter_DeduplicatesLegacyReceiverRows() {
+        Receiver receiver = receiver(7L);
+        given(timeLetterRepository.findByIdAndUserId(1L, 1L))
+                .willReturn(Optional.of(testTimeLetter));
+        given(timeLetterReceiverRepository.findByTimeLetterId(1L))
+                .willReturn(List.of(receiverLink(receiver), receiverLink(receiver)));
+
+        TimeLetterResponse response = timeLetterService.getTimeLetter(1L, 1L);
+
+        assertThat(response.getReceiverIds()).containsExactly(7L);
+    }
+
+    @Test
     @DisplayName("SENT 상태 타임레터 수정 시 실패")
     void updateTimeLetter_SentStatus_Fail() {
         TimeLetter sentTimeLetter = TimeLetter.builder()
@@ -322,6 +365,20 @@ class TimeLetterServiceTest {
     }
 
     @Test
+    @DisplayName("기존 중복 관계가 있어도 타임레터 목록 응답에는 수신자 ID를 한 번만 반환한다")
+    void getTimeLetters_DeduplicatesLegacyReceiverRows() {
+        Receiver receiver = receiver(7L);
+        given(timeLetterRepository.findByUserIdAndStatusOrderByCreatedAtDesc(1L, TimeLetterStatus.SCHEDULED))
+                .willReturn(List.of(testTimeLetter));
+        given(timeLetterReceiverRepository.findByTimeLetterIdIn(List.of(1L)))
+                .willReturn(List.of(receiverLink(receiver), receiverLink(receiver)));
+
+        TimeLetterListResponse response = timeLetterService.getTimeLetters(1L);
+
+        assertThat(response.getTimeLetters().get(0).getReceiverIds()).containsExactly(7L);
+    }
+
+    @Test
     @DisplayName("임시저장 전체 조회 성공 (DRAFT만)")
     void getTemporaryTimeLetters_Success() {
         TimeLetter draftLetter = TimeLetter.builder()
@@ -352,11 +409,14 @@ class TimeLetterServiceTest {
 
         given(timeLetterRepository.findByIdAndUserIdForUpdate(1L, 1L)).willReturn(Optional.of(testTimeLetter));
         given(timeLetterReceiverRepository.existsByTimeLetterId(1L)).willReturn(true);
-        given(timeLetterReceiverRepository.findByTimeLetterId(1L)).willReturn(new ArrayList<>());
+        Receiver receiver = receiver(7L);
+        given(timeLetterReceiverRepository.findByTimeLetterId(1L))
+                .willReturn(List.of(receiverLink(receiver), receiverLink(receiver)));
 
         TimeLetterResponse response = timeLetterService.updateTimeLetter(1L, 1L, request);
 
         assertThat(response.getTitle()).isEqualTo("수정된 제목");
+        assertThat(response.getReceiverIds()).containsExactly(7L);
     }
 
     @Test
@@ -383,5 +443,22 @@ class TimeLetterServiceTest {
         given(block.getBlockOrder()).willReturn(order);
         given(block.getTextContent()).willReturn(content);
         return block;
+    }
+
+    private Receiver receiver(Long id) {
+        Receiver receiver = Receiver.builder()
+                .userId(1L)
+                .name("수신자")
+                .build();
+        ReflectionTestUtils.setField(receiver, "id", id);
+        return receiver;
+    }
+
+    private TimeLetterReceiver receiverLink(Receiver receiver) {
+        return TimeLetterReceiver.builder()
+                .timeLetter(testTimeLetter)
+                .receiver(receiver)
+                .deliveredAt(testTimeLetter.getSendAt())
+                .build();
     }
 }

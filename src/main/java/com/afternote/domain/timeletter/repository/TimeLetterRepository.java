@@ -3,10 +3,7 @@ package com.afternote.domain.timeletter.repository;
 import com.afternote.domain.timeletter.model.TimeLetter;
 import com.afternote.domain.timeletter.model.TimeLetterStatus;
 import jakarta.persistence.LockModeType;
-import org.springframework.data.jpa.repository.EntityGraph;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
@@ -38,6 +35,14 @@ public interface TimeLetterRepository extends JpaRepository<TimeLetter, Long> {
 
     void deleteByUserIdAndStatus(Long userId, TimeLetterStatus status);
 
-    @EntityGraph(attributePaths = {"blocks"})
-    List<TimeLetter> findByStatusAndSendAtBefore(TimeLetterStatus status, LocalDateTime dateTime);
+    @Modifying
+    @Query("""
+            UPDATE TimeLetter t
+            SET t.status = com.afternote.domain.timeletter.model.TimeLetterStatus.SENT,
+                t.updatedAt = :processedAt
+            WHERE t.status = com.afternote.domain.timeletter.model.TimeLetterStatus.SCHEDULED
+              AND t.deliveryMode = com.afternote.domain.timeletter.model.TimeLetterDeliveryMode.DATE
+              AND t.sendAt < :processedAt
+            """)
+    int markDueDateLettersAsSent(@Param("processedAt") LocalDateTime processedAt);
 }

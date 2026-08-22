@@ -1,6 +1,7 @@
 package com.afternote.global.config;
 
 import com.afternote.domain.afternote.controller.AfternoteController;
+import com.afternote.domain.afternote.dto.AfternotedetailResponse;
 import com.afternote.domain.appversion.controller.AppVersionController;
 import com.afternote.domain.appversion.dto.AppVersionCheckResponse;
 import com.afternote.domain.music.controller.MusicController;
@@ -88,6 +89,32 @@ class OpenApiContractAnnotationTest {
         assertThat(schema.nullable()).isTrue();
         assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
         assertThat(schema.description()).contains("DRAFT는 생략하거나 빈 목록 가능");
+    }
+
+    @Test
+    @DisplayName("AfternotedetailResponse는 항상 응답 필드와 카테고리별 nullable 필드를 OpenAPI에 반영한다")
+    void afternoteDetailResponse_DocumentsRequiredAndNullableFields() throws Exception {
+        for (String field : Set.of("afternoteId", "category", "title", "isDraft", "receivers", "updatedAt")) {
+            Schema schema = AfternotedetailResponse.class.getDeclaredMethod(field).getAnnotation(Schema.class);
+            assertThat(schema).as("@Schema on AfternotedetailResponse.%s", field).isNotNull();
+            assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.REQUIRED);
+        }
+
+        Schema actions = AfternotedetailResponse.class.getDeclaredMethod("actions").getAnnotation(Schema.class);
+        assertThat(actions.nullable()).isTrue();
+        assertThat(actions.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
+        assertThat(actions.description()).contains("SOCIAL/BUSINESS/GALLERY").contains("PLAYLIST");
+
+        Schema credentials = AfternotedetailResponse.class.getDeclaredMethod("credentials").getAnnotation(Schema.class);
+        assertThat(credentials.nullable()).isTrue();
+        assertThat(credentials.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
+        assertThat(credentials.description()).contains("SOCIAL/BUSINESS");
+
+        for (String field : Set.of("leaveMessage", "playlist")) {
+            Schema schema = AfternotedetailResponse.class.getDeclaredMethod(field).getAnnotation(Schema.class);
+            assertThat(schema.nullable()).isTrue();
+            assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
+        }
     }
 
     @Test

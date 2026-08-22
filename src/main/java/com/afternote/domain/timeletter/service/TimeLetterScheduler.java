@@ -8,11 +8,14 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 @Slf4j
 @Component
 @RequiredArgsConstructor
 public class TimeLetterScheduler {
+
+    private static final ZoneId TIME_LETTER_ZONE = ZoneId.of("Asia/Seoul");
 
     private final TimeLetterRepository timeLetterRepository;
 
@@ -22,7 +25,7 @@ public class TimeLetterScheduler {
     @Scheduled(fixedRate = 60_000)
     @Transactional
     public void updateScheduledToSent() {
-        LocalDateTime processedAt = LocalDateTime.now();
+        LocalDateTime processedAt = LocalDateTime.now(TIME_LETTER_ZONE);
         int updatedCount = timeLetterRepository.markDueDateLettersAsSent(processedAt);
 
         if (updatedCount > 0) {

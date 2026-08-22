@@ -27,6 +27,8 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -176,22 +178,23 @@ class TimeLetterServiceTest {
     }
 
     @Test
-    @DisplayName("SCHEDULED 상태로 타임레터 생성 성공")
+    @DisplayName("SCHEDULED 상태 생성 시 오프셋 시각을 서울 로컬 시각으로 저장한다")
     void createTimeLetter_SCHEDULED_Success() {
-        LocalDateTime futureDate = LocalDateTime.now().plusDays(7);
+        OffsetDateTime requestedSendAt = OffsetDateTime.of(2099, 9, 3, 10, 13, 48, 0, ZoneOffset.UTC);
+        LocalDateTime storedSendAt = LocalDateTime.of(2099, 9, 3, 19, 13, 48);
         TimeLetterBlockRequest textBlock = textBlock("정식 등록 내용", 1);
 
         TimeLetterCreateRequest request = mock(TimeLetterCreateRequest.class);
         given(request.getStatus()).willReturn(TimeLetterStatus.SCHEDULED);
         given(request.getTitle()).willReturn("정식 등록 제목");
         given(request.getBlocks()).willReturn(List.of(textBlock));
-        given(request.getSendAt()).willReturn(futureDate);
+        given(request.getSendAt()).willReturn(requestedSendAt);
         given(request.getReceiverIds()).willReturn(List.of(1L));
 
         TimeLetter scheduledTimeLetter = TimeLetter.builder()
                 .user(testUser)
                 .title("정식 등록 제목")
-                .sendAt(futureDate)
+                .sendAt(storedSendAt)
                 .status(TimeLetterStatus.SCHEDULED)
                 .build();
         ReflectionTestUtils.setField(scheduledTimeLetter, "id", 3L);
@@ -213,7 +216,15 @@ class TimeLetterServiceTest {
         assertThat(response.getTitle()).isEqualTo("정식 등록 제목");
         assertThat(response.getBlocks()).hasSize(1);
         assertThat(response.getBlocks().get(0).getTextContent()).isEqualTo("정식 등록 내용");
-        verify(timeLetterRepository).save(any(TimeLetter.class));
+        ArgumentCaptor<TimeLetter> timeLetterCaptor = ArgumentCaptor.forClass(TimeLetter.class);
+        verify(timeLetterRepository).save(timeLetterCaptor.capture());
+        assertThat(timeLetterCaptor.getValue().getSendAt()).isEqualTo(storedSendAt);
+        verify(receivedService).createTimeLetterReceivers(
+                any(TimeLetter.class),
+                eq(1L),
+                eq(List.of(1L)),
+                eq(storedSendAt)
+        );
     }
 
     @Test
@@ -329,7 +340,7 @@ class TimeLetterServiceTest {
         given(request.getStatus()).willReturn(TimeLetterStatus.SCHEDULED);
         given(request.getTitle()).willReturn(null);
         given(request.getBlocks()).willReturn(List.of(textBlock));
-        given(request.getSendAt()).willReturn(LocalDateTime.now().plusDays(1));
+        given(request.getSendAt()).willReturn(OffsetDateTime.now(ZoneOffset.UTC).plusDays(1));
         lenient().when(request.getReceiverIds()).thenReturn(List.of(1L));
         lenient().when(userRepository.existsById(1L)).thenReturn(true);
         lenient().when(userRepository.getReferenceById(1L)).thenReturn(testUser);
@@ -349,7 +360,7 @@ class TimeLetterServiceTest {
         given(request.getStatus()).willReturn(TimeLetterStatus.SCHEDULED);
         given(request.getTitle()).willReturn("제목");
         given(request.getBlocks()).willReturn(List.of(textBlock));
-        given(request.getSendAt()).willReturn(LocalDateTime.now().minusDays(1));
+        given(request.getSendAt()).willReturn(OffsetDateTime.now(ZoneOffset.UTC).minusDays(1));
         lenient().when(request.getReceiverIds()).thenReturn(List.of(1L));
         lenient().when(userRepository.existsById(1L)).thenReturn(true);
         lenient().when(userRepository.getReferenceById(1L)).thenReturn(testUser);

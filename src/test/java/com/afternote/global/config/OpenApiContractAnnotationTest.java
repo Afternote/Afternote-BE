@@ -5,7 +5,9 @@ import com.afternote.domain.appversion.controller.AppVersionController;
 import com.afternote.domain.appversion.dto.AppVersionCheckResponse;
 import com.afternote.domain.music.controller.MusicController;
 import com.afternote.domain.timeletter.dto.request.TimeLetterCreateRequest;
+import com.afternote.domain.timeletter.dto.request.TimeLetterUpdateRequest;
 import com.afternote.domain.user.controller.UserController;
+import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -14,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
+import java.time.OffsetDateTime;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -85,6 +88,28 @@ class OpenApiContractAnnotationTest {
         assertThat(schema.nullable()).isTrue();
         assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
         assertThat(schema.description()).contains("DRAFT는 생략하거나 빈 목록 가능");
+    }
+
+    @Test
+    @DisplayName("TimeLetter 생성·수정 sendAt은 OffsetDateTime과 Jackson 기본 역직렬화를 사용한다")
+    void timeLetterSendAt_DocumentsAndUsesTheSameInputContract() throws Exception {
+        for (Class<?> requestType : Set.of(TimeLetterCreateRequest.class, TimeLetterUpdateRequest.class)) {
+            Method sendAt = requestType.getDeclaredMethod("sendAt");
+            Schema schema = sendAt.getAnnotation(Schema.class);
+            JsonDeserialize jsonDeserialize = sendAt.getAnnotation(JsonDeserialize.class);
+
+            assertThat(schema).as("@Schema on %s.sendAt", requestType.getSimpleName()).isNotNull();
+            assertThat(schema.type()).isEqualTo("string");
+            assertThat(schema.format()).isEqualTo("date-time");
+            assertThat(schema.example()).endsWith("+09:00");
+            assertThat(schema.description())
+                    .contains("UTC 오프셋 포함")
+                    .doesNotContain("RFC 3339");
+            assertThat(sendAt.getReturnType()).isEqualTo(OffsetDateTime.class);
+            assertThat(jsonDeserialize)
+                    .as("@JsonDeserialize on %s.sendAt", requestType.getSimpleName())
+                    .isNull();
+        }
     }
 
     private static Set<String> responseCodes(Method method) {

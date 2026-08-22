@@ -22,12 +22,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class TimeLetterService {
+
+    private static final ZoneId TIME_LETTER_ZONE = ZoneId.of("Asia/Seoul");
 
     private final TimeLetterRepository timeLetterRepository;
     private final TimeLetterReceiverRepository timeLetterReceiverRepository;
@@ -99,6 +103,7 @@ public class TimeLetterService {
         TimeLetterDeliveryMode deliveryMode = request.getDeliveryMode() != null
                 ? request.getDeliveryMode()
                 : TimeLetterDeliveryMode.DATE;
+        LocalDateTime sendAt = toTimeLetterLocalDateTime(request.getSendAt());
 
         // DRAFT는 수신자 선택 전에도 저장할 수 있지만 SCHEDULED는 최소 1명이 필요하다.
         boolean receiversRequired = request.getStatus() == TimeLetterStatus.SCHEDULED;
@@ -111,7 +116,7 @@ public class TimeLetterService {
         if (request.getStatus() == TimeLetterStatus.SCHEDULED) {
             validateForScheduled(
                     request.getTitle(),
-                    request.getSendAt(),
+                    sendAt,
                     hasContentBlock(request.getBlocks()),
                     deliveryMode
             );
@@ -121,7 +126,7 @@ public class TimeLetterService {
         TimeLetter timeLetter = TimeLetter.builder()
                 .user(user)
                 .title(request.getTitle())
-                .sendAt(deliveryMode == TimeLetterDeliveryMode.POST_DEATH ? null : request.getSendAt())
+                .sendAt(deliveryMode == TimeLetterDeliveryMode.POST_DEATH ? null : sendAt)
                 .status(request.getStatus())
                 .deliveryMode(deliveryMode)
                 .build();
@@ -140,7 +145,7 @@ public class TimeLetterService {
                     savedTimeLetter,
                     userId,
                     receiverIds,
-                    request.getSendAt()
+                    sendAt
             );
         }
 
@@ -262,11 +267,12 @@ public class TimeLetterService {
         TimeLetterDeliveryMode newDeliveryMode = request.getDeliveryMode() != null
                 ? request.getDeliveryMode()
                 : timeLetter.getDeliveryMode();
+        LocalDateTime requestedSendAt = toTimeLetterLocalDateTime(request.getSendAt());
 
         // POST_DEATH 모드는 발송일을 사용하지 않으므로 sendAt을 비운다.
         LocalDateTime newSendAt = newDeliveryMode == TimeLetterDeliveryMode.POST_DEATH
                 ? null
-                : (request.getSendAt() != null ? request.getSendAt() : timeLetter.getSendAt());
+                : (requestedSendAt != null ? requestedSendAt : timeLetter.getSendAt());
 
         // blocks가 요청에 포함되면 요청 blocks 기준으로, 없으면 기존 blocks 기준으로 본문 존재 여부 확인
         boolean hasContent = request.getBlocks() != null
@@ -349,9 +355,15 @@ public class TimeLetterService {
             throw new CustomException(ErrorCode.TIME_LETTER_REQUIRED_FIELDS);
         }
 
-        if (sendAt.isBefore(LocalDateTime.now())) {
+        if (sendAt.isBefore(LocalDateTime.now(TIME_LETTER_ZONE))) {
             throw new CustomException(ErrorCode.TIME_LETTER_INVALID_SEND_DATE);
         }
+    }
+
+    private static LocalDateTime toTimeLetterLocalDateTime(OffsetDateTime sendAt) {
+        return sendAt == null
+                ? null
+                : sendAt.atZoneSameInstant(TIME_LETTER_ZONE).toLocalDateTime();
     }
 
     /**

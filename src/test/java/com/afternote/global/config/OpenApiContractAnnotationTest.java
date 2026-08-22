@@ -4,6 +4,7 @@ import com.afternote.domain.afternote.controller.AfternoteController;
 import com.afternote.domain.appversion.controller.AppVersionController;
 import com.afternote.domain.appversion.dto.AppVersionCheckResponse;
 import com.afternote.domain.music.controller.MusicController;
+import com.afternote.domain.timeletter.dto.request.TimeLetterCreateRequest;
 import com.afternote.domain.user.controller.UserController;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -73,6 +74,17 @@ class OpenApiContractAnnotationTest {
         Schema schema = AppVersionCheckResponse.class.getDeclaredMethod("storeUrl").getAnnotation(Schema.class);
         assertThat(schema).isNotNull();
         assertThat(schema.nullable()).isTrue();
+    }
+
+    @Test
+    @DisplayName("TimeLetter DRAFT의 receiverIds는 OpenAPI에서 선택 입력이다")
+    void timeLetterDraftReceiverIds_AreOptionalInSchema() throws Exception {
+        Schema schema = TimeLetterCreateRequest.class.getDeclaredMethod("receiverIds").getAnnotation(Schema.class);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.nullable()).isTrue();
+        assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
+        assertThat(schema.description()).contains("DRAFT는 생략하거나 빈 목록 가능");
     }
 
     private static Set<String> responseCodes(Method method) {

@@ -38,7 +38,10 @@ public class TimeLetterController {
         return ApiResponse.success(timeLetterService.getTimeLetter(userId, timeLetterId));
     }
 
-    @Operation(summary = "타임레터 등록", description = "새 타임레터를 등록합니다. (DRAFT: 임시저장, SCHEDULED: 정식등록)")
+    @Operation(
+            summary = "타임레터 등록",
+            description = "새 타임레터를 등록합니다. DRAFT는 수신자 선택 전에도 임시저장할 수 있고, SCHEDULED는 수신자가 최소 1명 필요합니다."
+    )
     @PostMapping
     public ApiResponse<TimeLetterResponse> createTimeLetter(
             @Parameter(hidden = true) @UserId Long userId,

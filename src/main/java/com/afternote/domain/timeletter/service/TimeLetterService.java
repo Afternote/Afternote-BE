@@ -9,11 +9,7 @@ import com.afternote.domain.timeletter.dto.request.TimeLetterDeleteRequest;
 import com.afternote.domain.timeletter.dto.request.TimeLetterUpdateRequest;
 import com.afternote.domain.timeletter.dto.response.TimeLetterListResponse;
 import com.afternote.domain.timeletter.dto.response.TimeLetterResponse;
-import com.afternote.domain.timeletter.model.TimeLetter;
-import com.afternote.domain.timeletter.model.TimeLetterBlock;
-import com.afternote.domain.timeletter.model.TimeLetterBlockType;
-import com.afternote.domain.timeletter.model.TimeLetterDeliveryMode;
-import com.afternote.domain.timeletter.model.TimeLetterStatus;
+import com.afternote.domain.timeletter.model.*;
 import com.afternote.domain.timeletter.repository.TimeLetterRepository;
 import com.afternote.domain.user.event.UserActivityTouchedEvent;
 import com.afternote.domain.user.model.User;
@@ -86,7 +82,7 @@ public class TimeLetterService {
     /**
      * 타임레터 생성
      * - 임시저장(DRAFT), 정식등록(SCHEDULED) 모두 생성 가능하다.
-     * - 정책상 임시저장/정식등록 모두 수신자가 반드시 필요하다.
+     * - DRAFT는 수신자 없이 저장할 수 있고, SCHEDULED는 수신자가 반드시 필요하다.
      * - 타임레터 저장, 본문 블록 저장, 수신자 등록을 하나의 트랜잭션으로 처리한다.
      */
     @Transactional
@@ -104,8 +100,9 @@ public class TimeLetterService {
                 ? request.getDeliveryMode()
                 : TimeLetterDeliveryMode.DATE;
 
-        // 수신자 ID는 DRAFT/SCHEDULED 모두 필수
-        List<Long> receiverIds = normalizeReceiverIds(request.getReceiverIds());
+        // DRAFT는 수신자 선택 전에도 저장할 수 있지만 SCHEDULED는 최소 1명이 필요하다.
+        boolean receiversRequired = request.getStatus() == TimeLetterStatus.SCHEDULED;
+        List<Long> receiverIds = normalizeReceiverIds(request.getReceiverIds(), receiversRequired);
 
         // 본문 블록 형식 검증
         validateBlocks(request.getBlocks());
@@ -136,14 +133,16 @@ public class TimeLetterService {
         // TimeLetter 저장
         TimeLetter savedTimeLetter = timeLetterRepository.save(timeLetter);
 
-        // 수신자 등록
+        // 수신자가 선택된 경우에만 관계를 생성한다.
         // ReceivedService 내부에서 수신자 존재 여부와 소유권 검증을 수행한다.
-        receivedService.createTimeLetterReceivers(
-                savedTimeLetter,
-                userId,
-                receiverIds,
-                request.getSendAt()
-        );
+        if (!receiverIds.isEmpty()) {
+            receivedService.createTimeLetterReceivers(
+                    savedTimeLetter,
+                    userId,
+                    receiverIds,
+                    request.getSendAt()
+            );
+        }
 
         return TimeLetterResponse.from(
                 savedTimeLetter,
@@ -357,13 +356,17 @@ public class TimeLetterService {
 
     /**
      * 수신자 ID 목록 정규화 및 검증
-     * - null 또는 빈 목록이면 예외를 발생시킨다.
+     * - DRAFT에서는 null 또는 빈 목록을 빈 불변 목록으로 정규화한다.
+     * - SCHEDULED에서는 null 또는 빈 목록이면 예외를 발생시킨다.
      * - null 원소를 제거하고 중복 ID를 제거한다.
-     * - 중복 제거 후에도 비어 있으면 예외를 발생시킨다.
+     * - SCHEDULED는 중복 제거 후에도 비어 있으면 예외를 발생시킨다.
      */
-    private List<Long> normalizeReceiverIds(List<Long> receiverIds) {
+    private List<Long> normalizeReceiverIds(List<Long> receiverIds, boolean receiversRequired) {
         if (receiverIds == null || receiverIds.isEmpty()) {
-            throw new CustomException(ErrorCode.RECEIVERS_REQUIRED);
+            if (receiversRequired) {
+                throw new CustomException(ErrorCode.RECEIVERS_REQUIRED);
+            }
+            return List.of();
         }
 
         List<Long> normalizedIds = receiverIds.stream()
@@ -371,7 +374,7 @@ public class TimeLetterService {
                 .distinct()
                 .toList();
 
-        if (normalizedIds.isEmpty()) {
+        if (receiversRequired && normalizedIds.isEmpty()) {
             throw new CustomException(ErrorCode.RECEIVERS_REQUIRED);
         }
 

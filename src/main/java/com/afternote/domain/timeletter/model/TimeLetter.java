@@ -35,10 +35,6 @@ public class TimeLetter extends BaseEntity {
     @Column(name = "send_at")
     private LocalDateTime sendAt;
 
-    // 실제 발송 완료 시간
-    @Column(name = "delivered_at")
-    private LocalDateTime deliveredAt;
-
     // 상태
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -78,7 +74,7 @@ public class TimeLetter extends BaseEntity {
         validateModifiable();
 
         if (title != null) this.title = title;
-        if (sendAt != null) this.sendAt = sendAt;
+        this.sendAt = sendAt;
         if (status != null) this.status = status;
         if (deliveryMode != null) this.deliveryMode = deliveryMode;
     }
@@ -118,6 +114,5 @@ public class TimeLetter extends BaseEntity {
         }
 
         this.status = TimeLetterStatus.SENT;
-        this.deliveredAt = LocalDateTime.now();
     }
 }

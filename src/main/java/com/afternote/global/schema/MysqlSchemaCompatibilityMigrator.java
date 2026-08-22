@@ -21,6 +21,8 @@ import java.util.regex.Pattern;
  *   <li>기존 ENUM 컬럼 → VARCHAR (Java enum 값 추가가 INSERT 500 으로 이어지지 않게)</li>
  *   <li>CHECK 제약 제거 (Hibernate 6 가 VARCHAR enum 에 만든 IN (...) 도 값을 갱신하지 않음)</li>
  *   <li>emotions.emotion_category NULL 허용 (#139)</li>
+ *   <li>time_letter_receiver.delivered_at NULL 허용 (#94)</li>
+ *   <li>중복된 time_letters.delivered_at 제거 (#94)</li>
  *   <li>users 마케팅 동의 컬럼 tinyint(1) NOT NULL DEFAULT 0</li>
  * </ul>
  * 실패하면 기동을 중단한다. 조용히 삼키면 배포는 성공하고 런타임만 500 이 난다.
@@ -46,6 +48,19 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
             convertEnumColumnsToVarchar();
             dropCheckConstraints();
             ensureEmotionCategoryNullable();
+            boolean deliveredAtBecameNullable = ensureTimeLetterReceiverDeliveredAtNullable();
+            if (deliveredAtBecameNullable) {
+                clearLegacyPostDeathDeliverySchedules();
+            }
+            boolean legacyTimeLetterDeliveredAtExists =
+                    columnExists("time_letters", "delivered_at");
+            // 레거시 스키마 전환 때만 데이터를 정규화한다. 정상 운영 중 불일치를 기동 시 복구하지 않는다.
+            if (deliveredAtBecameNullable || legacyTimeLetterDeliveredAtExists) {
+                normalizeTimeLetterReceiverDeliveredAt(legacyTimeLetterDeliveredAtExists);
+            }
+            if (legacyTimeLetterDeliveredAtExists) {
+                dropLegacyTimeLetterDeliveredAt();
+            }
             ensureMarketingConsentColumns();
         } catch (RuntimeException e) {
             throw new IllegalStateException("MySQL schema compatibility migration failed", e);
@@ -128,6 +143,123 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
         log.info("[SchemaCompat] altered emotions.emotion_category to NULL");
     }
 
+    private boolean ensureTimeLetterReceiverDeliveredAtNullable() {
+        String nullable = jdbcTemplate.query(
+                """
+                        SELECT IS_NULLABLE FROM information_schema.COLUMNS
+                        WHERE TABLE_SCHEMA = DATABASE()
+                          AND TABLE_NAME = 'time_letter_receiver'
+                          AND COLUMN_NAME = 'delivered_at'
+                        """,
+                rs -> rs.next() ? rs.getString(1) : null
+        );
+        if (nullable == null || "YES".equalsIgnoreCase(nullable)) {
+            return false;
+        }
+        jdbcTemplate.execute(
+                "ALTER TABLE time_letter_receiver MODIFY COLUMN delivered_at DATETIME(6) NULL"
+        );
+        log.info("[SchemaCompat] altered time_letter_receiver.delivered_at to NULL");
+        return true;
+    }
+
+    /**
+     * NULL 전환 전 POST_DEATH 행에 저장될 수 있었던 값은 실제 전달 시각이 아니라 레거시 예정값이다.
+     * 최초 스키마 전환 때만 제거하고, 아래 정규화에서 충족된 조건의 실제 시각을 다시 채운다.
+     */
+    private void clearLegacyPostDeathDeliverySchedules() {
+        int clearedCount = jdbcTemplate.update(
+                """
+                        UPDATE time_letter_receiver tlr
+                        JOIN time_letters tl ON tl.id = tlr.time_letter_id
+                        SET tlr.delivered_at = NULL
+                        WHERE tl.delivery_mode = 'POST_DEATH'
+                          AND tlr.delivered_at IS NOT NULL
+                        """
+        );
+        if (clearedCount > 0) {
+            log.info("[SchemaCompat] cleared {} legacy POST_DEATH delivery schedules", clearedCount);
+        }
+    }
+
+    /**
+     * 과거에는 수신자 연결의 delivered_at에 예약 시각(send_at)을 미리 저장했다.
+     * 이제 실제 전달 완료 시각만 저장하므로 기존 데이터를 같은 의미로 정규화한다.
+     */
+    private void normalizeTimeLetterReceiverDeliveredAt(boolean legacyTimeLetterDeliveredAtExists) {
+        int pendingDateCount = jdbcTemplate.update(
+                """
+                        UPDATE time_letter_receiver tlr
+                        JOIN time_letters tl ON tl.id = tlr.time_letter_id
+                        SET tlr.delivered_at = NULL
+                        WHERE tl.delivery_mode = 'DATE'
+                          AND tl.status <> 'SENT'
+                          AND tlr.delivered_at IS NOT NULL
+                        """
+        );
+        int sentDateCount = legacyTimeLetterDeliveredAtExists
+                ? jdbcTemplate.update(
+                        """
+                                UPDATE time_letter_receiver tlr
+                                JOIN time_letters tl ON tl.id = tlr.time_letter_id
+                                SET tlr.delivered_at = tl.delivered_at
+                                WHERE tl.delivery_mode = 'DATE'
+                                  AND tl.status = 'SENT'
+                                  AND tl.delivered_at IS NOT NULL
+                                  AND (tlr.delivered_at IS NULL OR tlr.delivered_at <> tl.delivered_at)
+                                """
+                )
+                : 0;
+        int postDeathReceiverCount = jdbcTemplate.update(
+                """
+                        UPDATE time_letter_receiver tlr
+                        JOIN time_letters tl ON tl.id = tlr.time_letter_id
+                        JOIN delivery_condition dc
+                          ON dc.receiver_id = tlr.receiver_id
+                         AND dc.content_type = 'TIME_LETTER'
+                         AND dc.state = 'FULFILLED'
+                        SET tlr.delivered_at = dc.fulfilled_at
+                        WHERE tl.delivery_mode = 'POST_DEATH'
+                          AND tl.status <> 'DRAFT'
+                          AND dc.fulfilled_at IS NOT NULL
+                          AND (tlr.delivered_at IS NULL OR tlr.delivered_at <> dc.fulfilled_at)
+                        """
+        );
+        int postDeathLetterCount = jdbcTemplate.update(
+                """
+                        UPDATE time_letters tl
+                        JOIN (
+                            SELECT DISTINCT tlr.time_letter_id
+                            FROM time_letter_receiver tlr
+                            JOIN delivery_condition dc
+                              ON dc.receiver_id = tlr.receiver_id
+                             AND dc.content_type = 'TIME_LETTER'
+                             AND dc.state = 'FULFILLED'
+                            WHERE tlr.delivered_at IS NOT NULL
+                        ) delivered ON delivered.time_letter_id = tl.id
+                        SET tl.status = 'SENT'
+                        WHERE tl.delivery_mode = 'POST_DEATH'
+                          AND tl.status <> 'DRAFT'
+                        """
+        );
+
+        if (pendingDateCount + sentDateCount + postDeathReceiverCount + postDeathLetterCount > 0) {
+            log.info(
+                    "[SchemaCompat] normalized time-letter delivery timestamps "
+                            + "(pendingDate={}, sentDate={}, postDeathReceiver={}, postDeathLetter={})",
+                    pendingDateCount,
+                    sentDateCount,
+                    postDeathReceiverCount,
+                    postDeathLetterCount
+            );
+        }
+    }
+
+    private void dropLegacyTimeLetterDeliveredAt() {
+        jdbcTemplate.execute("ALTER TABLE time_letters DROP COLUMN delivered_at");
+        log.info("[SchemaCompat] dropped legacy time_letters.delivered_at");
+    }
+
     /**
      * 기존 users 행에 NOT NULL 컬럼을 붙일 때 DEFAULT 가 없으면 ALTER 가 실패한다.
      * Hibernate ddl-auto 가 놓치면 여기서 tinyint(1) NOT NULL DEFAULT 0 을 보장한다.
@@ -139,6 +271,17 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
     }
 
     private void ensureTinyintNotNullDefaultFalse(String table, String column) {
+        if (columnExists(table, column)) {
+            return;
+        }
+        jdbcTemplate.execute(
+                "ALTER TABLE `" + quote(table) + "` ADD COLUMN `" + quote(column)
+                        + "` tinyint(1) not null default 0"
+        );
+        log.info("[SchemaCompat] added {}.{} tinyint(1) not null default 0", table, column);
+    }
+
+    private boolean columnExists(String table, String column) {
         Integer count = jdbcTemplate.queryForObject(
                 """
                         SELECT COUNT(*) FROM information_schema.COLUMNS
@@ -150,14 +293,7 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
                 table,
                 column
         );
-        if (count != null && count > 0) {
-            return;
-        }
-        jdbcTemplate.execute(
-                "ALTER TABLE `" + quote(table) + "` ADD COLUMN `" + quote(column)
-                        + "` tinyint(1) not null default 0"
-        );
-        log.info("[SchemaCompat] added {}.{} tinyint(1) not null default 0", table, column);
+        return count != null && count > 0;
     }
 
     static String quote(String identifier) {

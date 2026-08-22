@@ -31,11 +31,12 @@ class TimeLetterSchedulerTest {
     void requestsOneScheduledDeliveryUpdateWithTheCurrentTime() {
         given(timeLetterRepository.markDueDateLettersAsSent(org.mockito.ArgumentMatchers.any()))
                 .willReturn(3);
-        LocalDateTime before = LocalDateTime.now();
+        ZoneId zone = ZoneId.of("Asia/Seoul");
+        LocalDateTime before = LocalDateTime.now(zone);
 
         scheduler.updateScheduledToSent();
 
-        LocalDateTime after = LocalDateTime.now();
+        LocalDateTime after = LocalDateTime.now(zone);
         ArgumentCaptor<LocalDateTime> processedAt = ArgumentCaptor.forClass(LocalDateTime.class);
         verify(timeLetterRepository).markDueDateLettersAsSent(processedAt.capture());
         assertThat(processedAt.getValue()).isBetween(before, after);

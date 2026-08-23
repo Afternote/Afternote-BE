@@ -3,6 +3,7 @@ package com.afternote.domain.afternote.service;
 import com.afternote.domain.afternote.dto.AfternoteCreateRequest;
 import com.afternote.domain.afternote.dto.AfternoteCreateResponse;
 import com.afternote.domain.afternote.dto.AfternotePageResponse;
+import com.afternote.domain.afternote.dto.AfternoteUpdateRequest;
 import com.afternote.domain.afternote.dto.AfternotedetailResponse;
 import com.afternote.domain.afternote.dto.LeaveMessageBlock;
 import com.afternote.domain.afternote.model.Afternote;
@@ -237,7 +238,7 @@ class AfternoteServiceTest {
                 .build();
         given(afternoteRepository.findById(10L)).willReturn(Optional.of(afternote));
 
-        AfternoteCreateRequest request = org.mockito.Mockito.mock(AfternoteCreateRequest.class);
+        AfternoteUpdateRequest request = org.mockito.Mockito.mock(AfternoteUpdateRequest.class);
 
         assertThatThrownBy(() -> afternoteService.updateAfternote(1L, 10L, request))
                 .isInstanceOf(CustomException.class)
@@ -260,12 +261,16 @@ class AfternoteServiceTest {
                 .build();
         ReflectionTestUtils.setField(afternote, "id", 10L);
 
-        AfternoteCreateRequest request = org.mockito.Mockito.mock(AfternoteCreateRequest.class);
-        given(request.getTitle()).willReturn("after");
-        given(request.getLeaveMessage()).willReturn(List.of(
-                LeaveMessageBlock.builder().title("t").body("after-message").build()
-        ));
-        given(request.getActions()).willReturn(List.of("a2", "a3"));
+        AfternoteUpdateRequest request = new AfternoteUpdateRequest(
+                null,
+                "after",
+                List.of("a2", "a3"),
+                List.of(LeaveMessageBlock.builder().title("t").body("after-message").build()),
+                null,
+                null,
+                null,
+                null
+        );
 
         given(afternoteRepository.findById(10L)).willReturn(Optional.of(afternote));
 
@@ -277,8 +282,11 @@ class AfternoteServiceTest {
         assertThat(afternote.getLeaveMessage().get(0).getBody()).isEqualTo("after-message");
         assertThat(afternote.getActions()).containsExactly("a2", "a3");
         verify(validator).validateUpdateRequest(request, AfternoteCategoryType.SOCIAL);
-        verify(validator).validatePublishRequirements(request, afternote);
-        verify(relationService).updateRelationsByCategory(afternote, request, AfternoteCategoryType.SOCIAL);
+        ArgumentCaptor<AfternoteCreateRequest> writeCaptor = ArgumentCaptor.forClass(AfternoteCreateRequest.class);
+        verify(validator).validatePublishRequirements(writeCaptor.capture(), eq(afternote));
+        assertThat(writeCaptor.getValue().getCategory()).isEqualTo(AfternoteCategoryType.SOCIAL);
+        assertThat(writeCaptor.getValue().getTitle()).isEqualTo("after");
+        verify(relationService).updateRelationsByCategory(eq(afternote), writeCaptor.capture(), eq(AfternoteCategoryType.SOCIAL));
     }
 
     @Test

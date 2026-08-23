@@ -2,6 +2,7 @@ package com.afternote.global.config;
 
 import com.afternote.domain.afternote.controller.AfternoteController;
 import com.afternote.domain.afternote.dto.AfternotedetailResponse;
+import com.afternote.domain.afternote.dto.AfternoteUpdateRequest;
 import com.afternote.domain.appversion.controller.AppVersionController;
 import com.afternote.domain.appversion.dto.AppVersionCheckResponse;
 import com.afternote.domain.music.controller.MusicController;
@@ -115,6 +116,17 @@ class OpenApiContractAnnotationTest {
             assertThat(schema.nullable()).isTrue();
             assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
         }
+    }
+
+    @Test
+    @DisplayName("AfternoteUpdateRequest.category 는 OpenAPI에서 선택 입력이다")
+    void afternoteUpdateCategory_IsOptionalInSchema() throws Exception {
+        Schema schema = AfternoteUpdateRequest.class.getDeclaredMethod("category").getAnnotation(Schema.class);
+
+        assertThat(schema).isNotNull();
+        assertThat(schema.nullable()).isTrue();
+        assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
+        assertThat(schema.description()).contains("생략");
     }
 
     @Test

@@ -41,7 +41,11 @@ public record AfternoteCreateRequest(
         @Getter
         PlaylistRequest playlist,
 
-        @Schema(description = "임시저장 여부. true면 credentials/playlist 필수 검증 완화. 생략 시 false", example = "false")
+        @Schema(
+                description = "임시저장 여부. true면 credentials/playlist 등 필수 검증 완화(느슨). "
+                        + "false 또는 생략 시 정식 등록으로 보고 카테고리별 필수값 검증(타이트)",
+                example = "false"
+        )
         @Getter
         Boolean isDraft
 ) {

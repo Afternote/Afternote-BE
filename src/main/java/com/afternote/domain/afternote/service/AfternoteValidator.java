@@ -1,6 +1,7 @@
 package com.afternote.domain.afternote.service;
 
 import com.afternote.domain.afternote.dto.AfternoteCreateRequest;
+import com.afternote.domain.afternote.dto.AfternoteUpdateRequest;
 import com.afternote.domain.afternote.model.Afternote;
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import com.afternote.domain.afternote.service.relation.EncryptedKey;
@@ -13,7 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * Afternote 카테고리별 필드 검증
+ * Afternote 카테고리별 필드 검증.
+ * 임시저장(isDraft=true)은 느슨, 정식 등록은 credentials/playlist 등 필수값을 서버에서 강제한다.
  */
 @Component
 @RequiredArgsConstructor
@@ -21,11 +23,11 @@ public class AfternoteValidator {
 
     private final AfternoteValidationStrategyFactory validationStrategyFactory;
 
-
     /**
      * POST 요청 검증
      * - 있어야 하는 필드: 무조건 있어야 함
      * - 없어야 하는 필드: 무조건 null
+     * - isDraft=true면 카테고리 전략에서 credentials/playlist 필수 완화
      */
     public void validateCreateRequest(AfternoteCreateRequest request) {
         if (request.getCategory() == null) {
@@ -39,18 +41,19 @@ public class AfternoteValidator {
 
     /**
      * PATCH 요청 검증
+     * - category 생략 가능, 보내면 저장값과 같아야 함
      * - 없어야 하는 필드: 있으면 안됨
-     * - 있어야 하는 필드: 있든 없든 상관없음
+     * - 있어야 하는 필드: 부분 갱신이므로 전략에서는 느슨, 정식 등록은 {@link #validatePublishRequirements}
      */
-    public void validateUpdateRequest(AfternoteCreateRequest request, AfternoteCategoryType category) {
-        // 카테고리 변경 불가
-        if (request.getCategory() != null && request.getCategory() != category) {
+    public void validateUpdateRequest(AfternoteUpdateRequest request, AfternoteCategoryType storedCategory) {
+        if (request.getCategory() != null && request.getCategory() != storedCategory) {
             throw new CustomException(ErrorCode.CATEGORY_CANNOT_BE_CHANGED);
         }
 
         AfternoteValidationCommons.validateLeaveMessage(request.getLeaveMessage());
-        AfternoteCategoryValidationStrategy strategy = validationStrategyFactory.get(category);
-        strategy.validateUpdate(request);
+        AfternoteCreateRequest writeRequest = request.toWriteRequest(storedCategory);
+        AfternoteCategoryValidationStrategy strategy = validationStrategyFactory.get(storedCategory);
+        strategy.validateUpdate(writeRequest);
     }
 
     /**

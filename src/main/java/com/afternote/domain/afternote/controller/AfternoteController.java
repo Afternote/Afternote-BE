@@ -3,6 +3,7 @@ package com.afternote.domain.afternote.controller;
 import com.afternote.domain.afternote.dto.AfternoteCreateRequest;
 import com.afternote.domain.afternote.dto.AfternoteCreateResponse;
 import com.afternote.domain.afternote.dto.AfternotePageResponse;
+import com.afternote.domain.afternote.dto.AfternoteUpdateRequest;
 import com.afternote.domain.afternote.dto.AfternotedetailResponse;
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import com.afternote.domain.afternote.service.AfternoteService;
@@ -79,7 +80,8 @@ public class AfternoteController {
     @Operation(
             summary = "애프터노트 생성 API",
             description = "새로운 애프터노트를 생성합니다. 카테고리에 따라 다른 필드를 전달해야 합니다. "
-                    + "isDraft=true이면 credentials/playlist 등 일부 필수 검증이 완화됩니다."
+                    + "isDraft=true(임시저장)이면 credentials/playlist 등 필수 검증을 완화하고, "
+                    + "생략하거나 false이면 정식 등록으로 보고 카테고리별 필수값을 검증합니다."
     )
     @PostMapping
     public ApiResponse<AfternoteCreateResponse> createAfternote(
@@ -92,14 +94,17 @@ public class AfternoteController {
 
     @Operation(
             summary = "애프터노트 수정 API",
-            description = "기존 애프터노트를 수정합니다."
+            description = "기존 애프터노트를 수정합니다. 수정하지 않을 필드는 생략 가능합니다. "
+                    + "category는 변경할 수 없으며 생략을 권장합니다(동일 값 전송은 호환용으로 허용). "
+                    + "isDraft=false(정식 등록)로 남거나 전환되면 credentials/playlist 등 필수값을 "
+                    + "요청·기존 데이터 합쳐 검증합니다. 임시저장(isDraft=true)이면 필수 검증을 완화합니다."
     )
     @PatchMapping("/{afternoteId}")
     public ApiResponse<AfternoteCreateResponse> updateAfternote(
             @Parameter(hidden = true) @UserId Long userId,
             @Parameter(description = "애프터노트 ID", example = "10")
             @PathVariable Long afternoteId,
-            @Valid @RequestBody AfternoteCreateRequest request
+            @Valid @RequestBody AfternoteUpdateRequest request
     ) {
         AfternoteCreateResponse response = afternoteService.updateAfternote(userId, afternoteId, request);
         return ApiResponse.success(response);

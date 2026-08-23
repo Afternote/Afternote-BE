@@ -172,8 +172,22 @@ class AfternoteControllerTest {
     }
 
     @Test
-    @DisplayName("애프터노트 수정 API 성공")
-    void updateAfternote_Success() throws Exception {
+    @DisplayName("애프터노트 수정 API 성공 - category·title 생략")
+    void updateAfternote_OmitCategoryAndTitle_Success() throws Exception {
+        given(afternoteService.updateAfternote(eq(USER_ID), eq(3L), any())).willReturn(null);
+
+        mockMvc.perform(patch("/api/v1/afternotes/{afternoteId}", 3L)
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"actions\":[\"a1\"]}"))
+                .andExpect(status().isOk());
+
+        verify(afternoteService).updateAfternote(eq(USER_ID), eq(3L), any());
+    }
+
+    @Test
+    @DisplayName("애프터노트 수정 API 성공 - 동일 category 호환 전송")
+    void updateAfternote_SameCategory_Success() throws Exception {
         given(afternoteService.updateAfternote(eq(USER_ID), eq(3L), any())).willReturn(null);
 
         mockMvc.perform(patch("/api/v1/afternotes/{afternoteId}", 3L)
@@ -183,16 +197,6 @@ class AfternoteControllerTest {
                 .andExpect(status().isOk());
 
         verify(afternoteService).updateAfternote(eq(USER_ID), eq(3L), any());
-    }
-
-    @Test
-    @DisplayName("애프터노트 수정 API 실패 - title 누락")
-    void updateAfternote_MissingTitle_Fail() throws Exception {
-        mockMvc.perform(patch("/api/v1/afternotes/{afternoteId}", 3L)
-                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"category\":\"SOCIAL\"}"))
-                .andExpect(status().isBadRequest());
     }
 
     @Test

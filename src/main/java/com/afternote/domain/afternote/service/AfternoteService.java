@@ -260,38 +260,43 @@ public class AfternoteService {
     }
 
     @Transactional
-    public AfternoteCreateResponse updateAfternote(Long userId, Long afternoteId, AfternoteCreateRequest request) {
+    public AfternoteCreateResponse updateAfternote(Long userId, Long afternoteId, AfternoteUpdateRequest request) {
         Afternote afternote = afternoteRepository.findById(afternoteId)
                 .orElseThrow(() -> new CustomException(ErrorCode.AFTERNOTE_NOT_FOUND));
         if(!afternote.getUser().getId().equals(userId)) {
             throw new CustomException(ErrorCode.AFTERNOTE_ACCESS_DENIED);
         }
-        // PATCH용 검증 (카테고리 변경 불가 체크)
-        validator.validateUpdateRequest(request, afternote.getCategoryType());
-        // 정식 등록으로 남거나 전환될 때 필수값 검증
-        validator.validatePublishRequirements(request, afternote);
+
+        AfternoteCategoryType storedCategory = afternote.getCategoryType();
+        // category 변경 여부·필드 조합은 UpdateRequest 기준으로 검사
+        validator.validateUpdateRequest(request, storedCategory);
+
+        // 이후 계층은 CreateRequest 형태를 쓰되, category는 항상 저장값을 SSOT로 사용
+        AfternoteCreateRequest writeRequest = request.toWriteRequest(storedCategory);
+        // 정식 등록으로 남거나 전환될 때 필수값 검증 (요청 + 기존 엔티티)
+        validator.validatePublishRequirements(writeRequest, afternote);
 
         // 기본 필드 업데이트 (null이 아닌 경우만)
-        String title = request.getTitle() != null ? request.getTitle() : afternote.getTitle();
-        List<LeaveMessageBlock> leaveMessage = request.getLeaveMessage() != null
-                ? request.getLeaveMessage()
+        String title = writeRequest.getTitle() != null ? writeRequest.getTitle() : afternote.getTitle();
+        List<LeaveMessageBlock> leaveMessage = writeRequest.getLeaveMessage() != null
+                ? writeRequest.getLeaveMessage()
                 : afternote.getLeaveMessage();
 
         // update()가 actions를 clear 하므로 동일 리스트 참조를 넘기지 않는다
         List<String> actions = afternote.getActions() == null
                 ? new ArrayList<>()
                 : new ArrayList<>(afternote.getActions());
-        if ((afternote.getCategoryType() == AfternoteCategoryType.SOCIAL
-                || afternote.getCategoryType() == AfternoteCategoryType.BUSINESS
-                || afternote.getCategoryType() == AfternoteCategoryType.GALLERY)
-                && request.getActions() != null) {
-            actions = new ArrayList<>(request.getActions());
+        if ((storedCategory == AfternoteCategoryType.SOCIAL
+                || storedCategory == AfternoteCategoryType.BUSINESS
+                || storedCategory == AfternoteCategoryType.GALLERY)
+                && writeRequest.getActions() != null) {
+            actions = new ArrayList<>(writeRequest.getActions());
         }
 
-        afternote.update(title, afternote.getSortOrder(), leaveMessage, actions, request.getIsDraft());
+        afternote.update(title, afternote.getSortOrder(), leaveMessage, actions, writeRequest.getIsDraft());
 
         // 관계 데이터 업데이트 (카테고리 전략 + 공통 receivers 처리)
-        relationService.updateRelationsByCategory(afternote, request, afternote.getCategoryType());
+        relationService.updateRelationsByCategory(afternote, writeRequest, storedCategory);
         
         return AfternoteCreateResponse.builder()
                 .afternoteId(afternote.getId())

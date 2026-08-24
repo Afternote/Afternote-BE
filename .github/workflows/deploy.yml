@@ -101,7 +101,7 @@ jobs:
           strip_components: 1
 
       - name: Deploy to EC2
-        uses: appleboy/ssh-action@v1.0.3
+        uses: appleboy/ssh-action@v1.2.5
         env:
           CERTBOT_EMAIL: ${{ secrets.CERTBOT_EMAIL }}
         with:

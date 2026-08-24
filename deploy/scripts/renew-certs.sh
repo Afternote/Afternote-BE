@@ -35,54 +35,25 @@ run_certbot() {
   docker compose --profile cert run --rm --entrypoint certbot certbot "$@"
 }
 
-# keep-until-expiring often skips a challenge, so standalone lineage would stay standalone.
+run_renew() {
+  # -w is required when lineage is webroot but webroot_path was never saved.
+  run_certbot renew --non-interactive --webroot -w /var/www/certbot "$@"
+}
+
+# keep-until-expiring / reconfigure can set authenticator=webroot without a path.
 ensure_renewal_webroot() {
   local conf="${CONF_DIR}/renewal/${DOMAIN}.conf"
   if ! sudo test -f "${conf}"; then
     echo "[WARN] renewal conf missing at ${conf}"
     return 0
   fi
-  if run_certbot reconfigure \
-    --cert-name "${DOMAIN}" \
-    --webroot -w /var/www/certbot \
-    --non-interactive \
-    -d "${DOMAIN}"; then
-    echo "[INFO] certbot reconfigure set authenticator=webroot"
-    return 0
+  echo "[INFO] writing webroot path into ${conf}"
+  sudo python3 "${ROOT}/patch-certbot-webroot.py" "${conf}" "${DOMAIN}"
+  if ! sudo grep -q "webroot_path = /var/www/certbot" "${conf}"; then
+    echo "[ERROR] renewal conf still missing webroot_path after patch"
+    sudo sed -n '1,80p' "${conf}" || true
+    return 1
   fi
-  echo "[INFO] patching ${conf} authenticator=webroot"
-  sudo python3 - "${conf}" "${DOMAIN}" <<'PY'
-import pathlib
-import sys
-
-path = pathlib.Path(sys.argv[1])
-domain = sys.argv[2]
-text = path.read_text()
-lines = []
-seen_auth = False
-seen_webroot_path = False
-for line in text.splitlines(True):
-    if line.startswith("authenticator ="):
-        lines.append("authenticator = webroot\n")
-        seen_auth = True
-        continue
-    if line.startswith("webroot_path ="):
-        lines.append("webroot_path = /var/www/certbot,\n")
-        seen_webroot_path = True
-        continue
-    lines.append(line)
-body = "".join(lines)
-if not seen_auth:
-    if "[renewalparams]\n" in body:
-        body = body.replace("[renewalparams]\n", "[renewalparams]\nauthenticator = webroot\n", 1)
-    else:
-        body += "\n[renewalparams]\nauthenticator = webroot\n"
-if not seen_webroot_path:
-    body += "webroot_path = /var/www/certbot,\n"
-if "[[webroot_map]]" not in body:
-    body += f"[[webroot_map]]\n{domain} = /var/www/certbot\n"
-path.write_text(body)
-PY
 }
 
 have_pem() {
@@ -121,8 +92,10 @@ if [ "${DRY_RUN}" -eq 1 ]; then
     echo "[ERROR] --dry-run needs an existing Let's Encrypt lineage"
     exit 1
   fi
+  ensure_renewal_webroot
+  chown_certs
   echo "[INFO] certbot renew --dry-run (must use webroot, not bind :80)"
-  run_certbot renew --dry-run --non-interactive
+  run_renew --dry-run
   chown_certs
   echo "[INFO] dry-run OK"
   exit 0
@@ -172,7 +145,7 @@ echo "[INFO] after certonly, remaining_days=${days}"
 
 if tls_needs_renew "${days}"; then
   echo "[INFO] remaining <= ${TLS_RENEW_BEFORE_DAYS}d; certbot renew"
-  run_certbot renew --non-interactive
+  run_renew
   chown_certs
   days=$(tls_days_left "${LIVE_PEM}")
   echo "[INFO] after renew, remaining_days=${days}"

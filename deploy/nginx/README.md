@@ -13,7 +13,7 @@
 | `deploy.yml` | 배포마다 webroot 전환 확인. 잔여 30일 이내면 renew, 21일 이하면 배포 실패 |
 | `tls-expiry.yml` | 매일 공개 HTTPS 잔여 일수 검사 (21일 이하 실패) |
 
-운영 인증서가 예전에 standalone으로 발급됐어도, 이 배포가 한 번 성공하면 renewal 설정이 webroot로 바뀝니다.
+운영 인증서가 예전에 standalone으로 발급됐어도, 배포·dry-run이 `renewal/*.conf`에 `authenticator=webroot`와 `webroot_path=/var/www/certbot`을 씁니다. 인증서만 webroot로 바꾸고 경로가 없으면 certbot이 웹루트를 물어보다가 실패합니다.
 
 ```bash
 # 수동 갱신 (nginx 유지)

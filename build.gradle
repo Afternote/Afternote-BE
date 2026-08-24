@@ -80,7 +80,7 @@ dependencies {
     implementation 'software.amazon.awssdk:s3'
 
     // 마인드 레코드 본문 HTML sanitize (XSS 완화)
-    implementation 'com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20240325.1'
+    implementation 'com.googlecode.owasp-java-html-sanitizer:owasp-java-html-sanitizer:20260313.1'
 
     // Google ID Token 검증 (구글 소셜 로그인)
     implementation 'com.google.api-client:google-api-client:2.7.0'

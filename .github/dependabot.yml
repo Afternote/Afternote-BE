@@ -1,5 +1,9 @@
 version: 2
 
+# 버전 업데이트 PR 일시 중지 (CI 분·메이저 범프 비용).
+# 다시 켜려면 아래 open-pull-requests-limit 를 5 로 되돌린다.
+# 보안 알림(Dependabot alerts)과는 별개다.
+
 updates:
   - package-ecosystem: gradle
     directory: /
@@ -9,7 +13,7 @@ updates:
       day: monday
       time: "09:00"
       timezone: Asia/Seoul
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     labels: [enhancement]
     groups:
       gradle-minor-and-patch:
@@ -24,7 +28,7 @@ updates:
       day: monday
       time: "09:10"
       timezone: Asia/Seoul
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     labels: [enhancement]
     groups:
       actions-minor-and-patch:
@@ -39,7 +43,7 @@ updates:
       day: monday
       time: "09:20"
       timezone: Asia/Seoul
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 0
     labels: [enhancement]
     groups:
       docker-minor-and-patch:

@@ -62,7 +62,9 @@ jobs:
           fi
 
       - name: TLS remaining-day helper tests
-        run: bash deploy/scripts/tls-lib-test.sh
+        run: |
+          bash deploy/scripts/tls-lib-test.sh
+          bash deploy/scripts/patch-certbot-webroot-test.sh
 
       - name: Reject unresolved merge markers
         run: |

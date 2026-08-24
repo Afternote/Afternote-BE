@@ -3,12 +3,30 @@
 이 디렉터리의 `nginx.conf`가 운영 EC2 `~/deploy/nginx/nginx.conf`의 **정본**입니다.  
 `main` 브랜치 배포 시 GitHub Actions가 서버로 동기화한 뒤 `nginx -t` + reload 합니다.
 
-그린필드 EC2처럼 `data/certbot`이 비어 있으면 배포 스크립트가:
+그린필드처럼 `data/certbot`이 비어 있으면 배포가 임시 self-signed를 넣고 nginx를 띄운 뒤, GitHub Secret `CERTBOT_EMAIL`이 있으면 **webroot**로 Let's Encrypt를 발급합니다. HTTP 80의 `/.well-known/acme-challenge/`가 그 경로입니다. nginx를 멈추고 certbot이 80포트를 잡는 standalone은 쓰지 않습니다.
 
-1. 디렉터리를 만들고
-2. nginx 기동용 **임시 self-signed**를 넣은 뒤
-3. GitHub Secret `CERTBOT_EMAIL`이 있으면 Let's Encrypt를 webroot로 발급/갱신합니다.
+이후 갱신:
 
+| 경로 | 동작 |
+| --- | --- |
+| 호스트 systemd `afternote-cert-renew.timer` | 매일 `renew-certs.sh` (잔여 30일 이내면 파일 교체 + nginx reload) |
+| `deploy.yml` | 배포마다 webroot 전환 확인. 잔여 30일 이내면 renew, 21일 이하면 배포 실패 |
+| `tls-expiry.yml` | 매일 공개 HTTPS 잔여 일수 검사 (21일 이하 실패) |
+
+운영 인증서가 예전에 standalone으로 발급됐어도, 이 배포가 한 번 성공하면 renewal 설정이 webroot로 바뀝니다.
+
+```bash
+# 수동 갱신 (nginx 유지)
+cd ~/deploy && ./scripts/renew-certs.sh
+
+# ACME만 시험 (파일·reload 없음). 아직 standalone이면 여기서 실패한다.
+cd ~/deploy && ./scripts/renew-certs.sh --dry-run
+
+# nginx만 reload
+cd ~/deploy && ./scripts/reload-nginx.sh
+```
+
+운영 인증서에 `--force-renewal`을 반복하지 마세요. Let's Encrypt rate limit에 걸립니다.
 
 ## 포함 내용
 
@@ -37,5 +55,6 @@ ssh -i ~/.ssh/afternote-server-key.pem ec2-user@<EC2_HOST> \
 | `EC2_HOST` | `3.37.1.210` |
 | `EC2_USER` | `ec2-user` |
 | `EC2_KEY` | `afternote-server-key.pem` 내용 |
+| `CERTBOT_EMAIL` | Let's Encrypt 계정 메일 |
 
 `snippets/json-429.conf`는 참고용이며, 내용은 이미 `nginx.conf`에 합쳐져 있습니다.

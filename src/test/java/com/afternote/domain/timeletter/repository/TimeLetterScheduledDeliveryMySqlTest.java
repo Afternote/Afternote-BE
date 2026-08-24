@@ -200,9 +200,9 @@ class TimeLetterScheduledDeliveryMySqlTest {
         Map<String, Object> after = explainDueDateLookup();
 
         assertThat(before.get("key")).isNull();
+        assertThat(String.valueOf(before.get("type"))).isEqualToIgnoringCase("ALL");
         assertThat(after.get("key")).isEqualTo(SCHEDULE_INDEX_NAME);
-        assertThat(((Number) after.get("rows")).longValue())
-                .isLessThan(((Number) before.get("rows")).longValue());
+        assertThat(String.valueOf(after.get("type"))).isNotEqualToIgnoringCase("ALL");
         assertThat(indexColumns()).isEqualTo("status,send_at");
     }
 

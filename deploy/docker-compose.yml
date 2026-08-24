@@ -45,8 +45,8 @@ services:
     networks:
       - afternote-net
 
-  # 인증서 발급/갱신만 할 때만 실행 (끝나면 프로세스 종료)
-  # 평소: docker compose up -d  → certbot 은 안 뜸 (profile: cert)
+  # 발급/갱신 one-shot. 평소 compose up 에는 안 뜸 (profile: cert).
+  # 매일 호스트 systemd timer 가 renew-certs.sh 로 이 서비스를 호출한다.
   certbot:
     image: certbot/certbot:latest
     profiles:

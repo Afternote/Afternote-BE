@@ -7,6 +7,7 @@
 | `codeql.yml` | `main` 대상 PR·push, 주 1회, 수동 실행 | Java CodeQL 보안 분석 |
 | `dependency-submission.yml` | `main` push, 수동 실행 | Gradle 의존성 그래프 제출 |
 | `deploy.yml` | `main` push, 수동 실행 | 기존 DockerHub·EC2·Nginx/TLS·smoke·contract 배포 흐름 |
+| `tls-expiry.yml` | 매일 22:00 UTC, 수동 실행 | 공개 HTTPS 인증서 잔여 일수가 21일 이하이면 실패 (#188) |
 | `dependabot.yml` | 매주 월요일 | Gradle, GitHub Actions, Docker 업데이트 PR을 `main` 대상으로 생성 |
 
 기본 PR 필수 검사는 이름이 고정된 `CI / build`로 설정한다. 동일 저장소 PR에서는 `contents: write`를 해당 job에만 부여해 `dependency-submission`을 완료한 뒤 `dependency-review`를 실행하고, snapshot 반영을 최대 10분 기다린다. 외부 fork PR에는 write 토큰을 부여하지 않는다. `gradle-test`와 `docker-image`는 이 흐름과 병렬로 실행하며, 집계 job은 세 검증 결과를 모두 요구한다. `main` push에서는 이벤트 특성상 실행되지 않는 dependency review만 `skipped`로 허용하고 나머지 실패·취소는 실패로 처리한다.

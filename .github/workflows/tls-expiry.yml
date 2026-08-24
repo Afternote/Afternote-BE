@@ -1,0 +1,37 @@
+name: TLS certificate expiry
+
+# Public handshake remaining days. Timer/renew lives on EC2; this fails before
+# Let's Encrypt expiry if renew+reload did not happen.
+
+on:
+  schedule:
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  check-public-tls:
+    name: Check public TLS expiry
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v7
+
+      - name: Check presented certificate
+        env:
+          BASE_URL: ${{ secrets.APP_BASE_URL }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BASE_URL:-}" ]; then
+            echo "[ERROR] APP_BASE_URL secret is not set"
+            exit 1
+          fi
+          host="${BASE_URL%/}"
+          host="${host#https://}"
+          host="${host#http://}"
+          host="${host%%/*}"
+          chmod +x deploy/scripts/check-tls-expiry.sh
+          ./deploy/scripts/check-tls-expiry.sh --from-host "${host}"

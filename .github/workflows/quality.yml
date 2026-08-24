@@ -61,6 +61,9 @@ jobs:
             shellcheck "${scripts[@]}"
           fi
 
+      - name: TLS remaining-day helper tests
+        run: bash deploy/scripts/tls-lib-test.sh
+
       - name: Reject unresolved merge markers
         run: |
           if git grep -nI -E '^(<{7}|={7}|>{7})( .*)?$' -- .; then

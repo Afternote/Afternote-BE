@@ -1,0 +1,18 @@
+[Unit]
+Description=AfterNote Let's Encrypt renew (webroot)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=__DEPLOY_USER__
+Group=__DEPLOY_USER__
+SupplementaryGroups=docker
+WorkingDirectory=__DEPLOY_ROOT__
+Environment=HOME=__DEPLOY_HOME__
+Environment=DEPLOY_ROOT=__DEPLOY_ROOT__
+Environment=TLS_DOMAIN=afternote.kro.kr
+ExecStart=__DEPLOY_ROOT__/scripts/renew-certs.sh
+
+[Install]
+WantedBy=multi-user.target

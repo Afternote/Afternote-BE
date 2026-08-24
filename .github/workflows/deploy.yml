@@ -83,7 +83,7 @@ jobs:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USER }}
           key: ${{ secrets.EC2_KEY }}
-          source: "deploy/nginx/nginx.conf,deploy/docker-compose.yml,deploy/scripts/bootstrap-certs.sh"
+          source: "deploy/nginx/nginx.conf,deploy/docker-compose.yml,deploy/scripts,deploy/systemd"
           target: "/tmp/afternote-deploy-sync/"
           overwrite: true
           strip_components: 1
@@ -136,7 +136,7 @@ jobs:
               exit 1
             fi
 
-            mkdir -p ~/deploy/nginx ~/deploy/scripts
+            mkdir -p ~/deploy/nginx ~/deploy/scripts ~/deploy/systemd
             TS=$(date +%Y%m%d%H%M%S)
             if [ -f nginx/nginx.conf ]; then
               cp nginx/nginx.conf "nginx/nginx.conf.bak.${TS}"
@@ -150,9 +150,17 @@ jobs:
 
             cp "${SYNC_ROOT}/nginx/nginx.conf" nginx/nginx.conf
             cp "${SYNC_ROOT}/docker-compose.yml" docker-compose.yml
-            if [ -f "${SYNC_ROOT}/scripts/bootstrap-certs.sh" ]; then
-              cp "${SYNC_ROOT}/scripts/bootstrap-certs.sh" scripts/bootstrap-certs.sh
-              chmod +x scripts/bootstrap-certs.sh
+            if [ -d "${SYNC_ROOT}/scripts" ]; then
+              cp -a "${SYNC_ROOT}/scripts/." scripts/
+              chmod +x scripts/*.sh
+            fi
+            if [ -d "${SYNC_ROOT}/systemd" ]; then
+              cp -a "${SYNC_ROOT}/systemd/." systemd/
+            fi
+            if [ ! -f scripts/renew-certs.sh ] || [ ! -f systemd/afternote-cert-renew.timer ]; then
+              echo "[ERROR] TLS renew scripts/units missing from sync bundle"
+              ls -la "${SYNC_ROOT}" "${SYNC_ROOT}/scripts" "${SYNC_ROOT}/systemd" scripts systemd || true
+              exit 1
             fi
             if [ -f "${SYNC_ROOT}/production.env" ]; then
               cp "${SYNC_ROOT}/production.env" .env
@@ -165,6 +173,10 @@ jobs:
             export DEPLOY_ROOT="$HOME/deploy"
             export TLS_DOMAIN="${TLS_DOMAIN:-afternote.kro.kr}"
             export CERTBOT_EMAIL="${CERTBOT_EMAIL:-}"
+            if [ -n "${CERTBOT_EMAIL}" ]; then
+              printf '%s\n' "${CERTBOT_EMAIL}" > "${DEPLOY_ROOT}/.certbot-email"
+              chmod 600 "${DEPLOY_ROOT}/.certbot-email"
+            fi
             if [ -x scripts/bootstrap-certs.sh ]; then
               ./scripts/bootstrap-certs.sh
             else
@@ -174,47 +186,12 @@ jobs:
             docker compose pull
             docker compose up -d --remove-orphans --pull always
 
-            # Issue LE only when missing. Do NOT wipe an existing lineage every deploy.
-            # Certbot container writes as root — chown afterwards so next bootstrap can see files.
+            # Webroot issue/renew while nginx stays on :80. Do not wipe an existing LE lineage.
             if [ -n "${CERTBOT_EMAIL:-}" ]; then
-              DOMAIN="${TLS_DOMAIN:-afternote.kro.kr}"
-              LIVE="data/certbot/conf/live/${DOMAIN}"
-              if sudo test -f "${LIVE}/fullchain.pem" \
-                && sudo openssl x509 -in "${LIVE}/fullchain.pem" -noout -issuer 2>/dev/null \
-                  | grep -qi "Let's Encrypt"; then
-                echo "[INFO] Let's Encrypt cert already present; skip issuance"
-                sudo chown -R "$(id -u)":"$(id -g)" data/certbot/conf data/certbot/www 2>/dev/null || true
-              else
-                echo "[INFO] requesting Let's Encrypt cert (standalone)..."
-                cd ~/deploy
-                docker compose stop nginx || true
-                # Remove non-LE / broken live dir only
-                sudo rm -rf "data/certbot/conf/live/${DOMAIN}" \
-                       "data/certbot/conf/archive/${DOMAIN}" \
-                       "data/certbot/conf/renewal/${DOMAIN}.conf" || true
-                if docker compose --profile cert run --rm --entrypoint certbot certbot certonly \
-                  --standalone \
-                  --preferred-challenges http \
-                  --email "${CERTBOT_EMAIL}" \
-                  --agree-tos \
-                  --no-eff-email \
-                  --non-interactive \
-                  -d "${DOMAIN}"; then
-                  echo "[INFO] Let's Encrypt certificate ready"
-                else
-                  echo "[WARN] certbot failed; restoring temporary self-signed so nginx can start"
-                  sudo mkdir -p "data/certbot/conf/live/${DOMAIN}"
-                  sudo openssl req -x509 -nodes -newkey rsa:2048 -days 1 \
-                    -keyout "data/certbot/conf/live/${DOMAIN}/privkey.pem" \
-                    -out "data/certbot/conf/live/${DOMAIN}/fullchain.pem" \
-                    -subj "/CN=${DOMAIN}" 2>/dev/null || true
-                  sudo cp "data/certbot/conf/live/${DOMAIN}/fullchain.pem" "data/certbot/conf/live/${DOMAIN}/cert.pem" 2>/dev/null || true
-                  sudo cp "data/certbot/conf/live/${DOMAIN}/fullchain.pem" "data/certbot/conf/live/${DOMAIN}/chain.pem" 2>/dev/null || true
-                fi
-                sudo chown -R "$(id -u)":"$(id -g)" data/certbot/conf data/certbot/www 2>/dev/null || true
-                docker compose up -d nginx
-                docker compose exec -T nginx nginx -s reload || true
-              fi
+              ./scripts/renew-certs.sh
+              ./scripts/install-cert-renew-timer.sh
+            else
+              echo "[WARN] CERTBOT_EMAIL empty; skip Let's Encrypt and renew timer"
             fi
 
             echo "[INFO] validating nginx config..."

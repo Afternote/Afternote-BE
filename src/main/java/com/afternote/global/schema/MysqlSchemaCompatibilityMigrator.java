@@ -24,6 +24,7 @@ import java.util.regex.Pattern;
  *   <li>time_letter_receiver.delivered_at NULL 허용 (#94)</li>
  *   <li>중복된 time_letters.delivered_at 제거 (#94)</li>
  *   <li>users 마케팅 동의 컬럼 tinyint(1) NOT NULL DEFAULT 0</li>
+ *   <li>afternote.category_type NOT NULL (#240)</li>
  * </ul>
  * 실패하면 기동을 중단한다. 조용히 삼키면 배포는 성공하고 런타임만 500 이 난다.
  */
@@ -62,6 +63,7 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
                 dropLegacyTimeLetterDeliveredAt();
             }
             ensureMarketingConsentColumns();
+            ensureAfternoteCategoryTypeNotNull();
         } catch (RuntimeException e) {
             throw new IllegalStateException("MySQL schema compatibility migration failed", e);
         }
@@ -258,6 +260,40 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
     private void dropLegacyTimeLetterDeliveredAt() {
         jdbcTemplate.execute("ALTER TABLE time_letters DROP COLUMN delivered_at");
         log.info("[SchemaCompat] dropped legacy time_letters.delivered_at");
+    }
+
+    /**
+     * 생성 경로가 category 를 필수로 두고 switch 도 null 을 견디지 못하므로 컬럼도 NOT NULL 로 맞춘다.
+     * 기존 NULL 행이 있으면 기동을 실패시켜 수동 보정을 강제한다.
+     */
+    private void ensureAfternoteCategoryTypeNotNull() {
+        String nullable = jdbcTemplate.query(
+                """
+                        SELECT IS_NULLABLE FROM information_schema.COLUMNS
+                        WHERE TABLE_SCHEMA = DATABASE()
+                          AND TABLE_NAME = 'afternote'
+                          AND COLUMN_NAME = 'category_type'
+                        """,
+                rs -> rs.next() ? rs.getString(1) : null
+        );
+        if (nullable == null || "NO".equalsIgnoreCase(nullable)) {
+            return;
+        }
+
+        Integer nullCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM afternote WHERE category_type IS NULL",
+                Integer.class
+        );
+        if (nullCount != null && nullCount > 0) {
+            throw new IllegalStateException(
+                    "afternote.category_type has " + nullCount
+                            + " NULL row(s); cannot apply NOT NULL (#240)");
+        }
+
+        jdbcTemplate.execute(
+                "ALTER TABLE afternote MODIFY COLUMN category_type VARCHAR(20) NOT NULL"
+        );
+        log.info("[SchemaCompat] altered afternote.category_type to NOT NULL");
     }
 
     /**

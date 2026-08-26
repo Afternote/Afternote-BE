@@ -27,7 +27,7 @@ public class Afternote extends BaseEntity {
     private com.afternote.domain.user.model.User user;
     
     @Enumerated(EnumType.STRING)
-    @Column(name = "category_type", length = 20)
+    @Column(name = "category_type", nullable = false, length = 20)
     private AfternoteCategoryType categoryType;
 
     

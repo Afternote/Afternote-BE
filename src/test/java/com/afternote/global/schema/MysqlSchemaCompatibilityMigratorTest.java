@@ -134,6 +134,75 @@ class MysqlSchemaCompatibilityMigratorTest {
     }
 
     @Test
+    @DisplayName("category_type 이 NULL 허용이면 NOT NULL 로 보정한다")
+    void makeAfternoteCategoryTypeNotNull() throws Exception {
+        given(dataSource.getConnection()).willReturn(connection);
+        given(connection.getMetaData()).willReturn(metaData);
+        given(metaData.getDatabaseProductName()).willReturn("MySQL");
+
+        given(jdbcTemplate.query(contains("DATA_TYPE = 'enum'"), any(RowMapper.class)))
+                .willReturn(List.of());
+        given(jdbcTemplate.query(contains("CONSTRAINT_TYPE = 'CHECK'"), any(RowMapper.class)))
+                .willReturn(List.of());
+        given(jdbcTemplate.query(contains("emotion_category"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("YES");
+        given(jdbcTemplate.query(contains("time_letter_receiver"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("YES");
+        given(jdbcTemplate.query(contains("COLUMN_NAME = 'category_type'"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("YES");
+        given(jdbcTemplate.queryForObject(
+                eq("SELECT COUNT(*) FROM afternote WHERE category_type IS NULL"),
+                eq(Integer.class)))
+                .willReturn(0);
+        given(jdbcTemplate.queryForObject(
+                anyString(), eq(Integer.class), eq("time_letters"), eq("delivered_at")))
+                .willReturn(0);
+        given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("users"), anyString()))
+                .willReturn(1);
+
+        new MysqlSchemaCompatibilityMigrator(jdbcTemplate, dataSource)
+                .run(new DefaultApplicationArguments());
+
+        verify(jdbcTemplate).execute(
+                "ALTER TABLE afternote MODIFY COLUMN category_type VARCHAR(20) NOT NULL"
+        );
+    }
+
+    @Test
+    @DisplayName("category_type NULL 행이 있으면 NOT NULL 보정을 거부한다")
+    void rejectAfternoteCategoryTypeNotNullWhenNullRowsExist() throws Exception {
+        given(dataSource.getConnection()).willReturn(connection);
+        given(connection.getMetaData()).willReturn(metaData);
+        given(metaData.getDatabaseProductName()).willReturn("MySQL");
+
+        given(jdbcTemplate.query(contains("DATA_TYPE = 'enum'"), any(RowMapper.class)))
+                .willReturn(List.of());
+        given(jdbcTemplate.query(contains("CONSTRAINT_TYPE = 'CHECK'"), any(RowMapper.class)))
+                .willReturn(List.of());
+        given(jdbcTemplate.query(contains("emotion_category"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("YES");
+        given(jdbcTemplate.query(contains("time_letter_receiver"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("YES");
+        given(jdbcTemplate.query(contains("COLUMN_NAME = 'category_type'"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("YES");
+        given(jdbcTemplate.queryForObject(
+                eq("SELECT COUNT(*) FROM afternote WHERE category_type IS NULL"),
+                eq(Integer.class)))
+                .willReturn(2);
+        given(jdbcTemplate.queryForObject(
+                anyString(), eq(Integer.class), eq("time_letters"), eq("delivered_at")))
+                .willReturn(0);
+        given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("users"), anyString()))
+                .willReturn(1);
+
+        assertThatThrownBy(() -> new MysqlSchemaCompatibilityMigrator(jdbcTemplate, dataSource)
+                .run(new DefaultApplicationArguments()))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("MySQL schema compatibility migration failed")
+                .hasRootCauseMessage("afternote.category_type has 2 NULL row(s); cannot apply NOT NULL (#240)");
+    }
+
+    @Test
     @DisplayName("식별자에 허용되지 않은 문자가 있으면 거부한다")
     void rejectUnsafeIdentifier() {
         assertThatThrownBy(() -> MysqlSchemaCompatibilityMigrator.quote("afternote;drop"))

@@ -17,7 +17,7 @@ public record ReceivedAfternoteDetailResponse(
         @Getter
         Long id,
 
-        @Schema(description = "카테고리", example = "PLAYLIST")
+        @Schema(description = "카테고리", example = "PLAYLIST", requiredMode = Schema.RequiredMode.REQUIRED)
         @Getter
         AfternoteCategoryType category,
 

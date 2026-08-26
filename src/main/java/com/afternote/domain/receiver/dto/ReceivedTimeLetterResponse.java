@@ -76,9 +76,10 @@ public record ReceivedTimeLetterResponse(
     ) {
         TimeLetter timeLetter = timeLetterReceiver.getTimeLetter();
 
-        // sendAt이 아직 지나지 않은 경우 본문/제목/발신자 정보 숨김
-        boolean isAvailable = timeLetter.getSendAt() != null
-                && !timeLetter.getSendAt().isAfter(LocalDateTime.now());
+        // DATE: sendAt이 지난 뒤에만 본문 공개. POST_DEATH: 수신 경로에 올렸으면 조건 충족과 같으므로 공개.
+        boolean isAvailable = timeLetter.isPostDeath()
+                || (timeLetter.getSendAt() != null
+                && !timeLetter.getSendAt().isAfter(LocalDateTime.now()));
 
         List<TimeLetterBlockResponse> blockResponses = isAvailable
                 ? timeLetter.getBlocks().stream()

@@ -18,7 +18,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 
 @Service
@@ -91,128 +94,129 @@ public class AfternoteService {
                 .map(ar -> AfternoteReceiverResponse.from(ar.getReceiver()))
                 .collect(Collectors.toList());
         
-        AfternotedetailResponse response;
-        
-        // 카테고리별 데이터 조회 및 응답 생성
-        switch (afternote.getCategoryType()) {
-            case SOCIAL, BUSINESS:
-                // secureContents에서 credentials 가져오고 복호화
-                AfternoteCreateRequest.CredentialsRequest credentials = null;
-                
-                String accountId = afternote.getSecureContents().stream()
-                        .filter(sc -> EncryptedKey.ACCOUNT_ID.matches(sc.getKeyName()))
-                        .findFirst()
-                        .map(sc -> chaChaEncryptionUtil.decrypt(sc.getEncryptedValue()))
-                        .orElse(null);
-                
-                String accountPassword = afternote.getSecureContents().stream()
-                        .filter(sc -> EncryptedKey.ACCOUNT_PASSWORD.matches(sc.getKeyName()))
-                        .findFirst()
-                        .map(sc -> chaChaEncryptionUtil.decrypt(sc.getEncryptedValue()))
-                        .orElse(null);
-                
-                if (accountId != null || accountPassword != null) {
-                    credentials = new AfternoteCreateRequest.CredentialsRequest(accountId, accountPassword);
-                }
-                
-                response = new AfternotedetailResponse(
-                        afternote.getId(),
-                        afternote.getCategoryType(),
-                        afternote.getTitle(),
-                        Boolean.TRUE.equals(afternote.getIsDraft()),
-                        afternote.getActions(),
-                        afternote.getLeaveMessage(),
-                        credentials,
-                        receivers,
-                        null,
-                        afternote.getUpdatedAt()
-                );
-                break;
-                
-            case GALLERY:
-                response = new AfternotedetailResponse(
-                        afternote.getId(),
-                        afternote.getCategoryType(),
-                        afternote.getTitle(),
-                        Boolean.TRUE.equals(afternote.getIsDraft()),
-                        afternote.getActions(),
-                        afternote.getLeaveMessage(),
-                        null,
-                        receivers,
-                        null,
-                        afternote.getUpdatedAt()
-                );
-                break;
-                
-            case PLAYLIST:
-                // playlist 매핑
-                AfternoteCreateRequest.PlaylistRequest playlistRequest = null;
-                
-                if (afternote.getPlaylist() != null) {
-                    AfternotePlaylist playlist = afternote.getPlaylist();
-                    
-                    // songs 매핑
-                    List<AfternoteCreateRequest.SongRequest> songs = playlist.getItems().stream()
-                            .map(item -> new AfternoteCreateRequest.SongRequest(
-                                    item.getSongTitle(),
-                                    item.getArtist(),
-                                    s3Service.generateGetPresignedUrl(item.getCoverUrl())
-                            ))
-                            .collect(Collectors.toList());
-
-                    // memorialVideo 매핑 (videoUrl, thumbnailUrl presigned GET 변환)
-                    AfternoteCreateRequest.MemorialVideoRequest memorialVideo = null;
-                    if (playlist.getMemorialVideo() != null) {
-                        memorialVideo = new AfternoteCreateRequest.MemorialVideoRequest(
-                                s3Service.generateGetPresignedUrl(playlist.getMemorialVideo().getVideoUrl()),
-                                s3Service.generateGetPresignedUrl(playlist.getMemorialVideo().getThumbnailUrl())
-                        );
-                    }
-
-                    // memorialPhotoUrl presigned GET 변환
-                    String memorialPhotoUrlPresigned = null;
-                    if (playlist.getMemorialPhotoUrl() != null) {
-                        memorialPhotoUrlPresigned = s3Service.generateGetPresignedUrl(playlist.getMemorialPhotoUrl());
-                    }
-
-                    playlistRequest = new AfternoteCreateRequest.PlaylistRequest(
-                            playlist.getAtmosphere(),
-                            memorialPhotoUrlPresigned,
-                            songs,
-                            memorialVideo
-                    );
-                }
-                
-                response = new AfternotedetailResponse(
-                        afternote.getId(),
-                        afternote.getCategoryType(),
-                        afternote.getTitle(),
-                        Boolean.TRUE.equals(afternote.getIsDraft()),
-                        null,
-                        afternote.getLeaveMessage(),
-                        null,
-                        receivers,
-                        playlistRequest,
-                        afternote.getUpdatedAt()
-                );
-                break;
-                
-            default:
-                response = new AfternotedetailResponse(
-                        afternote.getId(),
-                        afternote.getCategoryType(),
-                        afternote.getTitle(),
-                        Boolean.TRUE.equals(afternote.getIsDraft()),
-                        afternote.getActions(),
-                        afternote.getLeaveMessage(),
-                        null,
-                        receivers,
-                        null,
-                        afternote.getUpdatedAt()
-                );
+        Function<Afternote, AfternotedetailResponse> responseFactory =
+                detailResponseFactories(receivers).get(afternote.getCategoryType());
+        if (responseFactory == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
         }
-        
-        return response;
+        return responseFactory.apply(afternote);
+    }
+
+    private Map<AfternoteCategoryType, Function<Afternote, AfternotedetailResponse>> detailResponseFactories(
+            List<AfternoteReceiverResponse> receivers
+    ) {
+        Map<AfternoteCategoryType, Function<Afternote, AfternotedetailResponse>> factories =
+                new EnumMap<>(AfternoteCategoryType.class);
+        Function<Afternote, AfternotedetailResponse> credentialDetail =
+                afternote -> buildCredentialDetailResponse(afternote, receivers);
+
+        factories.put(AfternoteCategoryType.SOCIAL, credentialDetail);
+        factories.put(AfternoteCategoryType.BUSINESS, credentialDetail);
+        factories.put(AfternoteCategoryType.GALLERY, afternote -> buildGalleryDetailResponse(afternote, receivers));
+        factories.put(AfternoteCategoryType.PLAYLIST, afternote -> buildPlaylistDetailResponse(afternote, receivers));
+        return factories;
+    }
+
+    private AfternotedetailResponse buildCredentialDetailResponse(
+            Afternote afternote,
+            List<AfternoteReceiverResponse> receivers
+    ) {
+        String accountId = findDecryptedSecureValue(afternote, EncryptedKey.ACCOUNT_ID);
+        String accountPassword = findDecryptedSecureValue(afternote, EncryptedKey.ACCOUNT_PASSWORD);
+        AfternoteCreateRequest.CredentialsRequest credentials = accountId != null || accountPassword != null
+                ? new AfternoteCreateRequest.CredentialsRequest(accountId, accountPassword)
+                : null;
+
+        return new AfternotedetailResponse(
+                afternote.getId(),
+                afternote.getCategoryType(),
+                afternote.getTitle(),
+                Boolean.TRUE.equals(afternote.getIsDraft()),
+                afternote.getActions(),
+                afternote.getLeaveMessage(),
+                credentials,
+                receivers,
+                null,
+                afternote.getUpdatedAt()
+        );
+    }
+
+    private String findDecryptedSecureValue(Afternote afternote, EncryptedKey key) {
+        return afternote.getSecureContents().stream()
+                .filter(sc -> key.matches(sc.getKeyName()))
+                .findFirst()
+                .map(sc -> chaChaEncryptionUtil.decrypt(sc.getEncryptedValue()))
+                .orElse(null);
+    }
+
+    private AfternotedetailResponse buildGalleryDetailResponse(
+            Afternote afternote,
+            List<AfternoteReceiverResponse> receivers
+    ) {
+        return new AfternotedetailResponse(
+                afternote.getId(),
+                afternote.getCategoryType(),
+                afternote.getTitle(),
+                Boolean.TRUE.equals(afternote.getIsDraft()),
+                afternote.getActions(),
+                afternote.getLeaveMessage(),
+                null,
+                receivers,
+                null,
+                afternote.getUpdatedAt()
+        );
+    }
+
+    private AfternotedetailResponse buildPlaylistDetailResponse(
+            Afternote afternote,
+            List<AfternoteReceiverResponse> receivers
+    ) {
+        AfternoteCreateRequest.PlaylistRequest playlistRequest = toPlaylistRequest(afternote.getPlaylist());
+
+        return new AfternotedetailResponse(
+                afternote.getId(),
+                afternote.getCategoryType(),
+                afternote.getTitle(),
+                Boolean.TRUE.equals(afternote.getIsDraft()),
+                null,
+                afternote.getLeaveMessage(),
+                null,
+                receivers,
+                playlistRequest,
+                afternote.getUpdatedAt()
+        );
+    }
+
+    private AfternoteCreateRequest.PlaylistRequest toPlaylistRequest(AfternotePlaylist playlist) {
+        if (playlist == null) {
+            return null;
+        }
+
+        List<AfternoteCreateRequest.SongRequest> songs = playlist.getItems().stream()
+                .map(item -> new AfternoteCreateRequest.SongRequest(
+                        item.getSongTitle(),
+                        item.getArtist(),
+                        s3Service.generateGetPresignedUrl(item.getCoverUrl())
+                ))
+                .toList();
+
+        AfternoteCreateRequest.MemorialVideoRequest memorialVideo = playlist.getMemorialVideo() != null
+                ? new AfternoteCreateRequest.MemorialVideoRequest(
+                s3Service.generateGetPresignedUrl(playlist.getMemorialVideo().getVideoUrl()),
+                s3Service.generateGetPresignedUrl(playlist.getMemorialVideo().getThumbnailUrl())
+        )
+                : null;
+
+        String memorialPhotoUrlPresigned = playlist.getMemorialPhotoUrl() != null
+                ? s3Service.generateGetPresignedUrl(playlist.getMemorialPhotoUrl())
+                : null;
+
+        return new AfternoteCreateRequest.PlaylistRequest(
+                playlist.getAtmosphere(),
+                memorialPhotoUrlPresigned,
+                songs,
+                memorialVideo
+        );
     }
 
     @Transactional

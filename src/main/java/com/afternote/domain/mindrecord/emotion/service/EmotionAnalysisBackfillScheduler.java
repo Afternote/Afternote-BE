@@ -14,7 +14,10 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Consumer;
 
 /**
  * Gemini 일시 실패로 PENDING에 남은 감정 분석과, 감정 행 자체가 없는 누락분을 주기적으로 재시도한다.
@@ -44,9 +47,7 @@ public class EmotionAnalysisBackfillScheduler {
             return;
         }
         log.info("[EmotionBackfill] retrying {} pending/missing analyses", candidates.size());
-        for (RetryCandidate candidate : candidates) {
-            dispatch(candidate);
-        }
+        candidates.forEach(this::dispatch);
     }
 
     private List<RetryCandidate> findMissingEmotionSources(int limit) {
@@ -87,12 +88,23 @@ public class EmotionAnalysisBackfillScheduler {
     }
 
     private void dispatch(RetryCandidate candidate) {
-        switch (candidate.sourceType()) {
-            case DIARY -> emotionAnalysisRunner.runDiaryAnalysis(candidate.userId(), candidate.sourceId());
-            case DAILY_QUESTION -> emotionAnalysisRunner.runDailyQuestionAnalysis(
-                    candidate.userId(), candidate.sourceId());
-            case DEEP_THOUGHT -> emotionAnalysisRunner.runDeepThoughtAnalysis(
-                    candidate.userId(), candidate.sourceId());
-        }
+        analysisDispatchers().get(candidate.sourceType()).accept(candidate);
+    }
+
+    private Map<EmotionSourceType, Consumer<RetryCandidate>> analysisDispatchers() {
+        Map<EmotionSourceType, Consumer<RetryCandidate>> dispatchers = new EnumMap<>(EmotionSourceType.class);
+        dispatchers.put(
+                EmotionSourceType.DIARY,
+                candidate -> emotionAnalysisRunner.runDiaryAnalysis(candidate.userId(), candidate.sourceId())
+        );
+        dispatchers.put(
+                EmotionSourceType.DAILY_QUESTION,
+                candidate -> emotionAnalysisRunner.runDailyQuestionAnalysis(candidate.userId(), candidate.sourceId())
+        );
+        dispatchers.put(
+                EmotionSourceType.DEEP_THOUGHT,
+                candidate -> emotionAnalysisRunner.runDeepThoughtAnalysis(candidate.userId(), candidate.sourceId())
+        );
+        return dispatchers;
     }
 }

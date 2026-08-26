@@ -78,6 +78,20 @@ public class S3Service {
     );
     private static final Set<String> VIDEO_EXTENSIONS = Set.of("mp4", "mov");
     private static final Set<String> AUDIO_EXTENSIONS = Set.of("mp3", "m4a", "wav");
+    private static final Map<String, String> CONTENT_TYPES = Map.ofEntries(
+            Map.entry("jpg", "image/jpeg"),
+            Map.entry("jpeg", "image/jpeg"),
+            Map.entry("png", "image/png"),
+            Map.entry("gif", "image/gif"),
+            Map.entry("webp", "image/webp"),
+            Map.entry("heic", "image/heic"),
+            Map.entry("mp4", "video/mp4"),
+            Map.entry("mov", "video/quicktime"),
+            Map.entry("mp3", "audio/mpeg"),
+            Map.entry("m4a", "audio/mp4"),
+            Map.entry("wav", "audio/wav"),
+            Map.entry("pdf", "application/pdf")
+    );
     private static final Duration PRESIGNED_URL_EXPIRATION = Duration.ofMinutes(10);
 
     /**
@@ -419,19 +433,10 @@ public class S3Service {
     }
 
     private String getContentType(String extension) {
-        return switch (extension) {
-            case "jpg", "jpeg" -> "image/jpeg";
-            case "png" -> "image/png";
-            case "gif" -> "image/gif";
-            case "webp" -> "image/webp";
-            case "heic" -> "image/heic";
-            case "mp4" -> "video/mp4";
-            case "mov" -> "video/quicktime";
-            case "mp3" -> "audio/mpeg";
-            case "m4a" -> "audio/mp4";
-            case "wav" -> "audio/wav";
-            case "pdf" -> "application/pdf";
-            default -> throw new CustomException(ErrorCode.INVALID_FILE_EXTENSION);
-        };
+        String contentType = CONTENT_TYPES.get(extension);
+        if (contentType == null) {
+            throw new CustomException(ErrorCode.INVALID_FILE_EXTENSION);
+        }
+        return contentType;
     }
 }

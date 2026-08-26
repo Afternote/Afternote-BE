@@ -11,6 +11,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
+import java.util.EnumMap;
+import java.util.Map;
+import java.util.function.BiConsumer;
 
 /**
  * 수신자 x 콘텐츠 타입 단위의 사후 전달 조건.
@@ -27,6 +30,9 @@ import java.time.LocalDateTime;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class DeliveryCondition extends BaseEntity {
+
+    private static final Map<DeliveryConditionType, BiConsumer<DeliveryCondition, InactivityPeriod>> CONDITION_APPLIERS =
+            createConditionAppliers();
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -83,19 +89,28 @@ public class DeliveryCondition extends BaseEntity {
         this.gracePeriodStartedAt = null;
         this.fulfilledAt = null;
 
-        switch (conditionType) {
-            case INACTIVITY -> {
-                if (inactivityPeriod == null) {
-                    throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
-                }
-                this.inactivityPeriod = inactivityPeriod;
-                this.state = ConditionState.ACTIVE;
-            }
-            case RECEIVER_REQUEST -> {
-                this.inactivityPeriod = null;
-                this.state = ConditionState.WAITING_VERIFICATION;
-            }
+        CONDITION_APPLIERS.get(conditionType).accept(this, inactivityPeriod);
+    }
+
+    private static Map<DeliveryConditionType, BiConsumer<DeliveryCondition, InactivityPeriod>> createConditionAppliers() {
+        Map<DeliveryConditionType, BiConsumer<DeliveryCondition, InactivityPeriod>> appliers =
+                new EnumMap<>(DeliveryConditionType.class);
+        appliers.put(DeliveryConditionType.INACTIVITY, DeliveryCondition::applyInactivityCondition);
+        appliers.put(DeliveryConditionType.RECEIVER_REQUEST, DeliveryCondition::applyReceiverRequestCondition);
+        return Map.copyOf(appliers);
+    }
+
+    private void applyInactivityCondition(InactivityPeriod inactivityPeriod) {
+        if (inactivityPeriod == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
         }
+        this.inactivityPeriod = inactivityPeriod;
+        this.state = ConditionState.ACTIVE;
+    }
+
+    private void applyReceiverRequestCondition(InactivityPeriod ignored) {
+        this.inactivityPeriod = null;
+        this.state = ConditionState.WAITING_VERIFICATION;
     }
 
     public boolean isFulfilled() {

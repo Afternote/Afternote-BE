@@ -18,6 +18,7 @@ public interface TimeLetterReceiverRepository extends JpaRepository<TimeLetterRe
             JOIN FETCH tl.user
             LEFT JOIN FETCH tl.blocks
             WHERE tlr.receiver.id = :receiverId
+              AND tl.status <> com.afternote.domain.timeletter.model.TimeLetterStatus.DRAFT
             ORDER BY tlr.createdAt DESC
             """)
     List<TimeLetterReceiver> findByReceiverIdWithTimeLetter(@Param("receiverId") Long receiverId);
@@ -28,6 +29,7 @@ public interface TimeLetterReceiverRepository extends JpaRepository<TimeLetterRe
             JOIN FETCH tl.user
             LEFT JOIN FETCH tl.blocks
             WHERE tlr.id = :id AND tlr.receiver.id = :receiverId
+              AND tl.status <> com.afternote.domain.timeletter.model.TimeLetterStatus.DRAFT
             """)
     Optional<TimeLetterReceiver> findByIdAndReceiverIdWithTimeLetter(
             @Param("id") Long id,

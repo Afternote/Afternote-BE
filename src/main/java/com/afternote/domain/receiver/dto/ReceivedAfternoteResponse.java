@@ -22,7 +22,7 @@ public record ReceivedAfternoteResponse(
         @Getter
         String title,
 
-        @Schema(description = "카테고리", example = "GALLERY")
+        @Schema(description = "카테고리", example = "GALLERY", requiredMode = Schema.RequiredMode.REQUIRED)
         @Getter
         AfternoteCategoryType category,
 

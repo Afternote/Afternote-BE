@@ -19,6 +19,7 @@ import com.afternote.domain.receiver.dto.*;
 import com.afternote.domain.receiver.model.*;
 import com.afternote.domain.receiver.repository.*;
 import com.afternote.domain.timeletter.model.TimeLetter;
+import com.afternote.domain.timeletter.model.TimeLetterStatus;
 import com.afternote.domain.timeletter.repository.TimeLetterRepository;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
@@ -60,8 +61,8 @@ public class ReceivedService {
 
     /**
      * 수신자가 받은 타임레터 목록 조회
-     * - 수신자 ID 기준으로 TimeLetterReceiver 목록을 조회한다.
-     * - TimeLetter 내부의 blocks를 기준으로 본문을 응답한다.
+     * - DATE는 sendAt 기준으로 본문 공개. POST_DEATH는 TIME_LETTER 조건 충족 시 애프터노트와 같이 공개.
+     * - DRAFT는 수신 목록에 넣지 않는다.
      */
     public ReceivedTimeLetterListResponse getTimeLetters(Long receiverId) {
         // 타임레터는 DATE 모드는 날짜 기반(조건 무관), POST_DEATH 모드만 사후 조건으로 게이팅한다.
@@ -72,6 +73,7 @@ public class ReceivedService {
                 timeLetterReceiverRepository.findByReceiverIdWithTimeLetter(receiverId);
 
         List<ReceivedTimeLetterResponse> responses = timeLetterReceivers.stream()
+                .filter(tlr -> tlr.getTimeLetter().getStatus() != TimeLetterStatus.DRAFT)
                 .filter(tlr -> !tlr.getTimeLetter().isPostDeath() || postDeathFulfilled)
                 .map(tlr -> ReceivedTimeLetterResponse.from(
                         tlr,
@@ -85,8 +87,9 @@ public class ReceivedService {
     /**
      * 수신한 타임레터 상세 조회
      * - 수신자 본인에게 연결된 타임레터인지 검증한다.
-     * - sendAt이 지난 경우에만 읽음 처리한다.
-     * - TimeLetter의 blocks를 기준으로 상세 본문을 응답한다.
+     * - DATE는 sendAt이 지난 경우에만 읽음 처리한다.
+     * - POST_DEATH는 TIME_LETTER 조건 충족 시 읽음 처리한다.
+     * - DRAFT는 열람할 수 없다.
      */
     @Transactional
     public ReceivedTimeLetterResponse getTimeLetter(Long receiverId, Long timeLetterReceiverId) {
@@ -95,6 +98,9 @@ public class ReceivedService {
                 .orElseThrow(() -> new CustomException(ErrorCode.TIME_LETTER_NOT_FOUND));
 
         TimeLetter timeLetter = timeLetterReceiver.getTimeLetter();
+        if (timeLetter.getStatus() == TimeLetterStatus.DRAFT) {
+            throw new CustomException(ErrorCode.TIME_LETTER_NOT_FOUND);
+        }
 
         if (timeLetter.isPostDeath()) {
             // 사후 전달 타임레터는 전달 조건이 충족되어야 열람 가능

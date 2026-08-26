@@ -17,7 +17,7 @@ public record AfternoteResponse(
         @Getter
         String title,
 
-        @Schema(description = "카테고리", example = "SOCIAL")
+        @Schema(description = "카테고리", example = "SOCIAL", requiredMode = Schema.RequiredMode.REQUIRED)
         @Getter
         AfternoteCategoryType category,
 

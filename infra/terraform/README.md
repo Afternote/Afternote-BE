@@ -2,7 +2,7 @@
 
 VPC / EC2 / RDS / EIP / EventBridge Scheduler(Stop·Start) / SNS 알람을 코드로 생성합니다.
 
-- **Stop** 01:00 KST · **Start** 12:00 KST
+- **Stop** 03:00 KST · **Start** 12:00 KST
 - EC2 부팅 시 `afternote-compose` systemd가 `~/deploy` compose를 기동
 - Start Lambda는 RDS available 대기 + EC2 start + (백업) SSM compose
 
@@ -99,9 +99,11 @@ aws lambda invoke --function-name afternote-start-env /tmp/afternote-start.json
 
 ## 스케줄
 
+정상 개폐는 **Stop 03:00 KST · Start 12:00 KST** 이다. 테스트용으로 시각을 바꾸면 확인 직후 이 값으로 되돌린다 (#250).
+
 | 동작 | 시간 (KST) | cron |
 |------|------------|------|
-| Stop | 01:00 | `cron(0 1 * * ? *)` |
+| Stop | 03:00 | `cron(0 3 * * ? *)` |
 | Start | 12:00 | `cron(0 12 * * ? *)` |
 
 ---
@@ -119,7 +121,8 @@ aws lambda invoke --function-name afternote-start-env /tmp/afternote-start.json
 
 ## 주의사항
 
-- **01:00~12:00 KST** 서비스 다운
+- **03:00~12:00 KST** 서비스 다운
+- **AMI 갱신**은 EC2를 교체하지 않는다 (`lifecycle.ignore_changes = [ami]`). 재생성은 의도적으로 replace할 때만
 - **off-hours 중 `main` push** → EC2 stopped면 deploy 실패 → Start Lambda 먼저 invoke
 - **RDS Stop 7일** → AWS가 자동 Start할 수 있음
 - **Elastic IP** stopped 시간에도 Public IPv4 과금

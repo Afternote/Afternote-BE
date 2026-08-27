@@ -32,7 +32,7 @@ db_instance_class = "db.t4g.micro"
 # Existing Elastic IP allocation ID (eipalloc-xxx), or "" to create new
 existing_eip_allocation_id = ""
 
-# off 01:00 KST, on 12:00 KST
-stop_schedule     = "cron(0 1 * * ? *)"
+# off 03:00 KST, on 12:00 KST
+stop_schedule     = "cron(0 3 * * ? *)"
 start_schedule    = "cron(0 12 * * ? *)"
 schedule_timezone = "Asia/Seoul"

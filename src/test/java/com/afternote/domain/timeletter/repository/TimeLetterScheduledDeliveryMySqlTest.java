@@ -57,7 +57,7 @@ class TimeLetterScheduledDeliveryMySqlTest {
         } else {
             assumeTrue(dockerAvailable(),
                     "Docker 또는 AFTERNOTE_MYSQL_TEST_URL이 있어야 MySQL 회귀 테스트를 실행할 수 있습니다.");
-            mysql = new MySQLContainer<>("mysql:8.4");
+            mysql = new MySQLContainer<>("mysql:8.0");
             mysql.start();
             dataSource = new DriverManagerDataSource(
                     mysql.getJdbcUrl(), mysql.getUsername(), mysql.getPassword()

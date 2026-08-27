@@ -83,7 +83,7 @@ variable "existing_eip_allocation_id" {
 variable "stop_schedule" {
   description = "EventBridge cron for stop (timezone applied separately)"
   type        = string
-  default     = "cron(0 1 * * ? *)"
+  default     = "cron(0 3 * * ? *)"
 }
 
 variable "start_schedule" {

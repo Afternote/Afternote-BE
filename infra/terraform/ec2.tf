@@ -34,4 +34,9 @@ resource "aws_instance" "app" {
   tags = {
     Name = "${var.project_name}-app"
   }
+
+  # most_recent AMI가 바뀌어도 운영 중인 인스턴스를 교체하지 않는다.
+  lifecycle {
+    ignore_changes = [ami]
+  }
 }

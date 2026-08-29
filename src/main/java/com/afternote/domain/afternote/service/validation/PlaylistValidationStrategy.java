@@ -62,6 +62,9 @@ public class PlaylistValidationStrategy implements AfternoteCategoryValidationSt
 
     private void validateSongFields(java.util.List<AfternoteCreateRequest.SongRequest> songs) {
         for (AfternoteCreateRequest.SongRequest song : songs) {
+            if (song == null) {
+                throw new CustomException(ErrorCode.PLAYLIST_SONG_INVALID);
+            }
             if (song.getTitle() == null || song.getTitle().isBlank()) {
                 throw new CustomException(ErrorCode.PLAYLIST_SONG_TITLE_REQUIRED);
             }

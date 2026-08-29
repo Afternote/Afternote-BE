@@ -35,6 +35,7 @@ public class GalleryValidationStrategy implements AfternoteCategoryValidationStr
         if (request.getPlaylist() != null) {
             throw new CustomException(ErrorCode.INVALID_FIELD_FOR_GALLERY);
         }
+        AfternoteValidationCommons.validateOptionalReceivers(request);
     }
 
 }

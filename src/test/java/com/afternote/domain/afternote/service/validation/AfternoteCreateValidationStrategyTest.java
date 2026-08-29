@@ -264,6 +264,45 @@ class AfternoteCreateValidationStrategyTest {
     }
 
     @Test
+    @DisplayName("GALLERY 수정 - receivers 원소 null은 허용")
+    void gallery_UpdateNullReceiverElement_Ok() {
+        java.util.List<AfternoteCreateRequest.ReceiverRequest> receivers = new java.util.ArrayList<>();
+        receivers.add(null);
+        AfternoteCreateRequest request = new AfternoteCreateRequest(
+                AfternoteCategoryType.GALLERY,
+                null,
+                null,
+                null,
+                null,
+                receivers,
+                null,
+                true
+        );
+
+        assertThatCode(() -> gallery.validateUpdate(request)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("GALLERY 수정 - receiverId 없는 객체는 1607")
+    void gallery_UpdateMissingReceiverId_Fails() {
+        AfternoteCreateRequest request = new AfternoteCreateRequest(
+                AfternoteCategoryType.GALLERY,
+                null,
+                null,
+                null,
+                null,
+                List.of(new AfternoteCreateRequest.ReceiverRequest(null)),
+                null,
+                true
+        );
+
+        assertThatThrownBy(() -> gallery.validateUpdate(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.GALLERY_RECEIVER_ID_REQUIRED));
+    }
+
+    @Test
     @DisplayName("PLAYLIST 생성 - receivers 없어도 성공")
     void playlist_WithoutReceivers_Ok() {
         AfternoteCreateRequest request = new AfternoteCreateRequest(
@@ -300,5 +339,27 @@ class AfternoteCreateValidationStrategyTest {
         );
 
         assertThatCode(() -> playlist.validateCreate(request)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("PLAYLIST songs 원소가 null이면 1631")
+    void playlist_NullSongElement_Fails() {
+        java.util.List<AfternoteCreateRequest.SongRequest> songs = new java.util.ArrayList<>();
+        songs.add(null);
+        AfternoteCreateRequest request = new AfternoteCreateRequest(
+                AfternoteCategoryType.PLAYLIST,
+                "추억 노트",
+                null,
+                null,
+                null,
+                null,
+                new AfternoteCreateRequest.PlaylistRequest(null, null, songs, null),
+                true
+        );
+
+        assertThatThrownBy(() -> playlist.validateCreate(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.PLAYLIST_SONG_INVALID));
     }
 }

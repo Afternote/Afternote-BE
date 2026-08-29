@@ -109,6 +109,34 @@ class AfternoteRelationServiceTest {
         verify(strategy).save(afternote, request);
     }
 
+    @Test
+    @DisplayName("receivers 원소 null만 있으면 연결 없이 전략 저장으로 진행")
+    void saveRelations_NullReceiverElements_Skipped() {
+        User owner = sampleUser(1L);
+        Afternote afternote = Afternote.builder()
+                .user(owner)
+                .categoryType(AfternoteCategoryType.GALLERY)
+                .title("t")
+                .sortOrder(1)
+                .build();
+        ReflectionTestUtils.setField(afternote, "receivers", new ArrayList<>());
+
+        java.util.List<AfternoteCreateRequest.ReceiverRequest> receivers = new ArrayList<>();
+        receivers.add(null);
+        AfternoteCreateRequest request = mock(AfternoteCreateRequest.class);
+        given(request.getReceivers()).willReturn(receivers);
+        given(request.getCategory()).willReturn(AfternoteCategoryType.GALLERY);
+
+        AfternoteCategoryRelationStrategy strategy = mock(AfternoteCategoryRelationStrategy.class);
+        given(relationStrategyFactory.get(AfternoteCategoryType.GALLERY)).willReturn(strategy);
+
+        relationService.saveRelationsByCategory(afternote, request);
+
+        assertThat(afternote.getReceivers()).isEmpty();
+        verify(receiverRepository, never()).findByIdIn(any());
+        verify(strategy).save(afternote, request);
+    }
+
     private static User sampleUser(Long id) {
         User user = User.builder()
                 .email("u@test.com")

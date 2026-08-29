@@ -59,6 +59,9 @@ public final class AfternoteValidationCommons {
 
     private static void validateReceiverIds(List<AfternoteCreateRequest.ReceiverRequest> receivers) {
         for (AfternoteCreateRequest.ReceiverRequest receiver : receivers) {
+            if (receiver == null) {
+                continue;
+            }
             if (receiver.getReceiverId() == null) {
                 throw new CustomException(ErrorCode.GALLERY_RECEIVER_ID_REQUIRED);
             }

@@ -90,8 +90,14 @@ public class AfternoteRelationService {
             List<AfternoteCreateRequest.ReceiverRequest> receiverRequests
     ) {
         List<Long> receiverIds = receiverRequests.stream()
+            .filter(java.util.Objects::nonNull)
             .map(AfternoteCreateRequest.ReceiverRequest::getReceiverId)
+            .filter(java.util.Objects::nonNull)
             .toList();
+
+        if (receiverIds.isEmpty()) {
+            return List.of();
+        }
 
         List<Receiver> foundReceivers = receiverRepository.findByIdIn(receiverIds);
         Map<Long, Receiver> receiverMap = foundReceivers.stream()

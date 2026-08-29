@@ -8,8 +8,12 @@ import com.afternote.domain.afternote.dto.AfternotedetailResponse;
 import com.afternote.domain.afternote.dto.LeaveMessageBlock;
 import com.afternote.domain.afternote.model.Afternote;
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
+import com.afternote.domain.afternote.model.AfternotePlaylist;
+import com.afternote.domain.afternote.model.AfternotePlaylistItem;
 import com.afternote.domain.afternote.model.AfternoteReceiver;
+import com.afternote.domain.afternote.model.AfternoteSecureContent;
 import com.afternote.domain.afternote.repository.AfternoteRepository;
+import com.afternote.domain.afternote.service.relation.EncryptedKey;
 import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.receiver.model.Receiver;
 import com.afternote.domain.user.event.UserActivityTouchedEvent;
@@ -328,7 +332,7 @@ class AfternoteServiceTest {
     }
 
     @Test
-    @DisplayName("애프터노트 상세 조회 - 모든 카테고리 응답 생성 매핑")
+    @DisplayName("애프터노트 상세 조회 - 모든 카테고리 임시저장 응답 생성 매핑")
     void getDetailAfternote_AllCategoriesHaveResponseFactory() {
         User owner = sampleUser(1L);
 
@@ -339,6 +343,7 @@ class AfternoteServiceTest {
                     .categoryType(category)
                     .title(category.name())
                     .sortOrder(category.ordinal())
+                    .isDraft(true)
                     .build();
             ReflectionTestUtils.setField(afternote, "id", afternoteId);
 
@@ -346,9 +351,156 @@ class AfternoteServiceTest {
 
             AfternotedetailResponse response = afternoteService.getDetailAfternote(1L, afternoteId);
 
+            assertThat(response).isInstanceOf(AfternotedetailResponse.Draft.class);
             assertThat(response.getCategory()).isEqualTo(category);
             assertThat(response.getTitle()).isEqualTo(category.name());
+            assertThat(response.getIsDraft()).isTrue();
         }
+    }
+
+    @Test
+    @DisplayName("임시저장 PLAYLIST 상세는 playlist 없이 200")
+    void getDetailAfternote_DraftPlaylist_WithoutPlaylist() {
+        User owner = sampleUser(1L);
+        Afternote afternote = Afternote.builder()
+                .user(owner)
+                .categoryType(AfternoteCategoryType.PLAYLIST)
+                .title("추억")
+                .sortOrder(1)
+                .isDraft(true)
+                .build();
+        ReflectionTestUtils.setField(afternote, "id", 20L);
+        given(afternoteRepository.findById(20L)).willReturn(Optional.of(afternote));
+
+        AfternotedetailResponse response = afternoteService.getDetailAfternote(1L, 20L);
+
+        assertThat(response).isInstanceOf(AfternotedetailResponse.Draft.class);
+        assertThat(((AfternotedetailResponse.Draft) response).getPlaylist()).isNull();
+    }
+
+    @Test
+    @DisplayName("발행 완료 PLAYLIST 상세는 playlist와 곡을 포함한다")
+    void getDetailAfternote_PublishedPlaylist_IncludesSongs() {
+        User owner = sampleUser(1L);
+        Afternote afternote = Afternote.builder()
+                .user(owner)
+                .categoryType(AfternoteCategoryType.PLAYLIST)
+                .title("추억")
+                .sortOrder(1)
+                .isDraft(false)
+                .build();
+        ReflectionTestUtils.setField(afternote, "id", 21L);
+        attachPlaylist(afternote, "보고싶다", "김범수");
+        given(afternoteRepository.findById(21L)).willReturn(Optional.of(afternote));
+        given(s3Service.generateGetPresignedUrl("cover.jpg")).willReturn("https://cdn/cover.jpg");
+
+        AfternotedetailResponse response = afternoteService.getDetailAfternote(1L, 21L);
+
+        assertThat(response).isInstanceOf(AfternotedetailResponse.PublishedPlaylist.class);
+        AfternotedetailResponse.PublishedPlaylist published = (AfternotedetailResponse.PublishedPlaylist) response;
+        assertThat(published.getIsDraft()).isFalse();
+        assertThat(published.getPlaylist()).isNotNull();
+        assertThat(published.getPlaylist().getSongs()).hasSize(1);
+        assertThat(published.getPlaylist().getSongs().get(0).getTitle()).isEqualTo("보고싶다");
+        assertThat(published.getPlaylist().getSongs().get(0).getCoverUrl()).isEqualTo("https://cdn/cover.jpg");
+    }
+
+    @Test
+    @DisplayName("발행 완료 PLAYLIST인데 playlist가 없으면 200으로 직렬화하지 않는다")
+    void getDetailAfternote_PublishedPlaylist_MissingPlaylist_Fails() {
+        User owner = sampleUser(1L);
+        Afternote afternote = Afternote.builder()
+                .user(owner)
+                .categoryType(AfternoteCategoryType.PLAYLIST)
+                .title("추억")
+                .sortOrder(1)
+                .isDraft(false)
+                .build();
+        ReflectionTestUtils.setField(afternote, "id", 22L);
+        given(afternoteRepository.findById(22L)).willReturn(Optional.of(afternote));
+
+        assertThatThrownBy(() -> afternoteService.getDetailAfternote(1L, 22L))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.PLAYLIST_REQUIRED));
+    }
+
+    @Test
+    @DisplayName("발행 완료 PLAYLIST인데 곡이 없으면 200으로 직렬화하지 않는다")
+    void getDetailAfternote_PublishedPlaylist_EmptySongs_Fails() {
+        User owner = sampleUser(1L);
+        Afternote afternote = Afternote.builder()
+                .user(owner)
+                .categoryType(AfternoteCategoryType.PLAYLIST)
+                .title("추억")
+                .sortOrder(1)
+                .isDraft(false)
+                .build();
+        ReflectionTestUtils.setField(afternote, "id", 23L);
+        AfternotePlaylist playlist = AfternotePlaylist.builder()
+                .afternote(afternote)
+                .title("추모 플레이리스트")
+                .items(new ArrayList<>())
+                .build();
+        ReflectionTestUtils.setField(afternote, "playlist", playlist);
+        given(afternoteRepository.findById(23L)).willReturn(Optional.of(afternote));
+
+        assertThatThrownBy(() -> afternoteService.getDetailAfternote(1L, 23L))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.PLAYLIST_SONGS_REQUIRED));
+    }
+
+    @Test
+    @DisplayName("발행 완료 SOCIAL인데 credentials가 없으면 200으로 직렬화하지 않는다")
+    void getDetailAfternote_PublishedSocial_MissingCredentials_Fails() {
+        User owner = sampleUser(1L);
+        Afternote afternote = Afternote.builder()
+                .user(owner)
+                .categoryType(AfternoteCategoryType.SOCIAL)
+                .title("인스타그램")
+                .sortOrder(1)
+                .isDraft(false)
+                .build();
+        ReflectionTestUtils.setField(afternote, "id", 24L);
+        given(afternoteRepository.findById(24L)).willReturn(Optional.of(afternote));
+
+        assertThatThrownBy(() -> afternoteService.getDetailAfternote(1L, 24L))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.SOCIAL_CREDENTIALS_REQUIRED));
+    }
+
+    @Test
+    @DisplayName("발행 완료 SOCIAL 상세는 credentials를 포함한다")
+    void getDetailAfternote_PublishedSocial_IncludesCredentials() {
+        User owner = sampleUser(1L);
+        Afternote afternote = Afternote.builder()
+                .user(owner)
+                .categoryType(AfternoteCategoryType.SOCIAL)
+                .title("인스타그램")
+                .sortOrder(1)
+                .isDraft(false)
+                .build();
+        ReflectionTestUtils.setField(afternote, "id", 25L);
+        afternote.getSecureContents().add(AfternoteSecureContent.builder()
+                .afternote(afternote)
+                .keyName(EncryptedKey.ACCOUNT_ID.value())
+                .encryptedValue("enc-id")
+                .build());
+        afternote.getSecureContents().add(AfternoteSecureContent.builder()
+                .afternote(afternote)
+                .keyName(EncryptedKey.ACCOUNT_PASSWORD.value())
+                .encryptedValue("enc-pw")
+                .build());
+        given(afternoteRepository.findById(25L)).willReturn(Optional.of(afternote));
+        given(chaChaEncryptionUtil.decrypt("enc-id")).willReturn("my_insta_id");
+        given(chaChaEncryptionUtil.decrypt("enc-pw")).willReturn("password123");
+
+        AfternotedetailResponse response = afternoteService.getDetailAfternote(1L, 25L);
+
+        assertThat(response).isInstanceOf(AfternotedetailResponse.Published.class);
+        assertThat(response.getCredentials().getId()).isEqualTo("my_insta_id");
+        assertThat(response.getCredentials().getPassword()).isEqualTo("password123");
+        assertThat(((AfternotedetailResponse.Published) response).getPlaylist()).isNull();
     }
 
     @Test
@@ -388,5 +540,22 @@ class AfternoteServiceTest {
                 .build();
         ReflectionTestUtils.setField(user, "id", id);
         return user;
+    }
+
+    private void attachPlaylist(Afternote afternote, String songTitle, String artist) {
+        AfternotePlaylist playlist = AfternotePlaylist.builder()
+                .afternote(afternote)
+                .title("추모 플레이리스트")
+                .atmosphere("차분")
+                .items(new ArrayList<>())
+                .build();
+        playlist.getItems().add(AfternotePlaylistItem.builder()
+                .playlist(playlist)
+                .songTitle(songTitle)
+                .artist(artist)
+                .coverUrl("cover.jpg")
+                .sortOrder(1)
+                .build());
+        ReflectionTestUtils.setField(afternote, "playlist", playlist);
     }
 }

@@ -127,7 +127,7 @@ public class AfternoteService {
                 ? new AfternoteCreateRequest.CredentialsRequest(accountId, accountPassword)
                 : null;
 
-        return new AfternotedetailResponse(
+        return AfternotedetailResponse.of(
                 afternote.getId(),
                 afternote.getCategoryType(),
                 afternote.getTitle(),
@@ -153,7 +153,7 @@ public class AfternoteService {
             Afternote afternote,
             List<AfternoteReceiverResponse> receivers
     ) {
-        return new AfternotedetailResponse(
+        return AfternotedetailResponse.of(
                 afternote.getId(),
                 afternote.getCategoryType(),
                 afternote.getTitle(),
@@ -173,7 +173,7 @@ public class AfternoteService {
     ) {
         AfternoteCreateRequest.PlaylistRequest playlistRequest = toPlaylistRequest(afternote.getPlaylist());
 
-        return new AfternotedetailResponse(
+        return AfternotedetailResponse.of(
                 afternote.getId(),
                 afternote.getCategoryType(),
                 afternote.getTitle(),
@@ -223,7 +223,7 @@ public class AfternoteService {
             Afternote afternote,
             List<AfternoteReceiverResponse> receivers
     ) {
-        return new AfternotedetailResponse(
+        return AfternotedetailResponse.of(
                 afternote.getId(),
                 afternote.getCategoryType(),
                 afternote.getTitle(),

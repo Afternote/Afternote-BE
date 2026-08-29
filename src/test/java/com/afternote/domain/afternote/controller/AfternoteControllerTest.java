@@ -228,6 +228,17 @@ class AfternoteControllerTest {
     }
 
         @Test
+        @DisplayName("애프터노트 상세 조회 API 실패 - 발행 완료 데이터 불일치")
+        void getDetailAfternote_PublishedInconsistent_Fail() throws Exception {
+        given(afternoteService.getDetailAfternote(USER_ID, 22L))
+            .willThrow(new CustomException(ErrorCode.PLAYLIST_REQUIRED));
+
+        mockMvc.perform(get("/api/v1/afternotes/{afternoteId}", 22L)
+                .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID))
+            .andExpect(status().isBadRequest());
+        }
+
+        @Test
         @DisplayName("애프터노트 상세 조회 API 실패 - 존재하지 않는 애프터노트")
         void getDetailAfternote_NotFound_Fail() throws Exception {
         given(afternoteService.getDetailAfternote(USER_ID, 999L))

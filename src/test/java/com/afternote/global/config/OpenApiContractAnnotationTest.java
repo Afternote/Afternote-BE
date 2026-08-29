@@ -26,8 +26,8 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.Assertions.assertThat;
 
 /**
- * #123 회귀 방지: 배포 OpenAPI와 어긋나기 쉬운 계약을 어노테이션 단위로 고정한다.
- * (전체 /v3/api-docs 기동 없이 CI에서 빠르게 검증)
+ * #123·#255 회귀 방지: 배포 OpenAPI와 어긋나기 쉬운 계약을 어노테이션 단위로 고정한다.
+ * $ref 형제 속성 유실은 {@link OpenApiGeneratedDocsTest} 가 생성 문서로 검증한다.
  *
  * 주의: {@code @Operation(security = {})} 는 springdoc가 생략해서 전역 bearer가 남는다.
  * 공개 API는 반드시 {@code @SecurityRequirements} 로 끊는다.
@@ -60,7 +60,7 @@ class OpenApiContractAnnotationTest {
     }
 
     @Test
-    @DisplayName("GET /afternotes/{id} 는 401·404를 OpenAPI에 선언한다")
+    @DisplayName("GET /afternotes/{id} 는 400·401·404를 OpenAPI에 선언한다")
     void afternoteDetail_Documents401And404() throws Exception {
         Method getDetail = AfternoteController.class.getDeclaredMethod(
                 "getDetailAfternote",
@@ -69,7 +69,7 @@ class OpenApiContractAnnotationTest {
         );
         Set<String> codes = responseCodes(getDetail);
 
-        assertThat(codes).contains("200", "401", "404");
+        assertThat(codes).contains("200", "400", "401", "404");
     }
 
     @Test
@@ -93,29 +93,52 @@ class OpenApiContractAnnotationTest {
     }
 
     @Test
-    @DisplayName("AfternotedetailResponse는 항상 응답 필드와 카테고리별 nullable 필드를 OpenAPI에 반영한다")
-    void afternoteDetailResponse_DocumentsRequiredAndNullableFields() throws Exception {
+    @DisplayName("임시저장 상세는 참조형 필드를 allOf+$ref 로 nullable 표기한다")
+    void afternoteDraftDetail_DocumentsNullableObjectFieldsWithAllOf() throws Exception {
         for (String field : Set.of("afternoteId", "category", "title", "isDraft", "receivers", "updatedAt")) {
-            Schema schema = AfternotedetailResponse.class.getDeclaredMethod(field).getAnnotation(Schema.class);
-            assertThat(schema).as("@Schema on AfternotedetailResponse.%s", field).isNotNull();
+            Schema schema = AfternotedetailResponse.Draft.class.getDeclaredMethod(field).getAnnotation(Schema.class);
+            assertThat(schema).as("@Schema on Draft.%s", field).isNotNull();
             assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.REQUIRED);
         }
 
-        Schema actions = AfternotedetailResponse.class.getDeclaredMethod("actions").getAnnotation(Schema.class);
+        Schema actions = AfternotedetailResponse.Draft.class.getDeclaredMethod("actions").getAnnotation(Schema.class);
         assertThat(actions.nullable()).isTrue();
         assertThat(actions.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
         assertThat(actions.description()).contains("SOCIAL/BUSINESS/GALLERY").contains("PLAYLIST");
 
-        Schema credentials = AfternotedetailResponse.class.getDeclaredMethod("credentials").getAnnotation(Schema.class);
+        Schema credentials = AfternotedetailResponse.Draft.class.getDeclaredMethod("credentials").getAnnotation(Schema.class);
         assertThat(credentials.nullable()).isTrue();
         assertThat(credentials.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
         assertThat(credentials.description()).contains("SOCIAL/BUSINESS");
+        assertThat(credentials.allOf()).containsExactly(com.afternote.domain.afternote.dto.AfternoteCreateRequest.CredentialsRequest.class);
 
-        for (String field : Set.of("leaveMessage", "playlist")) {
-            Schema schema = AfternotedetailResponse.class.getDeclaredMethod(field).getAnnotation(Schema.class);
-            assertThat(schema.nullable()).isTrue();
-            assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
-        }
+        Schema playlist = AfternotedetailResponse.Draft.class.getDeclaredMethod("playlist").getAnnotation(Schema.class);
+        assertThat(playlist.nullable()).isTrue();
+        assertThat(playlist.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
+        assertThat(playlist.allOf()).containsExactly(com.afternote.domain.afternote.dto.AfternoteCreateRequest.PlaylistRequest.class);
+    }
+
+    @Test
+    @DisplayName("발행 완료 PLAYLIST 상세는 playlist를 required·non-null로 둔다")
+    void afternotePublishedPlaylistDetail_RequiresPlaylist() throws Exception {
+        Schema playlist = AfternotedetailResponse.PublishedPlaylist.class
+                .getDeclaredMethod("playlist")
+                .getAnnotation(Schema.class);
+        assertThat(playlist.nullable()).isFalse();
+        assertThat(playlist.requiredMode()).isEqualTo(Schema.RequiredMode.REQUIRED);
+        assertThat(playlist.allOf()).isEmpty();
+
+        io.swagger.v3.oas.annotations.media.ArraySchema songsArray =
+                com.afternote.domain.afternote.dto.AfternotePublishedPlaylistResponse.class
+                .getDeclaredMethod("songs")
+                .getAnnotation(io.swagger.v3.oas.annotations.media.ArraySchema.class);
+        Schema songs = com.afternote.domain.afternote.dto.AfternotePublishedPlaylistResponse.class
+                .getDeclaredMethod("songs")
+                .getAnnotation(Schema.class);
+        assertThat(songsArray).isNotNull();
+        assertThat(songsArray.minItems()).isEqualTo(1);
+        assertThat(songs).isNotNull();
+        assertThat(songs.requiredMode()).isEqualTo(Schema.RequiredMode.REQUIRED);
     }
 
     @Test

@@ -82,19 +82,84 @@ jobs:
         run: chmod +x gradlew
 
       - name: Build and test
-        run: ./gradlew clean test --no-daemon
+        run: ./gradlew clean standardTest --no-daemon
 
       - name: Upload test report
         if: failure()
         uses: actions/upload-artifact@v7
         with:
           name: gradle-test-report
-          path: build/reports/tests/test/
+          path: |
+            build/reports/tests/standardTest/
+            build/test-results/standardTest/
+          retention-days: 7
+
+  mysql_test:
+    name: mysql-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v7
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+        with:
+          cache-provider: basic
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Run MySQL integration tests
+        run: ./gradlew mysqlTest --no-daemon
+
+      - name: Upload MySQL test report
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: mysql-test-report
+          path: |
+            build/reports/tests/mysqlTest/
+            build/test-results/mysqlTest/
+          if-no-files-found: error
+          retention-days: 7
 
   docker_image:
     name: docker-image
     runs-on: ubuntu-latest
     timeout-minutes: 30
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_DATABASE: afternote
+          MYSQL_USER: admin
+          MYSQL_PASSWORD: password
+          MYSQL_ROOT_PASSWORD: root-password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uadmin -ppassword --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
 
     steps:
       - name: Checkout source code
@@ -103,12 +168,93 @@ jobs:
       - name: Build current Docker image
         run: docker build -t afternote-server:ci .
 
+      - name: Run PR-local HTTP baseline
+        env:
+          SPRING_PROFILES_ACTIVE: local
+          SERVER_PORT: "8080"
+          DB_HOST: 127.0.0.1
+          DB_PORT: "3306"
+          DB_NAME: afternote
+          DB_USERNAME: admin
+          DB_PASSWORD: password
+          REDIS_HOST: 127.0.0.1
+          REDIS_PORT: "6379"
+          SPRING_SQL_INIT_MODE: never
+          MANAGEMENT_HEALTH_MAIL_ENABLED: "false"
+          EMAIL: ci@example.invalid
+          EMAIL_PASSWORD: ci-mail-password
+          GEMINI_API_KEY: ci-gemini-key
+          JWT_SECRET: ci-jwt-secret-at-least-thirty-two-bytes
+          JWT_ACCESS_EXPIRATION: "3600000"
+          JWT_REFRESH_EXPIRATION: "604800000"
+          CHACHA20_SECRET_KEY: 0123456789abcdef0123456789abcdef
+          GOOGLE_WEB_CLIENT_ID: ci-google-client-id
+          AWS_S3_BUCKET: ci-bucket
+          AWS_ACCESS_KEY: ci-access-key
+          AWS_SECRET_KEY: ci-secret-key
+          APP_ANDROID_STORE_URL: https://example.invalid/app
+          APP_AUTH_CODE_EMAIL_ENABLED: "false"
+        run: |
+          mkdir -p build/reports/http-smoke
+
+          cleanup() {
+            exit_status="$?"
+            trap - EXIT
+            docker logs afternote-server-ci \
+              >build/reports/http-smoke/app.log 2>&1 || true
+            if [ "$exit_status" -ne 0 ]; then
+              tail -n 200 build/reports/http-smoke/app.log || true
+            fi
+            docker rm --force afternote-server-ci >/dev/null 2>&1 || true
+            exit "$exit_status"
+          }
+          trap cleanup EXIT
+
+          docker run --detach --name afternote-server-ci --network host \
+            --env SPRING_PROFILES_ACTIVE \
+            --env SERVER_PORT \
+            --env DB_HOST \
+            --env DB_PORT \
+            --env DB_NAME \
+            --env DB_USERNAME \
+            --env DB_PASSWORD \
+            --env REDIS_HOST \
+            --env REDIS_PORT \
+            --env SPRING_SQL_INIT_MODE \
+            --env MANAGEMENT_HEALTH_MAIL_ENABLED \
+            --env EMAIL \
+            --env EMAIL_PASSWORD \
+            --env GEMINI_API_KEY \
+            --env JWT_SECRET \
+            --env JWT_ACCESS_EXPIRATION \
+            --env JWT_REFRESH_EXPIRATION \
+            --env CHACHA20_SECRET_KEY \
+            --env GOOGLE_WEB_CLIENT_ID \
+            --env AWS_S3_BUCKET \
+            --env AWS_ACCESS_KEY \
+            --env AWS_SECRET_KEY \
+            --env APP_ANDROID_STORE_URL \
+            --env APP_AUTH_CODE_EMAIL_ENABLED \
+            afternote-server:ci
+
+          BASE_URL=http://127.0.0.1:8080 ./scripts/ci-http-smoke.sh
+
+      - name: Upload HTTP smoke log
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: http-smoke-log
+          path: build/reports/http-smoke/
+          if-no-files-found: ignore
+          retention-days: 7
+
   build:
     name: build
     if: ${{ always() }}
     needs:
       - dependency_review
       - gradle_test
+      - mysql_test
       - docker_image
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -119,6 +265,7 @@ jobs:
           EVENT_NAME: ${{ github.event_name }}
           DEPENDENCY_REVIEW_RESULT: ${{ needs.dependency_review.result }}
           GRADLE_TEST_RESULT: ${{ needs.gradle_test.result }}
+          MYSQL_TEST_RESULT: ${{ needs.mysql_test.result }}
           DOCKER_IMAGE_RESULT: ${{ needs.docker_image.result }}
         run: |
           failed=0
@@ -141,6 +288,7 @@ jobs:
           fi
 
           require_success "gradle-test" "$GRADLE_TEST_RESULT"
+          require_success "mysql-test" "$MYSQL_TEST_RESULT"
           require_success "docker-image" "$DOCKER_IMAGE_RESULT"
 
           exit "$failed"

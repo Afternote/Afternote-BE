@@ -101,3 +101,50 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+def mysqlIntegrationTestPattern = '*MySqlTest'
+
+tasks.register('standardTest', Test) {
+    group = 'verification'
+    description = 'Runs tests that do not require a MySQL container.'
+    dependsOn tasks.named('testClasses')
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+
+    useJUnitPlatform()
+    filter {
+        excludeTestsMatching mysqlIntegrationTestPattern
+    }
+}
+
+tasks.register('mysqlTest', Test) {
+    group = 'verification'
+    description = 'Runs MySQL/Testcontainers integration tests.'
+    dependsOn tasks.named('testClasses')
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+
+    useJUnitPlatform()
+    filter {
+        includeTestsMatching mysqlIntegrationTestPattern
+        failOnNoMatchingTests = true
+    }
+
+    shouldRunAfter tasks.named('standardTest')
+
+    afterSuite { descriptor, result ->
+        if (descriptor.parent == null) {
+            logger.lifecycle(
+                    "mysqlTest: tests=${result.testCount}, skipped=${result.skippedTestCount}"
+            )
+            if (result.testCount == 0) {
+                throw new GradleException('mysqlTest executed zero tests')
+            }
+            if (result.skippedTestCount > 0) {
+                throw new GradleException(
+                        "mysqlTest skipped ${result.skippedTestCount} test(s)"
+                )
+            }
+        }
+    }
+}

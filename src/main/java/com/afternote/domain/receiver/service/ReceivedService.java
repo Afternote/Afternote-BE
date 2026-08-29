@@ -1,6 +1,7 @@
 package com.afternote.domain.receiver.service;
 
 import com.afternote.domain.afternote.model.Afternote;
+import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import com.afternote.domain.afternote.model.AfternoteReceiver;
 import com.afternote.domain.dailyquestion.dto.DailyQuestionListResponse;
 import com.afternote.domain.dailyquestion.model.UserDailyQuestion;
@@ -163,15 +164,36 @@ public class ReceivedService {
 
         String senderName = sender.getName();
 
-        return switch (afternote.getCategoryType()) {
-            case SOCIAL, BUSINESS -> ReceivedAfternoteDetailResponse.fromSocial(afternote, senderName);
-            case GALLERY -> ReceivedAfternoteDetailResponse.fromGallery(afternote, senderName);
-            case PLAYLIST -> ReceivedAfternoteDetailResponse.fromPlaylist(
-                    afternote,
-                    senderName,
-                    s3Service::resolvePublicUrl
-            );
-        };
+        Function<Afternote, ReceivedAfternoteDetailResponse> responseFactory =
+                receivedAfternoteDetailFactories(senderName).get(afternote.getCategoryType());
+        if (responseFactory == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+        return responseFactory.apply(afternote);
+    }
+
+    private Map<AfternoteCategoryType, Function<Afternote, ReceivedAfternoteDetailResponse>>
+    receivedAfternoteDetailFactories(String senderName) {
+        Map<AfternoteCategoryType, Function<Afternote, ReceivedAfternoteDetailResponse>>
+                factories = new EnumMap<>(AfternoteCategoryType.class);
+        Function<Afternote, ReceivedAfternoteDetailResponse> socialDetail =
+                afternote -> ReceivedAfternoteDetailResponse.fromSocial(afternote, senderName);
+
+        factories.put(AfternoteCategoryType.SOCIAL, socialDetail);
+        factories.put(AfternoteCategoryType.BUSINESS, socialDetail);
+        factories.put(
+                AfternoteCategoryType.GALLERY,
+                afternote -> ReceivedAfternoteDetailResponse.fromGallery(afternote, senderName)
+        );
+        factories.put(
+                AfternoteCategoryType.PLAYLIST,
+                afternote -> ReceivedAfternoteDetailResponse.fromPlaylist(
+                        afternote,
+                        senderName,
+                        s3Service::resolvePublicUrl
+                )
+        );
+        return factories;
     }
 
     /**

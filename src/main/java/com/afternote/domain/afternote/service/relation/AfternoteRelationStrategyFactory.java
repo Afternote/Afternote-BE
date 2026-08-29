@@ -8,6 +8,8 @@ import org.springframework.stereotype.Component;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
@@ -19,12 +21,17 @@ public class AfternoteRelationStrategyFactory {
 
     @PostConstruct
     void init() {
-        for (AfternoteCategoryRelationStrategy strategy : strategies) {
-            if (strategyMap.containsKey(strategy.category())) {
-                throw new IllegalStateException("Duplicate relation strategy for category: " + strategy.category());
-            }
-            strategyMap.put(strategy.category(), strategy);
-        }
+        strategyMap.putAll(strategies.stream()
+                .collect(Collectors.toMap(
+                        AfternoteCategoryRelationStrategy::category,
+                        Function.identity(),
+                        (existing, duplicate) -> {
+                            throw new IllegalStateException(
+                                    "Duplicate relation strategy for category: " + duplicate.category()
+                            );
+                        },
+                        () -> new EnumMap<>(AfternoteCategoryType.class)
+                )));
     }
 
     public AfternoteCategoryRelationStrategy get(AfternoteCategoryType categoryType) {

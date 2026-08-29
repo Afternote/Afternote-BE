@@ -13,6 +13,9 @@ import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.Map;
+import java.util.function.BiConsumer;
+
 /**
  * Afternote 카테고리별 필드 검증.
  * 임시저장(isDraft=true)은 느슨, 정식 등록은 credentials/playlist 등 필수값을 서버에서 강제한다.
@@ -68,13 +71,23 @@ public class AfternoteValidator {
             return;
         }
 
-        switch (afternote.getCategoryType()) {
-            case SOCIAL, BUSINESS -> validateCredentialsPublish(request, afternote);
-            case PLAYLIST -> validatePlaylistPublish(request, afternote);
-            case GALLERY -> {
-                // 추가 필수 없음
-            }
-        }
+        publishValidators().getOrDefault(afternote.getCategoryType(), this::skipPublishValidation)
+                .accept(request, afternote);
+    }
+
+    private Map<AfternoteCategoryType, BiConsumer<AfternoteCreateRequest, Afternote>> publishValidators() {
+        BiConsumer<AfternoteCreateRequest, Afternote> credentialValidator = this::validateCredentialsPublish;
+
+        return Map.of(
+                AfternoteCategoryType.SOCIAL, credentialValidator,
+                AfternoteCategoryType.BUSINESS, credentialValidator,
+                AfternoteCategoryType.PLAYLIST, this::validatePlaylistPublish,
+                AfternoteCategoryType.GALLERY, this::skipPublishValidation
+        );
+    }
+
+    private void skipPublishValidation(AfternoteCreateRequest request, Afternote afternote) {
+        // 추가 필수 없음
     }
 
     private void validateCredentialsPublish(AfternoteCreateRequest request, Afternote afternote) {

@@ -265,7 +265,7 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
     }
 
     /**
-     * 생성 경로가 category 를 필수로 두고 switch 도 null 을 견디지 못하므로 컬럼도 NOT NULL 로 맞춘다.
+     * 생성/조회 경로가 category 를 필수로 다루므로 컬럼도 NOT NULL 로 맞춘다.
      * 기존 NULL 행이 있으면 기동을 실패시켜 수동 보정을 강제한다.
      */
     private void ensureAfternoteCategoryTypeNotNull() {

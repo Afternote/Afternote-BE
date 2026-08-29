@@ -16,7 +16,7 @@ public class PasskeyProperties {
     private String rpName = "AfterNote";
     private String origin = "https://afternote.kro.kr";
     private long challengeTtlSeconds = 300;
-    private String androidPackageName = "com.afternote.app";
+    private String androidPackageName = "com.afternote.afternote_fe";
     /** 쉼표 구분 SHA-256. 비어 있으면 assetlinks fingerprints 빈 배열. */
     private String androidSha256 = "";
 

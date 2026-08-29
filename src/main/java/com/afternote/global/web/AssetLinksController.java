@@ -28,7 +28,10 @@ public class AssetLinksController {
         target.put("sha256_cert_fingerprints", passkeyProperties.androidSha256Fingerprints());
 
         Map<String, Object> statement = new LinkedHashMap<>();
-        statement.put("relation", List.of("delegate_permission/common.get_login_creds"));
+        statement.put("relation", List.of(
+                "delegate_permission/common.get_login_creds",
+                "delegate_permission/common.handle_all_urls"
+        ));
         statement.put("target", target);
         return List.of(statement);
     }

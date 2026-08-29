@@ -328,6 +328,30 @@ class AfternoteServiceTest {
     }
 
     @Test
+    @DisplayName("애프터노트 상세 조회 - 모든 카테고리 응답 생성 매핑")
+    void getDetailAfternote_AllCategoriesHaveResponseFactory() {
+        User owner = sampleUser(1L);
+
+        for (AfternoteCategoryType category : AfternoteCategoryType.values()) {
+            long afternoteId = 100L + category.ordinal();
+            Afternote afternote = Afternote.builder()
+                    .user(owner)
+                    .categoryType(category)
+                    .title(category.name())
+                    .sortOrder(category.ordinal())
+                    .build();
+            ReflectionTestUtils.setField(afternote, "id", afternoteId);
+
+            given(afternoteRepository.findById(afternoteId)).willReturn(Optional.of(afternote));
+
+            AfternotedetailResponse response = afternoteService.getDetailAfternote(1L, afternoteId);
+
+            assertThat(response.getCategory()).isEqualTo(category);
+            assertThat(response.getTitle()).isEqualTo(category.name());
+        }
+    }
+
+    @Test
     @DisplayName("애프터노트 삭제 실패 - 찾을 수 없음")
     void deleteAfternote_NotFound_Fail() {
         given(afternoteRepository.findById(999L)).willReturn(Optional.empty());

@@ -6,6 +6,7 @@ import com.afternote.domain.diary.repository.DiaryRepository;
 import com.afternote.domain.mindrecord.emotion.event.EmotionAnalysisRunner;
 import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
 import com.afternote.domain.mindrecord.emotion.service.EmotionService.RetryCandidate;
+import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -17,6 +18,7 @@ import java.util.ArrayList;
 import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Consumer;
 
 /**
@@ -33,8 +35,15 @@ public class EmotionAnalysisBackfillScheduler {
     private final UserDailyQuestionRepository userDailyQuestionRepository;
     private final DeepThoughtRepository deepThoughtRepository;
 
+    private Map<EmotionSourceType, Consumer<RetryCandidate>> analysisDispatchers;
+
     @Value("${afternote.emotion-analysis.backfill-batch-size:20}")
     private int batchSize = 20;
+
+    @PostConstruct
+    void initAnalysisDispatchers() {
+        this.analysisDispatchers = createAnalysisDispatchers();
+    }
 
     @Scheduled(fixedDelayString = "${afternote.emotion-analysis.backfill-delay-ms:300000}")
     public void backfill() {
@@ -88,10 +97,14 @@ public class EmotionAnalysisBackfillScheduler {
     }
 
     private void dispatch(RetryCandidate candidate) {
-        analysisDispatchers().get(candidate.sourceType()).accept(candidate);
+        Consumer<RetryCandidate> dispatcher = analysisDispatchers.get(candidate.sourceType());
+        if (dispatcher == null) {
+            throw new IllegalStateException("No emotion analysis dispatcher for sourceType: " + candidate.sourceType());
+        }
+        dispatcher.accept(candidate);
     }
 
-    private Map<EmotionSourceType, Consumer<RetryCandidate>> analysisDispatchers() {
+    private Map<EmotionSourceType, Consumer<RetryCandidate>> createAnalysisDispatchers() {
         Map<EmotionSourceType, Consumer<RetryCandidate>> dispatchers = new EnumMap<>(EmotionSourceType.class);
         dispatchers.put(
                 EmotionSourceType.DIARY,
@@ -105,6 +118,9 @@ public class EmotionAnalysisBackfillScheduler {
                 EmotionSourceType.DEEP_THOUGHT,
                 candidate -> emotionAnalysisRunner.runDeepThoughtAnalysis(candidate.userId(), candidate.sourceId())
         );
-        return dispatchers;
+        if (!dispatchers.keySet().containsAll(Set.of(EmotionSourceType.values()))) {
+            throw new IllegalStateException("Missing emotion analysis dispatcher");
+        }
+        return Map.copyOf(dispatchers);
     }
 }

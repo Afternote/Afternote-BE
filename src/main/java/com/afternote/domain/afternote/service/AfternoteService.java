@@ -95,10 +95,10 @@ public class AfternoteService {
                 .collect(Collectors.toList());
         
         Function<Afternote, AfternotedetailResponse> responseFactory =
-                detailResponseFactories(receivers).get(afternote.getCategoryType());
-        if (responseFactory == null) {
-            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
-        }
+                detailResponseFactories(receivers).getOrDefault(
+                        afternote.getCategoryType(),
+                        afternoteValue -> buildDefaultDetailResponse(afternoteValue, receivers)
+                );
         return responseFactory.apply(afternote);
     }
 
@@ -216,6 +216,24 @@ public class AfternoteService {
                 memorialPhotoUrlPresigned,
                 songs,
                 memorialVideo
+        );
+    }
+
+    private AfternotedetailResponse buildDefaultDetailResponse(
+            Afternote afternote,
+            List<AfternoteReceiverResponse> receivers
+    ) {
+        return new AfternotedetailResponse(
+                afternote.getId(),
+                afternote.getCategoryType(),
+                afternote.getTitle(),
+                Boolean.TRUE.equals(afternote.getIsDraft()),
+                afternote.getActions(),
+                afternote.getLeaveMessage(),
+                null,
+                receivers,
+                null,
+                afternote.getUpdatedAt()
         );
     }
 

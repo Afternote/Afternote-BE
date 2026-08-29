@@ -164,9 +164,12 @@ public class ReceivedService {
 
         String senderName = sender.getName();
 
-        return receivedAfternoteDetailFactories(senderName)
-                .get(afternote.getCategoryType())
-                .apply(afternote);
+        Function<Afternote, ReceivedAfternoteDetailResponse> responseFactory =
+                receivedAfternoteDetailFactories(senderName).get(afternote.getCategoryType());
+        if (responseFactory == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+        return responseFactory.apply(afternote);
     }
 
     private Map<AfternoteCategoryType, Function<Afternote, ReceivedAfternoteDetailResponse>>

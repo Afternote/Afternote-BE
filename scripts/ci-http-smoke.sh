@@ -121,7 +121,7 @@ package_names = {
     for statement in payload
     if isinstance(statement, dict)
 }
-if "com.afternote.app" not in package_names:
+if "com.afternote.afternote_fe" not in package_names:
     actual = sorted(name for name in package_names if name is not None)
     raise SystemExit(f"assetlinks package missing: {actual}")
 

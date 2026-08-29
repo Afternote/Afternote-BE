@@ -31,6 +31,9 @@ public class AfternotePlaylist extends BaseEntity {
     
     @Column(name = "memorial_photo_url", length = 1000)
     private String memorialPhotoUrl;
+
+    @Column(name = "memorial_audio_url", length = 1000)
+    private String memorialAudioUrl;
     
     @Embedded
     private MemorialVideo memorialVideo;
@@ -40,17 +43,29 @@ public class AfternotePlaylist extends BaseEntity {
     private List<AfternotePlaylistItem> items = new ArrayList<>();
     
     /**
-     * PATCH 업데이트: null이 아닌 필드만 업데이트
+     * PATCH 업데이트. atmosphere는 null이 아니면 반영.
+     * 미디어는 specified=true 일 때만 반영하며, 값이 null 이면 삭제로 비운다.
      */
-    public void update(String atmosphere, String memorialPhotoUrl, MemorialVideo memorialVideo) {
+    public void update(
+            String atmosphere,
+            String memorialPhotoUrl,
+            boolean memorialPhotoUrlSpecified,
+            MemorialVideo memorialVideo,
+            boolean memorialVideoSpecified,
+            String memorialAudioUrl,
+            boolean memorialAudioUrlSpecified
+    ) {
         if (atmosphere != null) {
             this.atmosphere = atmosphere;
         }
-        if (memorialPhotoUrl != null) {
+        if (memorialPhotoUrlSpecified) {
             this.memorialPhotoUrl = memorialPhotoUrl;
         }
-        if (memorialVideo != null) {
+        if (memorialVideoSpecified) {
             this.memorialVideo = memorialVideo;
+        }
+        if (memorialAudioUrlSpecified) {
+            this.memorialAudioUrl = memorialAudioUrl;
         }
     }
     

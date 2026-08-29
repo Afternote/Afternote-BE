@@ -103,7 +103,9 @@ public class AfternoteController {
             description = "기존 애프터노트를 수정합니다. 수정하지 않을 필드는 생략 가능합니다. "
                     + "category는 변경할 수 없으며 생략을 권장합니다(동일 값 전송은 호환용으로 허용). "
                     + "isDraft=false(정식 등록)로 남거나 전환되면 credentials/playlist 등 필수값을 "
-                    + "요청·기존 데이터 합쳐 검증합니다. 임시저장(isDraft=true)이면 필수 검증을 완화합니다."
+                    + "요청·기존 데이터 합쳐 검증합니다. 임시저장(isDraft=true)이면 필수 검증을 완화합니다. "
+                    + "PLAYLIST 미디어(memorialPhotoUrl, memorialVideo, memorialAudioUrl)는 "
+                    + "필드 생략 시 유지, JSON null 이면 삭제(DB·S3)이다."
     )
     @PatchMapping("/{afternoteId}")
     public ApiResponse<AfternoteCreateResponse> updateAfternote(

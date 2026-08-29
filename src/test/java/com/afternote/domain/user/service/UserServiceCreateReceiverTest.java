@@ -9,6 +9,7 @@ import com.afternote.domain.receiver.repository.UserReceiverRepository;
 import com.afternote.domain.receiver.event.ReceiverAuthCodeEmailRequestedEvent;
 import com.afternote.domain.receiver.service.DeliveryVerificationService;
 import com.afternote.domain.user.dto.UserCreateReceiverRequest;
+import com.afternote.domain.user.dto.UserUpdateProfileRequest;
 import com.afternote.domain.user.model.AuthProvider;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserStatus;
@@ -154,6 +155,23 @@ class UserServiceCreateReceiverTest {
         assertThat(eventCaptor.getValue().email()).isEqualTo("jieun@naver.com");
         assertThat(eventCaptor.getValue().senderName()).isEqualTo("tester");
         assertThat(eventCaptor.getValue().receiverName()).isEqualTo("김지은");
+    }
+
+    @Test
+    @DisplayName("프로필 이미지가 관리 키가 아니면 1805")
+    void updateMyProfile_UnmanagedImage_Fails() {
+        User user = sampleUser(1L);
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(s3Service.promoteManagedMediaKey("profiles", 1L, "javascript:alert(1)"))
+                .willThrow(new CustomException(ErrorCode.UNMANAGED_MEDIA_URL));
+
+        UserUpdateProfileRequest request = new UserUpdateProfileRequest(
+                "이름", null, "javascript:alert(1)");
+
+        assertThatThrownBy(() -> userService.updateMyProfile(1L, request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.UNMANAGED_MEDIA_URL));
     }
 
     private static User sampleUser(Long id) {

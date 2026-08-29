@@ -164,6 +164,8 @@ public enum ErrorCode {
     RECEIVER_IN_USE(HttpStatus.CONFLICT, 1629, "이미 콘텐츠에 연결된 수신자는 삭제할 수 없습니다. 연결을 해제한 뒤 다시 시도해주세요."),
     RECEIVER_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, 1630, "수신자 이메일은 필수입니다."),
     PLAYLIST_SONG_INVALID(HttpStatus.BAD_REQUEST, 1631, "곡 목록 형식이 올바르지 않습니다. title·artist가 있는 곡 객체만 보내주세요."),
+    MEMORIAL_PHOTO_URL_CANNOT_BE_EMPTY(HttpStatus.BAD_REQUEST, 1632, "영정 사진 URL은 공백일 수 없습니다."),
+    MEMORIAL_AUDIO_URL_CANNOT_BE_EMPTY(HttpStatus.BAD_REQUEST, 1633, "추모 음성 URL은 공백일 수 없습니다."),
 
     // ======================================                                                                                                                                                               
     // 7. 암호화 관련 오류 (code: 1700 ~ 1799)                                                                                                                                                                    
@@ -182,6 +184,8 @@ public enum ErrorCode {
     INVALID_DIRECTORY(HttpStatus.BAD_REQUEST, 1802, "허용되지 않는 디렉토리입니다."),
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, 1803, "업로드 파일 크기가 허용 한도를 초과했습니다."),
     INVALID_FILE_SIZE(HttpStatus.BAD_REQUEST, 1804, "업로드 파일 크기는 1바이트 이상이어야 합니다."),
+    UNMANAGED_MEDIA_URL(HttpStatus.BAD_REQUEST, 1805, "업로드로 발급된 파일만 사용할 수 있습니다."),
+    MEDIA_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1806, "미디어 파일 삭제에 실패했습니다."),
 
     // ======================================
     // 9. 수신자 인증/외부 API 관련 오류 (code: 1900 ~ 1999)

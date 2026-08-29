@@ -67,6 +67,16 @@ public class AfternoteDetailOpenApiCustomizer implements OpenApiCustomizer {
         flattenSelfAllOf(schemas.get("AfternotePublishedPlaylistResponse"));
         ensureSongsRequired(schemas.get("AfternotePublishedPlaylistResponse"));
         wrapNullableRef(schemas.get("AfternotePublishedPlaylistResponse"), "memorialVideo", "추모 영상");
+        wrapNullableRef(schemas.get("AfternotePublishedPlaylistResponse"), "memorialAudioUrl", "추모 음성 URL");
+        wrapNullableRef(
+                schemas.get("AfternoteUpdateRequest"),
+                "playlist",
+                "플레이리스트 (PLAYLIST). playlist 객체 생략 시 플레이리스트 전체 유지. "
+                        + "정식 등록 상태면 요청·기존 합쳐 필수. "
+                        + "memorialPhotoUrl·memorialVideo·memorialAudioUrl 은 필드 생략 시 유지, "
+                        + "JSON null 이면 해당 미디어를 삭제한다(DB 참조 제거 + S3 객체 삭제). "
+                        + "값이 있으면 교체(업로드로 발급된 afternotes 키만 허용)."
+        );
 
         replaceUnionSchema(schemas);
         ensureAlwaysRequired(schemas);

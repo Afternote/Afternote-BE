@@ -151,6 +151,39 @@ public class S3Service {
         }
     }
 
+    public enum MediaKind {
+        IMAGE, VIDEO, AUDIO
+    }
+
+    /**
+     * 관리 키만 승격한다. 우리 버킷·디렉터리 객체가 아니면 400.
+     */
+    public String promoteManagedMediaKey(String directory, Long userId, String rawUrlOrKey) {
+        if (!StringUtils.hasText(rawUrlOrKey)) {
+            return rawUrlOrKey;
+        }
+        if (!isManagedObjectKeyInDirectory(rawUrlOrKey, directory)) {
+            throw new CustomException(ErrorCode.UNMANAGED_MEDIA_URL);
+        }
+        return promoteMediaKey(directory, userId, rawUrlOrKey);
+    }
+
+    /**
+     * 관리 키이면서 슬롯 확장자와 맞는 경우만 승격한다.
+     */
+    public String promoteManagedMediaKey(String directory, Long userId, String rawUrlOrKey, MediaKind kind) {
+        if (!StringUtils.hasText(rawUrlOrKey)) {
+            return rawUrlOrKey;
+        }
+        if (!isManagedObjectKeyInDirectory(rawUrlOrKey, directory)) {
+            throw new CustomException(ErrorCode.UNMANAGED_MEDIA_URL);
+        }
+        if (!hasExtensionIn(rawUrlOrKey, extensionsOf(kind))) {
+            throw new CustomException(ErrorCode.INVALID_FILE_EXTENSION);
+        }
+        return promoteMediaKey(directory, userId, rawUrlOrKey);
+    }
+
     /**
      * staging/legacy 미디어를 permanent로 승격하고 storage key를 반환한다.
      * 관리되지 않는 URL이면 기존처럼 extract 결과(또는 원문)를 반환한다.
@@ -252,6 +285,37 @@ public class S3Service {
 
         String key = extractStorageKey(rawUrlOrKey);
         return StringUtils.hasText(key) && belongsToDirectory(key, directory.toLowerCase());
+    }
+
+    public boolean isManagedMediaInDirectory(String rawUrlOrKey, String directory, MediaKind kind) {
+        return isManagedObjectKeyInDirectory(rawUrlOrKey, directory)
+                && hasExtensionIn(rawUrlOrKey, extensionsOf(kind));
+    }
+
+    public boolean sameStorageKey(String left, String right) {
+        String leftKey = extractStorageKey(left);
+        String rightKey = extractStorageKey(right);
+        return StringUtils.hasText(leftKey) && leftKey.equals(rightKey);
+    }
+
+    /**
+     * 해당 디렉터리의 관리 객체만 삭제한다. 비관리 값은 무시한다.
+     */
+    public void deleteManagedObject(String rawUrlOrKey, String directory) {
+        if (!isManagedObjectKeyInDirectory(rawUrlOrKey, directory)) {
+            return;
+        }
+        String key = extractStorageKey(rawUrlOrKey);
+        try {
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key)
+                    .build());
+            log.debug("Deleted S3 object {}", key);
+        } catch (Exception e) {
+            log.error("S3 delete failed key={}", key, e);
+            throw new CustomException(ErrorCode.MEDIA_DELETE_FAILED);
+        }
     }
 
     public String resolvePublicUrl(String rawUrlOrKey) {
@@ -438,5 +502,27 @@ public class S3Service {
             throw new CustomException(ErrorCode.INVALID_FILE_EXTENSION);
         }
         return contentType;
+    }
+
+    private static Set<String> extensionsOf(MediaKind kind) {
+        return switch (kind) {
+            case IMAGE -> IMAGE_EXTENSIONS;
+            case VIDEO -> VIDEO_EXTENSIONS;
+            case AUDIO -> AUDIO_EXTENSIONS;
+        };
+    }
+
+    boolean hasExtensionIn(String rawUrlOrKey, Set<String> extensions) {
+        String key = extractStorageKey(rawUrlOrKey);
+        if (!StringUtils.hasText(key) || extensions == null || extensions.isEmpty()) {
+            return false;
+        }
+        int slash = key.lastIndexOf('/');
+        String fileName = slash >= 0 ? key.substring(slash + 1) : key;
+        int dot = fileName.lastIndexOf('.');
+        if (dot < 0 || dot == fileName.length() - 1) {
+            return false;
+        }
+        return extensions.contains(fileName.substring(dot + 1).toLowerCase());
     }
 }

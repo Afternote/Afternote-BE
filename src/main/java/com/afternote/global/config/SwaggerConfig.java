@@ -14,6 +14,7 @@ import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
 import io.swagger.v3.oas.models.servers.Server;
+import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -53,6 +54,11 @@ public class SwaggerConfig {
                                                         new MediaType().schema(rateLimitBody)))))
                 .addSecurityItem(new SecurityRequirement().addList("bearer-key"))
                 .info(apiInfo());
+    }
+
+    @Bean
+    public OpenApiCustomizer afternoteDetailOpenApiCustomizer() {
+        return new AfternoteDetailOpenApiCustomizer();
     }
 
     private Info apiInfo() {

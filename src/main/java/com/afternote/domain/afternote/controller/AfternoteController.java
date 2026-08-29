@@ -61,10 +61,16 @@ public class AfternoteController {
 
     @Operation(
             summary = "애프터노트 상세 목록 조회 API",
-            description = "애프터노트 상세목록을 가져옵니다. path variable로 afternote_id를 보내주시면 됩니다."
+            description = "애프터노트 상세목록을 가져옵니다. path variable로 afternote_id를 보내주시면 됩니다. "
+                    + "임시저장과 발행 완료(일반/PLAYLIST) 스키마가 다르며, "
+                    + "발행 완료 PLAYLIST는 playlist와 곡 목록이 필수이다."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "애프터노트 상세 조회 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "발행 완료인데 필수 데이터가 없음 (code: 1603/1604/1605/1609/1610)"
+            ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "애프터노트를 찾을 수 없음 (code: 1600)")
     })

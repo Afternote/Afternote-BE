@@ -75,6 +75,13 @@ public interface DeepThoughtRepository extends JpaRepository<DeepThought, Long> 
             LocalDateTime endExclusive
     );
 
+    @Query("SELECT DISTINCT dt.user.id FROM DeepThought dt WHERE dt.isDraft = false "
+            + "AND dt.createdAt >= :startInclusive AND dt.createdAt < :endExclusive")
+    List<Long> findUserIdsWithFinalDeepThoughtsInCreatedAtRange(
+            @Param("startInclusive") LocalDateTime startInclusive,
+            @Param("endExclusive") LocalDateTime endExclusive
+    );
+
     /** 감정 행이 없는 최종 깊은생각 (userId, deepThoughtId). 백필용. */
     @Query(value = """
             SELECT dt.user_id, dt.id

@@ -7,6 +7,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Schema(description = "다이어리 생성 요청")
@@ -31,13 +32,15 @@ public record DiaryCreateRequest(
         @Getter
         TodayMood todayMood,
 
+        @Schema(
+                description = "기록일 (yyyy-MM-dd). 미전송 시 오늘(Asia/Seoul). 미래 날짜는 거부(code 2101). 과거는 제한 없음",
+                example = "2026-08-01"
+        )
+        @Getter
+        LocalDate date,
+
         @Schema(description = "수신자 ID 목록", example = "[1, 2]")
         @Getter
         List<Long> receiverIds
 ) {
-
-
-
-
-
 }

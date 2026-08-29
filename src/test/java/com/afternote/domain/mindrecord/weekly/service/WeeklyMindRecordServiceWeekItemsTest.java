@@ -7,6 +7,7 @@ import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
 import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.model.TodayMood;
 import com.afternote.domain.diary.repository.DiaryRepository;
+import com.afternote.domain.mindrecord.emotion.EmotionAnalysisPolicy;
 import com.afternote.domain.mindrecord.emotion.model.Emotion;
 import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
 import com.afternote.domain.mindrecord.emotion.repository.EmotionRepository;
@@ -60,6 +61,8 @@ class WeeklyMindRecordServiceWeekItemsTest {
     private GeminiService geminiService;
     @Mock
     private ObjectMapper objectMapper;
+    @Mock
+    private EmotionAnalysisPolicy emotionAnalysisPolicy;
 
     @Test
     @DisplayName("week[].emotion 은 todayMood만 쓰고 Gemini 분석 카테고리는 넣지 않는다")
@@ -76,7 +79,7 @@ class WeeklyMindRecordServiceWeekItemsTest {
 
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(diaryRepository
-                .findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+                .findByUserIdAndIsDraftFalseAndEntryDateGreaterThanEqualAndEntryDateLessThanOrderByEntryDateAscCreatedAtAsc(
                         any(), any(), any()))
                 .willReturn(List.of(diary));
         given(userDailyQuestionRepository
@@ -131,7 +134,7 @@ class WeeklyMindRecordServiceWeekItemsTest {
 
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(diaryRepository
-                .findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+                .findByUserIdAndIsDraftFalseAndEntryDateGreaterThanEqualAndEntryDateLessThanOrderByEntryDateAscCreatedAtAsc(
                         any(), any(), any()))
                 .willReturn(List.of(older, newer));
         given(userDailyQuestionRepository
@@ -155,12 +158,47 @@ class WeeklyMindRecordServiceWeekItemsTest {
         assertThat(item.emotion()).isEqualTo("HAPPY");
     }
 
+    @Test
+    @DisplayName("week[] 일기는 createdAt이 아니라 기록일(entryDate)로 그루핑한다")
+    void week_groupsDiaryByEntryDate_notCreatedAt() {
+        stubCommon();
+        User user = sampleUser(1L);
+        LocalDate monday = LocalDate.of(2026, 8, 3);
+        LocalDate entryDate = monday.plusDays(2);
+        Diary diary = Diary.create(user, "제목", "본문", false, TodayMood.SAD, entryDate);
+        ReflectionTestUtils.setField(diary, "id", 9L);
+        ReflectionTestUtils.setField(diary, "createdAt", monday.atTime(10, 0));
+        ReflectionTestUtils.setField(diary, "updatedAt", monday.atTime(10, 0));
+
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(diaryRepository
+                .findByUserIdAndIsDraftFalseAndEntryDateGreaterThanEqualAndEntryDateLessThanOrderByEntryDateAscCreatedAtAsc(
+                        any(), any(), any()))
+                .willReturn(List.of(diary));
+        given(userDailyQuestionRepository
+                .findByUserIdAndQuestionDateBetweenOrderByQuestionDateAscCreatedAtAsc(any(), any(), any()))
+                .willReturn(List.of());
+        given(deepThoughtRepository
+                .findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+                        any(), any(), any()))
+                .willReturn(List.of());
+        given(emotionRepository.findByUserIdAndSourceTypeAndSourceIdIn(any(), any(), anyList()))
+                .willReturn(List.of());
+        given(weeklyReportRepository.findByUserIdAndStartDate(any(), any())).willReturn(Optional.empty());
+
+        var response = weeklyMindRecordService.getWeeklyMindRecord(1L, monday);
+
+        assertThat(response.week()).hasSize(1);
+        assertThat(response.week().get(0).day()).isEqualTo(entryDate.getDayOfMonth());
+        assertThat(response.week().get(0).type()).isEqualTo(WeekRecordType.DIARY);
+    }
+
     private void stubCommon() {
         ReflectionTestUtils.setField(weeklyMindRecordService, "objectMapper", new ObjectMapper());
     }
 
     private static Diary diary(User user, Long id, LocalDateTime at, TodayMood mood) {
-        Diary diary = Diary.create(user, "제목", "본문", false, mood);
+        Diary diary = Diary.create(user, "제목", "본문", false, mood, at.toLocalDate());
         ReflectionTestUtils.setField(diary, "id", id);
         ReflectionTestUtils.setField(diary, "createdAt", at);
         ReflectionTestUtils.setField(diary, "updatedAt", at);

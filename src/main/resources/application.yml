@@ -91,9 +91,17 @@ app:
 # 마인드레코드 감정 분석 (Gemini 실패 방어)
 afternote:
   emotion-analysis:
-    max-retry: 5
+    # 당일(저장 직후+5분 백필) Gemini 시도 상한. 소진 시 FAILED, 매일 01:00에 열린 주만 리셋
+    max-retry: 3
     backfill-batch-size: 20
     backfill-delay-ms: 300000
+    dawn-cron: "0 0 1 * * *"
+    dawn-zone: Asia/Seoul
+    dawn-batch-size: 100
+  weekly-report:
+    # 직전 주(월~일) 리포트. Asia/Seoul 월요일 02:00
+    cron: "0 0 2 * * MON"
+    zone: Asia/Seoul
 
 # FCM — google-services.json 의 project_id / package 와 동일해야 함
 firebase:

@@ -17,7 +17,8 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Gemini 일시 실패로 PENDING에 남은 감정 분석과, 감정 행 자체가 없는 누락분을 주기적으로 재시도한다.
+ * Gemini 일시 실패로 PENDING에 남은 감정 분석과, 감정 행 자체가 없는 누락분을 5분마다 재시도한다.
+ * 당일 상한(기본 3회)을 소진한 FAILED는 여기 없고, {@link EmotionAnalysisDawnScheduler}가 매일 01:00에 연다.
  */
 @Slf4j
 @Component

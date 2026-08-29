@@ -4,8 +4,14 @@ import com.afternote.domain.diary.dto.DiaryListResponse;
 import com.afternote.domain.diary.dto.DiaryResponse;
 import com.afternote.domain.diary.model.TodayMood;
 import com.afternote.domain.diary.service.DiaryService;
+import com.afternote.global.exception.CustomException;
+import com.afternote.global.exception.ErrorCode;
+import com.afternote.global.exception.GlobalExceptionHandler;
 import com.afternote.global.resolver.UserId;
 import com.afternote.global.resolver.UserIdArgumentResolver;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -15,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
@@ -56,9 +63,14 @@ class DiaryControllerTest {
     void setUp() {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.afterPropertiesSet();
+        ObjectMapper objectMapper = new ObjectMapper()
+                .registerModule(new JavaTimeModule())
+                .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         mockMvc = MockMvcBuilders.standaloneSetup(diaryController)
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .setCustomArgumentResolvers(new UserIdTestArgumentResolver())
                 .setValidator(validator)
+                .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .build();
     }
 
@@ -70,7 +82,7 @@ class DiaryControllerTest {
         mockMvc.perform(post("/api/v1/diary")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
-                .content("{\"title\":\"t\",\"content\":\"c\",\"isDraft\":false,\"todayMood\":\"HAPPY\"}"))
+                .content("{\"title\":\"t\",\"content\":\"c\",\"isDraft\":false,\"todayMood\":\"HAPPY\",\"date\":\"2026-08-01\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
             .andExpect(jsonPath("$.data.diaryId").value(10))
@@ -80,13 +92,42 @@ class DiaryControllerTest {
     }
 
     @Test
-    @DisplayName("Diary 작성 API 실패 - todayMood 누락")
+    @DisplayName("Diary 작성 API 실패 - todayMood 누락은 400/1400")
     void createDiary_MissingTodayMood_Fail() throws Exception {
         mockMvc.perform(post("/api/v1/diary")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"title\":\"t\",\"content\":\"c\",\"isDraft\":false}"))
-                .andExpect(status().isBadRequest());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value(1400));
+    }
+
+    @Test
+    @DisplayName("Diary 작성 API 실패 - 날짜 형식이 아니면 400/1400")
+    void createDiary_InvalidDateFormat_Fail() throws Exception {
+        mockMvc.perform(post("/api/v1/diary")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"content\":\"c\",\"isDraft\":false,\"todayMood\":\"HAPPY\",\"date\":\"2026/08/01\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value(1400));
+    }
+
+    @Test
+    @DisplayName("Diary 작성 API 실패 - 미래 기록일은 400/2101")
+    void createDiary_FutureDate_Fail() throws Exception {
+        given(diaryService.createDiary(eq(USER_ID), any()))
+                .willThrow(new CustomException(ErrorCode.DIARY_INVALID_DATE));
+
+        mockMvc.perform(post("/api/v1/diary")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"title\":\"t\",\"content\":\"c\",\"isDraft\":false,\"todayMood\":\"HAPPY\",\"date\":\"2099-01-01\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value(2101));
     }
 
     @Test
@@ -116,12 +157,27 @@ class DiaryControllerTest {
         mockMvc.perform(patch("/api/v1/diary/{diaryId}", 10L)
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"title\":\"updated\"}"))
+                        .content("{\"title\":\"updated\",\"date\":\"2026-08-01\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
                 .andExpect(jsonPath("$.data.diaryId").value(10));
 
         verify(diaryService).updateDiary(eq(USER_ID), eq(10L), any());
+    }
+
+    @Test
+    @DisplayName("Diary 수정 API 실패 - 미래 기록일은 400/2101")
+    void updateDiary_FutureDate_Fail() throws Exception {
+        given(diaryService.updateDiary(eq(USER_ID), eq(10L), any()))
+                .willThrow(new CustomException(ErrorCode.DIARY_INVALID_DATE));
+
+        mockMvc.perform(patch("/api/v1/diary/{diaryId}", 10L)
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"date\":\"2099-01-01\"}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value(2101));
     }
 
     @Test
@@ -142,7 +198,8 @@ class DiaryControllerTest {
                 .content("content")
                 .isDraft(false)
                 .emotion("happy")
-            .todayMood(TodayMood.HAPPY)
+                .todayMood(TodayMood.HAPPY)
+                .date(java.time.LocalDate.of(2026, 8, 1))
                 .createdAt(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN)))
                 .updatedAt(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN)))
                 .build();

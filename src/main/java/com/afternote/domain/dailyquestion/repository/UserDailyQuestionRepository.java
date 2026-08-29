@@ -15,6 +15,8 @@ public interface UserDailyQuestionRepository extends JpaRepository<UserDailyQues
     @Query("SELECT q.id FROM UserDailyQuestion q WHERE q.user.id = :userId")
     List<Long> findIdsByUserId(@Param("userId") Long userId);
     
+    Optional<UserDailyQuestion> findByIdAndUser_Id(Long id, Long userId);
+
     Optional<UserDailyQuestion> findByUserIdAndQuestionDate(Long userId, LocalDate questionDate);
     
     List<UserDailyQuestion> findByUserIdOrderByCreatedAtDesc(Long userId);
@@ -25,6 +27,14 @@ public interface UserDailyQuestionRepository extends JpaRepository<UserDailyQues
             Long userId,
             LocalDate fromInclusive,
             LocalDate toInclusive
+    );
+
+    @Query("SELECT DISTINCT q.user.id FROM UserDailyQuestion q "
+            + "WHERE q.isDraft = false AND q.isAnswered = true "
+            + "AND q.questionDate >= :fromInclusive AND q.questionDate <= :toInclusive")
+    List<Long> findUserIdsWithFinalAnswersInQuestionDateRange(
+            @Param("fromInclusive") LocalDate fromInclusive,
+            @Param("toInclusive") LocalDate toInclusive
     );
 
     /** 감정 행이 없는 최종 답변 (userId, userDailyQuestionId). 백필용. */

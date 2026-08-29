@@ -16,7 +16,7 @@ public record DiaryListResponse(
         @Getter
         String yearMonth,
 
-        @Schema(description = "조회 대상 달의 다이어리 목록 (createdAt 내림차순)")
+        @Schema(description = "조회 대상 달의 다이어리 목록 (기록일 date 내림차순, 같은 날이면 createdAt 내림차순)")
         @Getter
         List<DiaryResponse> diaries,
 
@@ -24,7 +24,7 @@ public record DiaryListResponse(
         @Getter
         long monthDiaryCount,
 
-        @Schema(description = "최근 7일(서버 기준 오늘 포함) 정식 다이어리 중 가장 많이 기록된 기분. 해당 구간에 기록이 없으면 null")
+        @Schema(description = "최근 7일(Asia/Seoul 오늘 포함, 기록일 기준) 정식 다이어리 중 가장 많이 기록된 기분. 해당 구간에 기록이 없으면 null")
         @Getter
         TodayMood weeklyDominantMood
 ) {

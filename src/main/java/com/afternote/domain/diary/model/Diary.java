@@ -6,8 +6,13 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDate;
+
 @Entity
-@Table(name = "diary")
+@Table(
+        name = "diary",
+        indexes = @Index(name = "idx_diary_user_entry_date", columnList = "user_id, entry_date")
+)
 @Getter
 @NoArgsConstructor
 public class Diary extends BaseEntity {
@@ -36,17 +41,33 @@ public class Diary extends BaseEntity {
     @Column(name = "today_mood", length = 20, nullable = false)
     private TodayMood todayMood;
 
-    public static Diary create(User user, String title, String content, Boolean isDraft, TodayMood todayMood) {
+    /**
+     * 사용자가 고른 기록일. 작성 시각({@code createdAt})과 다를 수 있다.
+     * columnDefinition 을 NOT NULL 없이 두어 ddl-auto 가 기존 행에 컬럼을 붙일 수 있게 하고,
+     * NOT NULL 은 {@code MysqlSchemaCompatibilityMigrator} 가 created_at 백필 뒤에 적용한다.
+     */
+    @Column(name = "entry_date", nullable = false, columnDefinition = "date")
+    private LocalDate entryDate;
+
+    public static Diary create(
+            User user,
+            String title,
+            String content,
+            Boolean isDraft,
+            TodayMood todayMood,
+            LocalDate entryDate
+    ) {
         Diary diary = new Diary();
         diary.user = user;
         diary.title = title;
         diary.content = content;
         diary.isDraft = isDraft;
         diary.todayMood = todayMood;
+        diary.entryDate = entryDate;
         return diary;
     }
 
-    public void update(String title, String content, Boolean isDraft, TodayMood todayMood) {
+    public void update(String title, String content, Boolean isDraft, TodayMood todayMood, LocalDate entryDate) {
         if (title != null) {
             this.title = title;
         }
@@ -58,6 +79,9 @@ public class Diary extends BaseEntity {
         }
         if (todayMood != null) {
             this.todayMood = todayMood;
+        }
+        if (entryDate != null) {
+            this.entryDate = entryDate;
         }
     }
 }

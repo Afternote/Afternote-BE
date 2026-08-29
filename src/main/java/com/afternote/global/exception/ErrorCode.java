@@ -209,6 +209,7 @@ public enum ErrorCode {
     // 11. 다이어리 관련 오류 (code: 2100 ~ 2199)
     // ======================================
     DIARY_NOT_FOUND(HttpStatus.NOT_FOUND, 2100, "다이어리를 찾을 수 없습니다."),
+    DIARY_INVALID_DATE(HttpStatus.BAD_REQUEST, 2101, "기록 날짜는 오늘 이후일 수 없습니다."),
 
     // ======================================
     // 12. 깊은 생각 관련 오류 (code: 2200 ~ 2299)

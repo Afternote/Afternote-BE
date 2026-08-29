@@ -5,6 +5,7 @@ import com.afternote.domain.afternote.dto.AfternotedetailResponse;
 import com.afternote.domain.afternote.dto.AfternoteUpdateRequest;
 import com.afternote.domain.appversion.controller.AppVersionController;
 import com.afternote.domain.appversion.dto.AppVersionCheckResponse;
+import com.afternote.domain.diary.dto.DiaryCreateRequest;
 import com.afternote.domain.music.controller.MusicController;
 import com.afternote.domain.timeletter.dto.request.TimeLetterCreateRequest;
 import com.afternote.domain.timeletter.dto.request.TimeLetterUpdateRequest;
@@ -150,6 +151,18 @@ class OpenApiContractAnnotationTest {
         assertThat(schema.nullable()).isTrue();
         assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
         assertThat(schema.description()).contains("생략");
+    }
+
+    @Test
+    @DisplayName("Diary 임시저장의 title·content·todayMood는 OpenAPI에서 선택 입력이다")
+    void diaryDraftFormalFields_AreOptionalInSchema() throws Exception {
+        for (String field : Set.of("title", "content", "todayMood")) {
+            Schema schema = DiaryCreateRequest.class.getDeclaredMethod(field).getAnnotation(Schema.class);
+            assertThat(schema).as("@Schema on DiaryCreateRequest.%s", field).isNotNull();
+            assertThat(schema.nullable()).isTrue();
+            assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
+            assertThat(schema.description()).contains("임시저장").contains("정식 등록");
+        }
     }
 
     @Test

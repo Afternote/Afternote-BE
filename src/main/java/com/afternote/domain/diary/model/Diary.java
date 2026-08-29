@@ -38,7 +38,7 @@ public class Diary extends BaseEntity {
     private String imageUrl;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "today_mood", length = 20, nullable = false)
+    @Column(name = "today_mood", length = 20, nullable = true)
     private TodayMood todayMood;
 
     /**

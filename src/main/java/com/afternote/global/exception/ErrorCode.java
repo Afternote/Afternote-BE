@@ -163,6 +163,7 @@ public enum ErrorCode {
     DUPLICATE_RECEIVER_PHONE(HttpStatus.CONFLICT, 1628, "이미 등록된 수신자 전화번호입니다."),
     RECEIVER_IN_USE(HttpStatus.CONFLICT, 1629, "이미 콘텐츠에 연결된 수신자는 삭제할 수 없습니다. 연결을 해제한 뒤 다시 시도해주세요."),
     RECEIVER_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, 1630, "수신자 이메일은 필수입니다."),
+    PLAYLIST_SONG_INVALID(HttpStatus.BAD_REQUEST, 1631, "곡 목록 형식이 올바르지 않습니다. title·artist가 있는 곡 객체만 보내주세요."),
 
     // ======================================                                                                                                                                                               
     // 7. 암호화 관련 오류 (code: 1700 ~ 1799)                                                                                                                                                                    

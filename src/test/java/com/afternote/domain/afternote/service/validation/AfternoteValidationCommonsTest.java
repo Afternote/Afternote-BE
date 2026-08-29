@@ -1,5 +1,6 @@
 package com.afternote.domain.afternote.service.validation;
 
+import com.afternote.domain.afternote.dto.AfternoteCreateRequest;
 import com.afternote.domain.afternote.dto.LeaveMessageBlock;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
@@ -55,5 +56,32 @@ class AfternoteValidationCommonsTest {
         assertThatCode(() -> AfternoteValidationCommons.validateLeaveMessage(List.of(
                 LeaveMessageBlock.builder().title(null).body("본문만").build()
         ))).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("receivers 원소 null은 건너뛰고 성공")
+    void optionalReceivers_NullElement_Ok() {
+        List<AfternoteCreateRequest.ReceiverRequest> receivers = new ArrayList<>();
+        receivers.add(null);
+        receivers.add(new AfternoteCreateRequest.ReceiverRequest(1L));
+        AfternoteCreateRequest request = new AfternoteCreateRequest(
+                null, null, null, null, null, receivers, null, true);
+
+        assertThatCode(() -> AfternoteValidationCommons.validateOptionalReceivers(request))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("receiver 객체인데 receiverId 없으면 1607")
+    void optionalReceivers_MissingReceiverId_Fail() {
+        AfternoteCreateRequest request = new AfternoteCreateRequest(
+                null, null, null, null, null,
+                List.of(new AfternoteCreateRequest.ReceiverRequest(null)),
+                null, true);
+
+        assertThatThrownBy(() -> AfternoteValidationCommons.validateOptionalReceivers(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.GALLERY_RECEIVER_ID_REQUIRED));
     }
 }

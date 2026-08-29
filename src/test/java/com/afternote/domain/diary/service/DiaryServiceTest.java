@@ -183,6 +183,67 @@ class DiaryServiceTest {
                         com.afternote.domain.mindrecord.emotion.event.DiaryEmotionAnalysisRequestedEvent.class));
     }
 
+    @Test
+    @DisplayName("임시저장은 제목·본문·기분 없이 저장하고 todayMood는 null")
+    void createDiary_draftOmitsFormalFields() {
+        User user = sampleUser();
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(mindRecordContentMediaService.prepareContentForSave(eq(1L), any())).willReturn(null);
+        given(diaryRepository.save(any(Diary.class))).willAnswer(invocation -> {
+            Diary diary = invocation.getArgument(0);
+            ReflectionTestUtils.setField(diary, "id", 11L);
+            ReflectionTestUtils.setField(diary, "createdAt", LocalDateTime.now());
+            ReflectionTestUtils.setField(diary, "updatedAt", LocalDateTime.now());
+            return diary;
+        });
+        given(mindRecordReceiverService.replaceDiaryReceivers(eq(1L), any(), any(), anyBoolean()))
+                .willReturn(List.of());
+
+        DiaryResponse response = diaryService.createDiary(1L, new DiaryCreateRequest(
+                null, null, true, null, null, null));
+
+        ArgumentCaptor<Diary> captor = ArgumentCaptor.forClass(Diary.class);
+        verify(diaryRepository).save(captor.capture());
+        assertThat(captor.getValue().getTitle()).isEmpty();
+        assertThat(captor.getValue().getContent()).isEmpty();
+        assertThat(captor.getValue().getIsDraft()).isTrue();
+        assertThat(captor.getValue().getTodayMood()).isNull();
+        assertThat(response.isDraft()).isTrue();
+        assertThat(response.todayMood()).isNull();
+    }
+
+    @Test
+    @DisplayName("정식 등록은 todayMood 없으면 400/1400")
+    void createDiary_publishedMissingTodayMood_rejected() {
+        User user = sampleUser();
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+
+        assertThatThrownBy(() -> diaryService.createDiary(1L, new DiaryCreateRequest(
+                "t", "c", false, null, null, null)))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+    }
+
+    @Test
+    @DisplayName("임시저장을 정식 등록으로 바꿀 때 기분이 없으면 400/1400")
+    void updateDiary_publishWithoutTodayMood_rejected() {
+        User user = sampleUser();
+        Diary diary = Diary.create(user, "", "", true, null, LocalDate.now(DiaryService.SEOUL));
+        ReflectionTestUtils.setField(diary, "id", 10L);
+        ReflectionTestUtils.setField(diary, "createdAt", LocalDateTime.now());
+        ReflectionTestUtils.setField(diary, "updatedAt", LocalDateTime.now());
+        given(diaryRepository.findByIdAndUserId(10L, 1L)).willReturn(Optional.of(diary));
+
+        DiaryUpdateRequest request = new DiaryUpdateRequest("제목", "본문", false, null, null, null);
+
+        assertThatThrownBy(() -> diaryService.updateDiary(1L, 10L, request))
+                .isInstanceOf(CustomException.class)
+                .extracting("errorCode")
+                .isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+        assertThat(diary.getIsDraft()).isTrue();
+    }
+
     private static User sampleUser() {
         User user = User.builder()
                 .email("u@test.com")

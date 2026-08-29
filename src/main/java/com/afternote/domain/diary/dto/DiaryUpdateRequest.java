@@ -10,11 +10,21 @@ import java.util.List;
 
 @Schema(description = "다이어리 수정 요청")
 public record DiaryUpdateRequest(
-        @Schema(description = "제목", example = "수정된 제목")
+        @Schema(
+                description = "제목. 생략 시 유지. 정식 등록(isDraft=false) 전환 시 필수",
+                example = "수정된 제목",
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         @Getter
         String title,
 
-        @Schema(description = MindRecordHtmlSchema.CONTENT, example = MindRecordHtmlSchema.CONTENT_EXAMPLE)
+        @Schema(
+                description = MindRecordHtmlSchema.CONTENT + " 생략 시 유지. 정식 등록 전환 시 필수",
+                example = MindRecordHtmlSchema.CONTENT_EXAMPLE,
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         @Getter
         String content,
 
@@ -22,7 +32,12 @@ public record DiaryUpdateRequest(
         @Getter
         Boolean isDraft,
 
-        @Schema(description = "오늘의 기분", example = "SOSO")
+        @Schema(
+                description = "오늘의 기분. 생략 시 유지. 정식 등록(isDraft=false) 전환 시 필수",
+                example = "SOSO",
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         @Getter
         TodayMood todayMood,
 

@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
  *   <li>users 마케팅 동의 컬럼 tinyint(1) NOT NULL DEFAULT 0</li>
  *   <li>afternote.category_type NOT NULL (#240)</li>
  *   <li>diary.entry_date DATE NOT NULL, 기존 행은 created_at 날짜로 백필 (#244)</li>
+ *   <li>diary.today_mood NULL 허용 (#243 임시저장 미선택)</li>
  * </ul>
  * 실패하면 기동을 중단한다. 조용히 삼키면 배포는 성공하고 런타임만 500 이 난다.
  */
@@ -66,6 +67,7 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
             ensureMarketingConsentColumns();
             ensureAfternoteCategoryTypeNotNull();
             ensureDiaryEntryDate();
+            ensureDiaryTodayMoodNullable();
         } catch (RuntimeException e) {
             throw new IllegalStateException("MySQL schema compatibility migration failed", e);
         }
@@ -358,6 +360,26 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
 
         jdbcTemplate.execute("ALTER TABLE `diary` MODIFY COLUMN `entry_date` date not null");
         log.info("[SchemaCompat] altered diary.entry_date to NOT NULL");
+    }
+
+    /**
+     * 임시저장에서 기분을 미선택(null)로 남긴다. ddl-auto 는 NOT NULL → NULL 을 바꾸지 않는다 (#243).
+     */
+    private void ensureDiaryTodayMoodNullable() {
+        String nullable = jdbcTemplate.query(
+                """
+                        SELECT IS_NULLABLE FROM information_schema.COLUMNS
+                        WHERE TABLE_SCHEMA = DATABASE()
+                          AND TABLE_NAME = 'diary'
+                          AND COLUMN_NAME = 'today_mood'
+                        """,
+                rs -> rs.next() ? rs.getString(1) : null
+        );
+        if (nullable == null || "YES".equalsIgnoreCase(nullable)) {
+            return;
+        }
+        jdbcTemplate.execute("ALTER TABLE diary MODIFY COLUMN today_mood VARCHAR(20) NULL");
+        log.info("[SchemaCompat] altered diary.today_mood to NULL (#243)");
     }
 
     private void ensureTinyintNotNullDefaultFalse(String table, String column) {

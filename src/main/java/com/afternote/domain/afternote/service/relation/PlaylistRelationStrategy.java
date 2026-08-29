@@ -112,11 +112,19 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
     ) {
         return AfternotePlaylist.builder()
                 .afternote(afternote)
-                .title(atmosphere != null ? atmosphere : DEFAULT_PLAYLIST_TITLE)
+                .title(resolvePlaylistTitle(afternote))
                 .atmosphere(atmosphere)
                 .memorialPhotoUrl(memorialPhotoUrl)
                 .memorialVideo(memorialVideo)
                 .build();
+    }
+
+    private String resolvePlaylistTitle(Afternote afternote) {
+        String title = afternote.getTitle();
+        if (title == null || title.isBlank()) {
+            return DEFAULT_PLAYLIST_TITLE;
+        }
+        return title.length() > 100 ? title.substring(0, 100) : title;
     }
 
     private AfternotePlaylistItem createPlaylistItem(

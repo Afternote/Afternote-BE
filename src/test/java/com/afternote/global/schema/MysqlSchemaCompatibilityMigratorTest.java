@@ -242,6 +242,41 @@ class MysqlSchemaCompatibilityMigratorTest {
     }
 
     @Test
+    @DisplayName("diary.today_mood 가 NOT NULL 이면 NULL 로 보정한다")
+    void makeDiaryTodayMoodNullable() throws Exception {
+        given(dataSource.getConnection()).willReturn(connection);
+        given(connection.getMetaData()).willReturn(metaData);
+        given(metaData.getDatabaseProductName()).willReturn("MySQL");
+
+        given(jdbcTemplate.query(contains("DATA_TYPE = 'enum'"), any(RowMapper.class)))
+                .willReturn(List.of());
+        given(jdbcTemplate.query(contains("CONSTRAINT_TYPE = 'CHECK'"), any(RowMapper.class)))
+                .willReturn(List.of());
+        given(jdbcTemplate.query(contains("emotion_category"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("YES");
+        given(jdbcTemplate.query(contains("time_letter_receiver"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("YES");
+        given(jdbcTemplate.queryForObject(
+                anyString(), eq(Integer.class), eq("time_letters"), eq("delivered_at")))
+                .willReturn(0);
+        given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("users"), anyString()))
+                .willReturn(1);
+        given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("diary"), eq("entry_date")))
+                .willReturn(1);
+        given(jdbcTemplate.query(contains("COLUMN_NAME = 'category_type'"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("NO");
+        given(jdbcTemplate.query(contains("COLUMN_NAME = 'entry_date'"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("NO");
+        given(jdbcTemplate.query(contains("COLUMN_NAME = 'today_mood'"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("NO");
+
+        new MysqlSchemaCompatibilityMigrator(jdbcTemplate, dataSource)
+                .run(new DefaultApplicationArguments());
+
+        verify(jdbcTemplate).execute("ALTER TABLE diary MODIFY COLUMN today_mood VARCHAR(20) NULL");
+    }
+
+    @Test
     @DisplayName("식별자에 허용되지 않은 문자가 있으면 거부한다")
     void rejectUnsafeIdentifier() {
         assertThatThrownBy(() -> MysqlSchemaCompatibilityMigrator.quote("afternote;drop"))

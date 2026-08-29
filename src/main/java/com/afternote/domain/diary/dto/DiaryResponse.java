@@ -37,7 +37,7 @@ public record DiaryResponse(
         @Getter
         String emotion,
 
-        @Schema(description = "오늘의 기분")
+        @Schema(description = "오늘의 기분. 임시저장에서 미선택이면 null", nullable = true)
         @Getter
         TodayMood todayMood,
 

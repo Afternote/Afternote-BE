@@ -26,10 +26,17 @@ public class DiaryController {
 
     private final DiaryService diaryService;
 
-    @Operation(summary = "Diary 작성", description = "새로운 다이어리를 작성합니다.")
+    @Operation(
+            summary = "Diary 작성",
+            description = "새로운 다이어리를 작성합니다. 임시저장(isDraft=true)은 제목·본문·기분을 생략할 수 있습니다. "
+                    + "정식 등록(isDraft=false)은 세 항목이 모두 필요합니다."
+    )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Diary 작성 성공"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 값이 올바르지 않음 (code: 1400). 미래 기록일(code: 2101)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "요청 값이 올바르지 않음 (code: 1400). 정식 등록 시 제목·본문·기분 누락 포함. 미래 기록일(code: 2101)"
+            ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)")
     })
     @PostMapping
@@ -60,10 +67,17 @@ public class DiaryController {
         return ApiResponse.success(diaryService.getDiariesByMonth(userId, yearMonth, draftOnly));
     }
 
-    @Operation(summary = "Diary 수정", description = "다이어리를 수정합니다.")
+    @Operation(
+            summary = "Diary 수정",
+            description = "다이어리를 수정합니다. 임시저장 유지는 제목·본문·기분을 생략할 수 있습니다. "
+                    + "정식 등록(isDraft=false)으로 남기거나 전환하면 세 항목이 모두 필요합니다."
+    )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Diary 수정 성공"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 값이 올바르지 않음 (code: 1400). 미래 기록일(code: 2101)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "400",
+                    description = "요청 값이 올바르지 않음 (code: 1400). 정식 등록 시 제목·본문·기분 누락 포함. 미래 기록일(code: 2101)"
+            ),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "다이어리를 찾을 수 없음 (code: 2100)")
     })

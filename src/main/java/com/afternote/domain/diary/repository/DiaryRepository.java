@@ -57,6 +57,7 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
 	);
 
     @Query("SELECT d.todayMood FROM Diary d WHERE d.user.id = :userId AND d.isDraft = false "
+			+ "AND d.todayMood IS NOT NULL "
 			+ "AND d.entryDate >= :startInclusive AND d.entryDate < :endExclusive")
 	List<TodayMood> findTodayMoodsByUserIdAndEntryDateRange(
 			@Param("userId") Long userId,

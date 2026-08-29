@@ -92,8 +92,11 @@ class DiaryControllerTest {
     }
 
     @Test
-    @DisplayName("Diary 작성 API 실패 - todayMood 누락은 400/1400")
-    void createDiary_MissingTodayMood_Fail() throws Exception {
+    @DisplayName("Diary 작성 API 실패 - 정식 등록 todayMood 누락은 400/1400")
+    void createDiary_PublishedMissingTodayMood_Fail() throws Exception {
+        given(diaryService.createDiary(eq(USER_ID), any()))
+                .willThrow(new CustomException(ErrorCode.INVALID_INPUT_VALUE));
+
         mockMvc.perform(post("/api/v1/diary")
                         .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -101,6 +104,22 @@ class DiaryControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status").value(400))
                 .andExpect(jsonPath("$.code").value(1400));
+    }
+
+    @Test
+    @DisplayName("Diary 임시저장은 제목·본문·기분 없이 200")
+    void createDiary_DraftWithoutFormalFields_Success() throws Exception {
+        given(diaryService.createDiary(eq(USER_ID), any())).willReturn(sampleDraftResponse(11L));
+
+        mockMvc.perform(post("/api/v1/diary")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"isDraft\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(200))
+                .andExpect(jsonPath("$.data.diaryId").value(11));
+
+        verify(diaryService).createDiary(eq(USER_ID), any());
     }
 
     @Test
@@ -189,6 +208,19 @@ class DiaryControllerTest {
                 .andExpect(jsonPath("$.status").value(200));
 
         verify(diaryService).deleteDiary(USER_ID, 10L);
+    }
+
+    private DiaryResponse sampleDraftResponse(Long id) {
+        return DiaryResponse.builder()
+                .diaryId(id)
+                .title("")
+                .content("")
+                .isDraft(true)
+                .todayMood(null)
+                .date(java.time.LocalDate.of(2026, 8, 1))
+                .createdAt(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN)))
+                .updatedAt(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN)))
+                .build();
     }
 
     private DiaryResponse sampleResponse(Long id) {

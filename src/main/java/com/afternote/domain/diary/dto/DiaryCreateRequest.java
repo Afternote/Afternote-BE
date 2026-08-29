@@ -3,22 +3,30 @@ package com.afternote.domain.diary.dto;
 import com.afternote.domain.diary.model.TodayMood;
 import com.afternote.global.sanitizer.MindRecordHtmlSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Getter;
 
 import java.time.LocalDate;
 import java.util.List;
 
-@Schema(description = "다이어리 생성 요청")
+@Schema(description = "다이어리 생성 요청. 임시저장(isDraft=true)은 제목·본문·기분을 생략할 수 있고, "
+        + "정식 등록(isDraft=false)은 세 항목이 모두 필요합니다.")
 public record DiaryCreateRequest(
-        @Schema(description = "제목", example = "오늘의 일기")
-        @NotBlank(message = "제목은 필수입니다.")
+        @Schema(
+                description = "제목. 임시저장은 생략 가능, 정식 등록은 필수",
+                example = "오늘의 일기",
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         @Getter
         String title,
 
-        @Schema(description = MindRecordHtmlSchema.CONTENT, example = MindRecordHtmlSchema.CONTENT_EXAMPLE)
-        @NotBlank(message = "내용은 필수입니다.")
+        @Schema(
+                description = MindRecordHtmlSchema.CONTENT + " 임시저장은 생략 가능, 정식 등록은 필수",
+                example = MindRecordHtmlSchema.CONTENT_EXAMPLE,
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         @Getter
         String content,
 
@@ -27,8 +35,12 @@ public record DiaryCreateRequest(
         @Getter
         Boolean isDraft,
 
-        @Schema(description = "오늘의 기분 (필수)", example = "HAPPY", requiredMode = Schema.RequiredMode.REQUIRED)
-        @NotNull(message = "오늘의 기분은 필수입니다.")
+        @Schema(
+                description = "오늘의 기분. 임시저장은 생략 가능(미선택), 정식 등록은 필수",
+                example = "HAPPY",
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         @Getter
         TodayMood todayMood,
 

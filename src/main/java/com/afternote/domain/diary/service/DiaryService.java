@@ -54,13 +54,18 @@ public class DiaryService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
+        if (!Boolean.TRUE.equals(request.getIsDraft())) {
+            validateForPublished(request.getTitle(), request.getContent(), request.getTodayMood());
+        }
+
         LocalDate entryDate = resolveEntryDate(request.getDate());
         eventPublisher.publishEvent(new UserActivityTouchedEvent(userId));
 
+        String content = mindRecordContentMediaService.prepareContentForSave(userId, request.getContent());
         Diary diary = Diary.create(
                 user,
-                request.getTitle(),
-                mindRecordContentMediaService.prepareContentForSave(userId, request.getContent()),
+                emptyIfNull(request.getTitle()),
+                emptyIfNull(content),
                 request.getIsDraft(),
                 request.getTodayMood(),
                 entryDate
@@ -117,6 +122,7 @@ public class DiaryService {
             return null;
         }
         return moods.stream()
+                .filter(java.util.Objects::nonNull)
                 .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
                 .entrySet().stream()
                 .max(Comparator.<Map.Entry<TodayMood, Long>>comparingLong(Map.Entry::getValue)
@@ -134,6 +140,16 @@ public class DiaryService {
         String beforeTitle = diary.getTitle();
         String beforeContent = diary.getContent();
         TodayMood beforeMood = diary.getTodayMood();
+
+        boolean willBeDraft = request.getIsDraft() != null
+                ? Boolean.TRUE.equals(request.getIsDraft())
+                : Boolean.TRUE.equals(diary.getIsDraft());
+        if (!willBeDraft) {
+            String title = request.getTitle() != null ? request.getTitle() : diary.getTitle();
+            String content = request.getContent() != null ? request.getContent() : diary.getContent();
+            TodayMood mood = request.getTodayMood() != null ? request.getTodayMood() : diary.getTodayMood();
+            validateForPublished(title, content, mood);
+        }
 
         String contentToUpdate = request.getContent() != null
                 ? mindRecordContentMediaService.prepareContentForSave(userId, request.getContent())
@@ -198,6 +214,20 @@ public class DiaryService {
             return;
         }
         eventPublisher.publishEvent(new DiaryEmotionAnalysisRequestedEvent(userId, diary.getId()));
+    }
+
+    /**
+     * 정식 등록(isDraft=false)에서는 제목·본문·오늘의 기분이 모두 필요하다 (#132, #243).
+     * Bean Validation 이 isDraft 를 보지 못하므로 서비스에서 분리한다.
+     */
+    private static void validateForPublished(String title, String content, TodayMood todayMood) {
+        if (title == null || title.isBlank() || content == null || content.isBlank() || todayMood == null) {
+            throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+        }
+    }
+
+    private static String emptyIfNull(String value) {
+        return value == null ? "" : value;
     }
 
     /**

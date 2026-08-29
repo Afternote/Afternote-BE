@@ -6,6 +6,7 @@ import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
 import com.afternote.domain.mindrecord.emotion.repository.EmotionRepository;
 import com.afternote.domain.mindrecord.weekly.repository.WeeklyReportRepository;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.Clock;
@@ -38,6 +39,7 @@ public class EmotionAnalysisPolicy {
     private final EmotionRepository emotionRepository;
     private final Clock clock;
 
+    @Autowired
     public EmotionAnalysisPolicy(
             WeeklyReportRepository weeklyReportRepository,
             EmotionRepository emotionRepository

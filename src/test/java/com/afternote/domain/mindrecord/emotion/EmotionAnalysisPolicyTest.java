@@ -14,6 +14,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.Clock;
@@ -45,6 +46,21 @@ class EmotionAnalysisPolicyTest {
                 .provider(AuthProvider.LOCAL)
                 .build();
         ReflectionTestUtils.setField(user, "id", 1L);
+    }
+
+    @Test
+    @DisplayName("생성자가 둘이면 Spring은 @Autowired 2-arg 로 빈을 만든다")
+    void springInstantiatesTwoArgConstructor() {
+        AnnotationConfigApplicationContext ctx = new AnnotationConfigApplicationContext();
+        ctx.registerBean(WeeklyReportRepository.class, () -> weeklyReportRepository);
+        ctx.registerBean(EmotionRepository.class, () -> emotionRepository);
+        ctx.register(EmotionAnalysisPolicy.class);
+        ctx.refresh();
+        try {
+            assertThat(ctx.getBean(EmotionAnalysisPolicy.class)).isNotNull();
+        } finally {
+            ctx.close();
+        }
     }
 
     @Test

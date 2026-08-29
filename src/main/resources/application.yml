@@ -115,7 +115,7 @@ passkey:
   rp-name: ${PASSKEY_RP_NAME:AfterNote}
   origin: ${PASSKEY_ORIGIN:https://afternote.kro.kr}
   challenge-ttl-seconds: ${PASSKEY_CHALLENGE_TTL_SECONDS:300}
-  android-package-name: ${PASSKEY_ANDROID_PACKAGE_NAME:${FIREBASE_ANDROID_PACKAGE_NAME:com.afternote.app}}
+  android-package-name: ${PASSKEY_ANDROID_PACKAGE_NAME:com.afternote.afternote_fe}
   android-sha256: ${PASSKEY_ANDROID_SHA256:}
 
 cloud:

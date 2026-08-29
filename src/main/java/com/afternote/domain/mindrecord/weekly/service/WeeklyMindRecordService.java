@@ -6,6 +6,7 @@ import com.afternote.domain.deepthought.model.DeepThought;
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
 import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.repository.DiaryRepository;
+import com.afternote.domain.mindrecord.emotion.EmotionAnalysisPolicy;
 import com.afternote.domain.mindrecord.emotion.model.Emotion;
 import com.afternote.domain.mindrecord.emotion.model.EmotionAnalysisStatus;
 import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
@@ -39,6 +40,7 @@ import java.time.temporal.TemporalAdjusters;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -65,6 +67,7 @@ public class WeeklyMindRecordService {
     private final WeeklyReportRepository weeklyReportRepository;
     private final GeminiService geminiService;
     private final ObjectMapper objectMapper;
+    private final EmotionAnalysisPolicy emotionAnalysisPolicy;
 
     /** 동일 사용자·주차 동시 GET에서 Gemini를 한 번만 호출 */
     private final ConcurrentHashMap<String, Object> summaryLocks = new ConcurrentHashMap<>();
@@ -79,37 +82,48 @@ public class WeeklyMindRecordService {
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
         LocalDate weekMonday = date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
-        LocalDate weekSunday = weekMonday.plusDays(6);
-        LocalDateTime rangeStart = weekMonday.atStartOfDay();
-        LocalDateTime rangeEndExclusive = weekMonday.plusWeeks(1).atStartOfDay();
-        LocalDateTime storedStart = rangeStart;
-        LocalDateTime storedEnd = weekSunday.atTime(23, 59, 59);
+        LocalDateTime storedStart = weekMonday.atStartOfDay();
+        LocalDateTime storedEnd = weekMonday.plusDays(6).atTime(23, 59, 59);
 
-        List<Diary> diaries = diaryRepository
-                .findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
-                        userId, rangeStart, rangeEndExclusive
-                );
+        WeekRecords records = loadWeekRecords(userId, weekMonday);
+        List<Diary> diaries = records.diaries();
+        List<UserDailyQuestion> dailyQuestions = records.dailyQuestions();
+        List<DeepThought> deepThoughts = records.deepThoughts();
 
-        List<UserDailyQuestion> dailyQuestionsRaw = userDailyQuestionRepository
-                .findByUserIdAndQuestionDateBetweenOrderByQuestionDateAscCreatedAtAsc(userId, weekMonday, weekSunday);
-        List<UserDailyQuestion> dailyQuestions = dailyQuestionsRaw.stream()
-                .filter(udq -> udq.isAnswered() && !udq.isDraft())
-                .toList();
-
-        List<DeepThought> deepThoughts = deepThoughtRepository
-                .findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
-                        userId, rangeStart, rangeEndExclusive
-                );
+        boolean closed = emotionAnalysisPolicy.isWeekClosed(userId, weekMonday);
+        Optional<WeeklyReport> storedReport =
+                weeklyReportRepository.findByUserIdAndStartDate(userId, storedStart);
 
         List<Emotion> weekEmotions = collectWeekEmotions(userId, diaries, dailyQuestions, deepThoughts);
-        List<WeeklyEmotionItem> topEmotions = buildTopEmotions(weekEmotions);
-        EmotionAnalysisSummary emotionAnalysis = buildEmotionAnalysisSummary(
-                diaries.size() + dailyQuestions.size() + deepThoughts.size(),
-                weekEmotions
-        );
-        String keywordJson = toKeywordJson(topEmotions);
+        List<WeeklyEmotionItem> liveTopEmotions = buildTopEmotions(weekEmotions);
+        String liveKeywordJson = toKeywordJson(liveTopEmotions);
 
-        String summaryText = resolveSummaryText(user, weekMonday, storedStart, storedEnd, keywordJson, topEmotions);
+        List<WeeklyEmotionItem> topEmotions;
+        String keywordJson;
+        String summaryText;
+        EmotionAnalysisSummary emotionAnalysis;
+
+        if (closed && storedReport.isPresent()) {
+            WeeklyReport report = storedReport.get();
+            topEmotions = parseKeywordJson(report.getKeywordJson());
+            keywordJson = report.getKeywordJson();
+            summaryText = report.getSummaryText();
+            emotionAnalysis = buildEmotionAnalysisSummary(
+                    diaries.size() + dailyQuestions.size() + deepThoughts.size(),
+                    weekEmotions,
+                    false
+            );
+            log.info("[WeeklySummary] frozen userId={} week={}", userId, weekMonday);
+        } else {
+            topEmotions = liveTopEmotions;
+            keywordJson = liveKeywordJson;
+            emotionAnalysis = buildEmotionAnalysisSummary(
+                    diaries.size() + dailyQuestions.size() + deepThoughts.size(),
+                    weekEmotions,
+                    true
+            );
+            summaryText = resolveSummaryText(user, weekMonday, storedStart, storedEnd, keywordJson, topEmotions);
+        }
 
         // week[] 캘린더는 일기 todayMood 이모지용. Gemini 감정분석(emotions[])과 분리한다.
         List<WeekRecordItem> week = buildWeekItems(diaries, dailyQuestions, deepThoughts);
@@ -132,6 +146,90 @@ public class WeeklyMindRecordService {
                 .emotions(topEmotions)
                 .emotionAnalysis(emotionAnalysis)
                 .build();
+    }
+
+    /**
+     * 직전 주(월~일) 리포트를 사용자별로 한 번씩 생성한다. 이미 있으면 건너뛴다.
+     */
+    @Transactional
+    public int generateLastWeekReports() {
+        LocalDate today = LocalDate.now(EmotionAnalysisPolicy.SEOUL);
+        LocalDate thisMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+        LocalDate lastMonday = thisMonday.minusWeeks(1);
+        return generateReportsForWeek(lastMonday);
+    }
+
+    int generateReportsForWeek(LocalDate weekMonday) {
+        LocalDateTime storedStart = weekMonday.atStartOfDay();
+        LocalDateTime storedEnd = weekMonday.plusDays(6).atTime(23, 59, 59);
+        LocalDateTime rangeStart = storedStart;
+        LocalDateTime rangeEndExclusive = weekMonday.plusWeeks(1).atStartOfDay();
+        LocalDate weekSunday = weekMonday.plusDays(6);
+
+        LinkedHashSet<Long> userIds = new LinkedHashSet<>();
+        userIds.addAll(diaryRepository.findUserIdsWithFinalDiariesInEntryDateRange(
+                weekMonday, weekMonday.plusWeeks(1)));
+        userIds.addAll(userDailyQuestionRepository.findUserIdsWithFinalAnswersInQuestionDateRange(
+                weekMonday, weekSunday));
+        userIds.addAll(deepThoughtRepository.findUserIdsWithFinalDeepThoughtsInCreatedAtRange(
+                rangeStart, rangeEndExclusive));
+
+        int created = 0;
+        for (Long userId : userIds) {
+            User user = userRepository.findById(userId).orElse(null);
+            if (user == null) {
+                continue;
+            }
+            try {
+                WeekRecords records = loadWeekRecords(userId, weekMonday);
+                List<Emotion> weekEmotions = collectWeekEmotions(
+                        userId, records.diaries(), records.dailyQuestions(), records.deepThoughts());
+                List<WeeklyEmotionItem> topEmotions = buildTopEmotions(weekEmotions);
+                String keywordJson = toKeywordJson(topEmotions);
+                String summaryText = FALLBACK_SUMMARY;
+                if (!topEmotions.isEmpty()) {
+                    String generated = geminiService.generateWeeklyMindRecordSummary(keywordJson);
+                    if (generated != null && !generated.isBlank() && !isFallbackSummary(generated)) {
+                        summaryText = generated.trim();
+                    }
+                }
+                persistWeeklyReport(user, storedStart, storedEnd, summaryText, keywordJson);
+                created++;
+                log.info("[WeeklySummary] scheduled_ok userId={} week={}", userId, weekMonday);
+            } catch (RuntimeException e) {
+                log.error("[WeeklySummary] scheduled_fail userId={} week={}", userId, weekMonday, e);
+            }
+        }
+        log.info("[WeeklySummary] scheduled_done week={} users={} created={}", weekMonday, userIds.size(), created);
+        return created;
+    }
+
+    private WeekRecords loadWeekRecords(Long userId, LocalDate weekMonday) {
+        LocalDate weekSunday = weekMonday.plusDays(6);
+        LocalDateTime rangeStart = weekMonday.atStartOfDay();
+        LocalDateTime rangeEndExclusive = weekMonday.plusWeeks(1).atStartOfDay();
+
+        List<Diary> diaries = diaryRepository
+                .findByUserIdAndIsDraftFalseAndEntryDateGreaterThanEqualAndEntryDateLessThanOrderByEntryDateAscCreatedAtAsc(
+                        userId, weekMonday, weekMonday.plusWeeks(1)
+                );
+        List<UserDailyQuestion> dailyQuestions = userDailyQuestionRepository
+                .findByUserIdAndQuestionDateBetweenOrderByQuestionDateAscCreatedAtAsc(userId, weekMonday, weekSunday)
+                .stream()
+                .filter(udq -> udq.isAnswered() && !udq.isDraft())
+                .toList();
+        List<DeepThought> deepThoughts = deepThoughtRepository
+                .findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+                        userId, rangeStart, rangeEndExclusive
+                );
+        return new WeekRecords(diaries, dailyQuestions, deepThoughts);
+    }
+
+    private record WeekRecords(
+            List<Diary> diaries,
+            List<UserDailyQuestion> dailyQuestions,
+            List<DeepThought> deepThoughts
+    ) {
     }
 
     private String resolveSummaryText(
@@ -252,7 +350,11 @@ public class WeeklyMindRecordService {
         return collected;
     }
 
-    private EmotionAnalysisSummary buildEmotionAnalysisSummary(int sourceTotal, List<Emotion> emotions) {
+    private EmotionAnalysisSummary buildEmotionAnalysisSummary(
+            int sourceTotal,
+            List<Emotion> emotions,
+            boolean countMissingAsPending
+    ) {
         int succeeded = 0;
         int pending = 0;
         int failed = 0;
@@ -267,7 +369,9 @@ public class WeeklyMindRecordService {
             }
         }
         int missing = Math.max(0, sourceTotal - emotions.size());
-        pending += missing;
+        if (countMissingAsPending) {
+            pending += missing;
+        }
         return EmotionAnalysisSummary.builder()
                 .total(sourceTotal)
                 .succeeded(succeeded)
@@ -309,9 +413,37 @@ public class WeeklyMindRecordService {
         }
     }
 
+    private List<WeeklyEmotionItem> parseKeywordJson(String keywordJson) {
+        if (keywordJson == null || keywordJson.isBlank()) {
+            return List.of();
+        }
+        try {
+            JsonNode root = objectMapper.readTree(keywordJson);
+            if (root == null || !root.isArray()) {
+                return List.of();
+            }
+            List<WeeklyEmotionItem> items = new ArrayList<>();
+            for (JsonNode node : root) {
+                JsonNode keywordNode = node.get("keyword");
+                if (keywordNode == null || keywordNode.isNull()) {
+                    continue;
+                }
+                int percentage = node.has("percentage") ? node.get("percentage").asInt() : 0;
+                items.add(WeeklyEmotionItem.builder()
+                        .keyword(keywordNode.asText())
+                        .percentage(percentage)
+                        .build());
+            }
+            return items;
+        } catch (JsonProcessingException e) {
+            log.warn("[WeeklySummary] keywordJson parse failed json={}", keywordJson);
+            return List.of();
+        }
+    }
+
     /**
      * 주간 캘린더는 day(날짜)당 1개.
-     * - 일기 있으면 → DIARY 우선, 같은 날 일기 여러 개면 최신(createdAt) todayMood
+     * - 일기 있으면 → DIARY 우선, 같은 기록일 일기 여러 개면 최신(createdAt) todayMood
      * - 일기 없음 → 데일리질문/깊은생각 중 최신 1개 (emotion=null, 점 표시)
      */
     private List<WeekRecordItem> buildWeekItems(
@@ -326,11 +458,17 @@ public class WeeklyMindRecordService {
         Map<LocalDate, List<Candidate>> othersByDate = new HashMap<>();
 
         for (Diary d : diaries) {
+            LocalDate date = d.getEntryDate();
             LocalDateTime at = d.getCreatedAt() != null ? d.getCreatedAt() : d.getUpdatedAt();
-            if (at == null) {
-                continue;
+            if (date == null) {
+                if (at == null) {
+                    continue;
+                }
+                date = at.toLocalDate();
             }
-            LocalDate date = at.toLocalDate();
+            if (at == null) {
+                at = date.atStartOfDay();
+            }
             String todayMood = d.getTodayMood() != null ? d.getTodayMood().name() : null;
             diariesByDate.computeIfAbsent(date, ignored -> new ArrayList<>()).add(new Candidate(
                     date,

@@ -41,7 +41,7 @@ public record DiaryResponse(
         @Getter
         TodayMood todayMood,
 
-        @Schema(description = "작성일 (ISO yyyy-MM-dd). 캘린더 셀 그루핑 / 날짜 필터링에 사용", example = "2026-04-25")
+        @Schema(description = "기록일 (ISO yyyy-MM-dd). 캘린더 셀 그루핑 / 월 조회 / 주간리포트 집계 기준. 작성 시각(createdAt)과 다를 수 있음", example = "2026-04-25")
         @Getter
         LocalDate date,
 
@@ -81,13 +81,13 @@ public record DiaryResponse(
                 .content(diary.getContent())
                 .isDraft(diary.getIsDraft())
                 .todayMood(diary.getTodayMood())
-                .date(toLocalDate(diary.getCreatedAt()))
+                .date(resolveEntryDate(diary))
                 .createdAt(formatDate(diary.getCreatedAt()))
                 .updatedAt(formatDate(diary.getUpdatedAt()))
                 .receivers(receivers != null ? receivers : List.of())
                 .build();
     }
-    
+
     public static DiaryResponse from(Diary diary, String emotion, TodayMood todayMood) {
         return from(diary, emotion, todayMood, List.of());
     }
@@ -105,15 +105,18 @@ public record DiaryResponse(
                 .isDraft(diary.getIsDraft())
                 .emotion(emotion)
                 .todayMood(todayMood)
-                .date(toLocalDate(diary.getCreatedAt()))
+                .date(resolveEntryDate(diary))
                 .createdAt(formatDate(diary.getCreatedAt()))
                 .updatedAt(formatDate(diary.getUpdatedAt()))
                 .receivers(receivers != null ? receivers : List.of())
                 .build();
     }
 
-    private static LocalDate toLocalDate(LocalDateTime dateTime) {
-        return dateTime != null ? dateTime.toLocalDate() : null;
+    private static LocalDate resolveEntryDate(Diary diary) {
+        if (diary.getEntryDate() != null) {
+            return diary.getEntryDate();
+        }
+        return diary.getCreatedAt() != null ? diary.getCreatedAt().toLocalDate() : null;
     }
 
     private static String formatDate(LocalDateTime dateTime) {

@@ -25,6 +25,7 @@ import java.util.regex.Pattern;
  *   <li>중복된 time_letters.delivered_at 제거 (#94)</li>
  *   <li>users 마케팅 동의 컬럼 tinyint(1) NOT NULL DEFAULT 0</li>
  *   <li>afternote.category_type NOT NULL (#240)</li>
+ *   <li>diary.entry_date DATE NOT NULL, 기존 행은 created_at 날짜로 백필 (#244)</li>
  * </ul>
  * 실패하면 기동을 중단한다. 조용히 삼키면 배포는 성공하고 런타임만 500 이 난다.
  */
@@ -64,6 +65,7 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
             }
             ensureMarketingConsentColumns();
             ensureAfternoteCategoryTypeNotNull();
+            ensureDiaryEntryDate();
         } catch (RuntimeException e) {
             throw new IllegalStateException("MySQL schema compatibility migration failed", e);
         }
@@ -304,6 +306,58 @@ public class MysqlSchemaCompatibilityMigrator implements ApplicationRunner {
         ensureTinyintNotNullDefaultFalse("users", "marketing_sms_enabled");
         ensureTinyintNotNullDefaultFalse("users", "marketing_email_enabled");
         ensureTinyintNotNullDefaultFalse("users", "marketing_push_enabled");
+    }
+
+    /**
+     * 기록일 컬럼. Hibernate ddl-auto 는 기존 행에 NOT NULL DATE 를 바로 붙이지 못하므로
+     * NULL 로 추가 → created_at 날짜 백필 → NOT NULL 순으로 보정한다 (#244).
+     */
+    private void ensureDiaryEntryDate() {
+        if (!columnExists("diary", "entry_date")) {
+            jdbcTemplate.execute("ALTER TABLE `diary` ADD COLUMN `entry_date` date null");
+            jdbcTemplate.update(
+                    "UPDATE diary SET entry_date = DATE(created_at) WHERE entry_date IS NULL AND created_at IS NOT NULL"
+            );
+            jdbcTemplate.execute("ALTER TABLE `diary` MODIFY COLUMN `entry_date` date not null");
+            log.info("[SchemaCompat] added diary.entry_date from created_at (#244)");
+            return;
+        }
+
+        Integer nullCount = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM diary WHERE entry_date IS NULL",
+                Integer.class
+        );
+        if (nullCount != null && nullCount > 0) {
+            jdbcTemplate.update(
+                    "UPDATE diary SET entry_date = DATE(created_at) WHERE entry_date IS NULL AND created_at IS NOT NULL"
+            );
+        }
+
+        String nullable = jdbcTemplate.query(
+                """
+                        SELECT IS_NULLABLE FROM information_schema.COLUMNS
+                        WHERE TABLE_SCHEMA = DATABASE()
+                          AND TABLE_NAME = 'diary'
+                          AND COLUMN_NAME = 'entry_date'
+                        """,
+                rs -> rs.next() ? rs.getString(1) : null
+        );
+        if (nullable == null || "NO".equalsIgnoreCase(nullable)) {
+            return;
+        }
+
+        Integer remainingNulls = jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM diary WHERE entry_date IS NULL",
+                Integer.class
+        );
+        if (remainingNulls != null && remainingNulls > 0) {
+            throw new IllegalStateException(
+                    "diary.entry_date has " + remainingNulls
+                            + " NULL row(s); cannot apply NOT NULL (#244)");
+        }
+
+        jdbcTemplate.execute("ALTER TABLE `diary` MODIFY COLUMN `entry_date` date not null");
+        log.info("[SchemaCompat] altered diary.entry_date to NOT NULL");
     }
 
     private void ensureTinyintNotNullDefaultFalse(String table, String column) {

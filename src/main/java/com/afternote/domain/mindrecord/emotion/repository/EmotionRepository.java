@@ -45,5 +45,15 @@ public interface EmotionRepository extends JpaRepository<Emotion, Long> {
             Pageable pageable
     );
 
+    @Query("""
+            SELECT e FROM Emotion e JOIN FETCH e.user
+            WHERE e.status = :status
+            ORDER BY CASE WHEN e.lastAttemptAt IS NULL THEN 0 ELSE 1 END, e.lastAttemptAt ASC
+            """)
+    List<Emotion> findByStatusForDawn(
+            @Param("status") EmotionAnalysisStatus status,
+            Pageable pageable
+    );
+
     void deleteByUser_Id(Long userId);
 }

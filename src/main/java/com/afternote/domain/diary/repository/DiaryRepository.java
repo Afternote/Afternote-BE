@@ -10,7 +10,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,36 +32,43 @@ public interface DiaryRepository extends JpaRepository<Diary, Long> {
 			@Param("userId") Long userId
 	);
 
-	List<Diary> findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(
+	List<Diary> findByUserIdAndEntryDateGreaterThanEqualAndEntryDateLessThanOrderByEntryDateDescCreatedAtDesc(
 			Long userId,
-			LocalDateTime start,
-			LocalDateTime end
+			LocalDate startInclusive,
+			LocalDate endExclusive
 	);
 
-	List<Diary> findByUserIdAndIsDraftTrueAndCreatedAtBetweenOrderByCreatedAtDesc(
+	List<Diary> findByUserIdAndIsDraftTrueAndEntryDateGreaterThanEqualAndEntryDateLessThanOrderByEntryDateDescCreatedAtDesc(
 			Long userId,
-			LocalDateTime start,
-			LocalDateTime end
+			LocalDate startInclusive,
+			LocalDate endExclusive
 	);
 
-	List<Diary> findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+	List<Diary> findByUserIdAndIsDraftFalseAndEntryDateGreaterThanEqualAndEntryDateLessThanOrderByEntryDateAscCreatedAtAsc(
 			Long userId,
-			LocalDateTime startInclusive,
-			LocalDateTime endExclusive
+			LocalDate startInclusive,
+			LocalDate endExclusive
 	);
 
-	long countByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
+	long countByUserIdAndIsDraftFalseAndEntryDateGreaterThanEqualAndEntryDateLessThan(
 			Long userId,
-			LocalDateTime startInclusive,
-			LocalDateTime endExclusive
+			LocalDate startInclusive,
+			LocalDate endExclusive
 	);
 
-	@Query("SELECT d.todayMood FROM Diary d WHERE d.user.id = :userId AND d.isDraft = false "
-			+ "AND d.createdAt >= :startInclusive AND d.createdAt < :endExclusive")
-	List<TodayMood> findTodayMoodsByUserIdAndCreatedAtRange(
+    @Query("SELECT d.todayMood FROM Diary d WHERE d.user.id = :userId AND d.isDraft = false "
+			+ "AND d.entryDate >= :startInclusive AND d.entryDate < :endExclusive")
+	List<TodayMood> findTodayMoodsByUserIdAndEntryDateRange(
 			@Param("userId") Long userId,
-			@Param("startInclusive") LocalDateTime startInclusive,
-			@Param("endExclusive") LocalDateTime endExclusive
+			@Param("startInclusive") LocalDate startInclusive,
+			@Param("endExclusive") LocalDate endExclusive
+	);
+
+	@Query("SELECT DISTINCT d.user.id FROM Diary d WHERE d.isDraft = false "
+			+ "AND d.entryDate >= :startInclusive AND d.entryDate < :endExclusive")
+	List<Long> findUserIdsWithFinalDiariesInEntryDateRange(
+			@Param("startInclusive") LocalDate startInclusive,
+			@Param("endExclusive") LocalDate endExclusive
 	);
 
 	/** 감정 행이 없는 최종 일기 (userId, diaryId). 백필용. */

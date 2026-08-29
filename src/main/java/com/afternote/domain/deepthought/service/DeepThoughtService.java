@@ -8,8 +8,10 @@ import com.afternote.domain.deepthought.model.DeepThought;
 import com.afternote.domain.deepthought.model.DeepThoughtCategory;
 import com.afternote.domain.deepthought.repository.DeepThoughtCategoryRepository;
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
+import com.afternote.domain.mindrecord.emotion.EmotionAnalysisPolicy;
 import com.afternote.domain.mindrecord.emotion.EmotionAnalysisTrigger;
 import com.afternote.domain.mindrecord.emotion.event.DeepThoughtEmotionAnalysisRequestedEvent;
+import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
 import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.domain.receiver.repository.DeepThoughtReceiverRepository;
 import com.afternote.domain.receiver.service.MindRecordReceiverService;
@@ -26,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
@@ -41,6 +44,7 @@ public class DeepThoughtService {
     private final MindRecordContentMediaService mindRecordContentMediaService;
     private final DeepThoughtReceiverRepository deepThoughtReceiverRepository;
     private final MindRecordReceiverService mindRecordReceiverService;
+    private final EmotionAnalysisPolicy emotionAnalysisPolicy;
 
     @Transactional
     public DeepThoughtResponse createDeepThought(Long userId, DeepThoughtCreateRequest request) {
@@ -59,9 +63,7 @@ public class DeepThoughtService {
         );
 
         DeepThought saved = deepThoughtRepository.save(deepThought);
-        if (Boolean.FALSE.equals(saved.getIsDraft())) {
-            eventPublisher.publishEvent(new DeepThoughtEmotionAnalysisRequestedEvent(userId, saved.getId()));
-        }
+        requestDeepThoughtAnalysisIfAllowed(userId, saved);
 
         List<MindRecordReceiverSummaryResponse> receivers = mindRecordReceiverService.replaceDeepThoughtReceivers(
                 userId,
@@ -106,7 +108,7 @@ public class DeepThoughtService {
                 deepThought.getTitle(),
                 deepThought.getContent()
         )) {
-            eventPublisher.publishEvent(new DeepThoughtEmotionAnalysisRequestedEvent(userId, deepThought.getId()));
+            requestDeepThoughtAnalysisIfAllowed(userId, deepThought);
         }
 
         List<MindRecordReceiverSummaryResponse> receivers;
@@ -199,5 +201,19 @@ public class DeepThoughtService {
     public DeepThought getOwnedDeepThought(Long userId, Long deepThoughtId) {
         return deepThoughtRepository.findByIdAndUserId(deepThoughtId, userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.DEEP_THOUGHT_NOT_FOUND));
+    }
+
+    private void requestDeepThoughtAnalysisIfAllowed(Long userId, DeepThought deepThought) {
+        if (!Boolean.FALSE.equals(deepThought.getIsDraft()) || deepThought.getId() == null) {
+            return;
+        }
+        LocalDate recordDate = deepThought.getCreatedAt() != null
+                ? deepThought.getCreatedAt().toLocalDate()
+                : LocalDate.now(ZoneId.of("Asia/Seoul"));
+        if (!emotionAnalysisPolicy.allowAnalysis(
+                userId, EmotionSourceType.DEEP_THOUGHT, deepThought.getId(), recordDate)) {
+            return;
+        }
+        eventPublisher.publishEvent(new DeepThoughtEmotionAnalysisRequestedEvent(userId, deepThought.getId()));
     }
 }

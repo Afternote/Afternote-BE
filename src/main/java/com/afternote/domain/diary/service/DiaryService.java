@@ -7,8 +7,10 @@ import com.afternote.domain.diary.dto.DiaryUpdateRequest;
 import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.model.TodayMood;
 import com.afternote.domain.diary.repository.DiaryRepository;
+import com.afternote.domain.mindrecord.emotion.EmotionAnalysisPolicy;
 import com.afternote.domain.mindrecord.emotion.EmotionAnalysisTrigger;
 import com.afternote.domain.mindrecord.emotion.event.DiaryEmotionAnalysisRequestedEvent;
+import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
 import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.domain.receiver.repository.DiaryReceiverRepository;
 import com.afternote.domain.receiver.service.MindRecordReceiverService;
@@ -24,7 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.time.YearMonth;
 import java.util.Comparator;
 import java.util.List;
@@ -37,17 +39,22 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class DiaryService {
 
+    static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
+
     private final DiaryRepository diaryRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final UserRepository userRepository;
     private final MindRecordContentMediaService mindRecordContentMediaService;
     private final DiaryReceiverRepository diaryReceiverRepository;
     private final MindRecordReceiverService mindRecordReceiverService;
+    private final EmotionAnalysisPolicy emotionAnalysisPolicy;
 
     @Transactional
     public DiaryResponse createDiary(Long userId, DiaryCreateRequest request) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
+
+        LocalDate entryDate = resolveEntryDate(request.getDate());
         eventPublisher.publishEvent(new UserActivityTouchedEvent(userId));
 
         Diary diary = Diary.create(
@@ -55,13 +62,12 @@ public class DiaryService {
                 request.getTitle(),
                 mindRecordContentMediaService.prepareContentForSave(userId, request.getContent()),
                 request.getIsDraft(),
-                request.getTodayMood()
+                request.getTodayMood(),
+                entryDate
         );
 
         Diary saved = diaryRepository.save(diary);
-        if (Boolean.FALSE.equals(saved.getIsDraft())) {
-            eventPublisher.publishEvent(new DiaryEmotionAnalysisRequestedEvent(userId, saved.getId()));
-        }
+        requestDiaryAnalysisIfAllowed(userId, saved);
 
         List<MindRecordReceiverSummaryResponse> receivers = mindRecordReceiverService.replaceDiaryReceivers(
                 userId,
@@ -73,12 +79,14 @@ public class DiaryService {
     }
 
     public DiaryListResponse getDiariesByMonth(Long userId, YearMonth yearMonth, Boolean draftOnly) {
-        LocalDateTime monthStart = yearMonth.atDay(1).atStartOfDay();
-        LocalDateTime monthEnd = yearMonth.plusMonths(1).atDay(1).atStartOfDay();
+        LocalDate monthStart = yearMonth.atDay(1);
+        LocalDate monthEndExclusive = yearMonth.plusMonths(1).atDay(1);
 
         List<Diary> diaries = Boolean.TRUE.equals(draftOnly)
-                ? diaryRepository.findByUserIdAndIsDraftTrueAndCreatedAtBetweenOrderByCreatedAtDesc(userId, monthStart, monthEnd)
-                : diaryRepository.findByUserIdAndCreatedAtBetweenOrderByCreatedAtDesc(userId, monthStart, monthEnd);
+                ? diaryRepository.findByUserIdAndIsDraftTrueAndEntryDateGreaterThanEqualAndEntryDateLessThanOrderByEntryDateDescCreatedAtDesc(
+                        userId, monthStart, monthEndExclusive)
+                : diaryRepository.findByUserIdAndEntryDateGreaterThanEqualAndEntryDateLessThanOrderByEntryDateDescCreatedAtDesc(
+                        userId, monthStart, monthEndExclusive);
 
         List<Long> diaryIds = diaries.stream().map(Diary::getId).toList();
         Map<Long, List<MindRecordReceiverSummaryResponse>> receiversMap =
@@ -91,13 +99,14 @@ public class DiaryService {
                 ))
                 .toList();
 
-        long monthDiaryCount = diaryRepository.countByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThan(
-                userId, monthStart, monthEnd);
+        long monthDiaryCount = diaryRepository.countByUserIdAndIsDraftFalseAndEntryDateGreaterThanEqualAndEntryDateLessThan(
+                userId, monthStart, monthEndExclusive);
 
-        LocalDate today = LocalDate.now();
-        LocalDateTime weekStart = today.minusDays(6).atStartOfDay();
-        LocalDateTime weekEnd = today.plusDays(1).atStartOfDay();
-        List<TodayMood> weekMoods = diaryRepository.findTodayMoodsByUserIdAndCreatedAtRange(userId, weekStart, weekEnd);
+        LocalDate today = LocalDate.now(SEOUL);
+        LocalDate weekStart = today.minusDays(6);
+        LocalDate weekEndExclusive = today.plusDays(1);
+        List<TodayMood> weekMoods = diaryRepository.findTodayMoodsByUserIdAndEntryDateRange(
+                userId, weekStart, weekEndExclusive);
         TodayMood weeklyDominant = dominantMood(weekMoods);
 
         return DiaryListResponse.from(yearMonth, responseList, monthDiaryCount, weeklyDominant);
@@ -130,11 +139,14 @@ public class DiaryService {
                 ? mindRecordContentMediaService.prepareContentForSave(userId, request.getContent())
                 : null;
 
+        LocalDate entryDate = request.getDate() != null ? resolveEntryDate(request.getDate()) : null;
+
         diary.update(
                 request.getTitle(),
                 contentToUpdate,
                 request.getIsDraft(),
-                request.getTodayMood()
+                request.getTodayMood(),
+                entryDate
         );
 
         boolean isFinal = Boolean.FALSE.equals(diary.getIsDraft());
@@ -148,7 +160,7 @@ public class DiaryService {
                 diary.getContent(),
                 diary.getTodayMood()
         )) {
-            eventPublisher.publishEvent(new DiaryEmotionAnalysisRequestedEvent(userId, diary.getId()));
+            requestDiaryAnalysisIfAllowed(userId, diary);
         }
 
         List<MindRecordReceiverSummaryResponse> receivers;
@@ -173,5 +185,30 @@ public class DiaryService {
         diaryReceiverRepository.deleteByDiaryId(diaryId);
         diaryRepository.delete(diary);
         diaryRepository.flush();
+    }
+
+    private void requestDiaryAnalysisIfAllowed(Long userId, Diary diary) {
+        if (!Boolean.FALSE.equals(diary.getIsDraft()) || diary.getId() == null) {
+            return;
+        }
+        LocalDate recordDate = diary.getEntryDate() != null
+                ? diary.getEntryDate()
+                : LocalDate.now(SEOUL);
+        if (!emotionAnalysisPolicy.allowAnalysis(userId, EmotionSourceType.DIARY, diary.getId(), recordDate)) {
+            return;
+        }
+        eventPublisher.publishEvent(new DiaryEmotionAnalysisRequestedEvent(userId, diary.getId()));
+    }
+
+    /**
+     * 미전송이면 오늘(Asia/Seoul). 미래 날짜는 거부. 과거는 제한 없음.
+     */
+    LocalDate resolveEntryDate(LocalDate requested) {
+        LocalDate today = LocalDate.now(SEOUL);
+        LocalDate date = requested != null ? requested : today;
+        if (date.isAfter(today)) {
+            throw new CustomException(ErrorCode.DIARY_INVALID_DATE);
+        }
+        return date;
     }
 }

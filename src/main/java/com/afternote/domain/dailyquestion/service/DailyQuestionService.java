@@ -5,8 +5,10 @@ import com.afternote.domain.dailyquestion.model.DailyQuestion;
 import com.afternote.domain.dailyquestion.model.UserDailyQuestion;
 import com.afternote.domain.dailyquestion.repository.DailyQuestionRepository;
 import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
+import com.afternote.domain.mindrecord.emotion.EmotionAnalysisPolicy;
 import com.afternote.domain.mindrecord.emotion.EmotionAnalysisTrigger;
 import com.afternote.domain.mindrecord.emotion.event.DailyQuestionEmotionAnalysisRequestedEvent;
+import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
 import com.afternote.domain.receiver.dto.MindRecordReceiverSummaryResponse;
 import com.afternote.domain.receiver.repository.UserDailyQuestionReceiverRepository;
 import com.afternote.domain.receiver.service.MindRecordReceiverService;
@@ -41,6 +43,7 @@ public class DailyQuestionService {
     private final MindRecordContentMediaService mindRecordContentMediaService;
     private final UserDailyQuestionReceiverRepository userDailyQuestionReceiverRepository;
     private final MindRecordReceiverService mindRecordReceiverService;
+    private final EmotionAnalysisPolicy emotionAnalysisPolicy;
 
     @Transactional
     public DailyQuestionTodayResponse getTodayQuestion(Long userId) {
@@ -115,7 +118,7 @@ public class DailyQuestionService {
                 isDraft
         );
         if (!userDailyQuestion.isDraft()) {
-            eventPublisher.publishEvent(new DailyQuestionEmotionAnalysisRequestedEvent(userId, userDailyQuestion.getId()));
+            requestDailyQuestionAnalysisIfAllowed(userId, userDailyQuestion);
         }
 
         List<MindRecordReceiverSummaryResponse> receivers = mindRecordReceiverService.replaceUserDailyQuestionReceivers(
@@ -153,8 +156,7 @@ public class DailyQuestionService {
                     beforeContent,
                     userDailyQuestion.getContent()
             )) {
-                eventPublisher.publishEvent(
-                        new DailyQuestionEmotionAnalysisRequestedEvent(userId, userDailyQuestion.getId()));
+                requestDailyQuestionAnalysisIfAllowed(userId, userDailyQuestion);
             }
         }
 
@@ -225,5 +227,20 @@ public class DailyQuestionService {
         userDailyQuestionReceiverRepository.deleteByUserDailyQuestionId(userDailyQuestionId);
         userDailyQuestionRepository.delete(userDailyQuestion);
         userDailyQuestionRepository.flush();
+    }
+
+    private void requestDailyQuestionAnalysisIfAllowed(Long userId, UserDailyQuestion userDailyQuestion) {
+        if (userDailyQuestion.isDraft() || userDailyQuestion.getId() == null) {
+            return;
+        }
+        LocalDate recordDate = userDailyQuestion.getQuestionDate() != null
+                ? userDailyQuestion.getQuestionDate()
+                : LocalDate.now();
+        if (!emotionAnalysisPolicy.allowAnalysis(
+                userId, EmotionSourceType.DAILY_QUESTION, userDailyQuestion.getId(), recordDate)) {
+            return;
+        }
+        eventPublisher.publishEvent(
+                new DailyQuestionEmotionAnalysisRequestedEvent(userId, userDailyQuestion.getId()));
     }
 }

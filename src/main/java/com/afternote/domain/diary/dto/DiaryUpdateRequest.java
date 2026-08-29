@@ -5,6 +5,7 @@ import com.afternote.global.sanitizer.MindRecordHtmlSchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Getter;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @Schema(description = "다이어리 수정 요청")
@@ -25,13 +26,15 @@ public record DiaryUpdateRequest(
         @Getter
         TodayMood todayMood,
 
+        @Schema(
+                description = "기록일 (yyyy-MM-dd). 생략 시 유지. 미래 날짜는 거부(code 2101). 과거는 제한 없음",
+                example = "2026-08-01"
+        )
+        @Getter
+        LocalDate date,
+
         @Schema(description = "수신자 ID 목록. null이면 변경하지 않음, 빈 배열이면 전체 해제", example = "[1, 2]")
         @Getter
         List<Long> receiverIds
 ) {
-
-
-
-
-
 }

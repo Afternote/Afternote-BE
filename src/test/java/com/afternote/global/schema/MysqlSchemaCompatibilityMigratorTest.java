@@ -82,6 +82,8 @@ class MysqlSchemaCompatibilityMigratorTest {
                 .willReturn(0);
         given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("users"), anyString()))
                 .willReturn(1);
+        given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("diary"), eq("entry_date")))
+                .willReturn(1);
 
         new MysqlSchemaCompatibilityMigrator(jdbcTemplate, dataSource)
                 .run(new DefaultApplicationArguments());
@@ -114,6 +116,8 @@ class MysqlSchemaCompatibilityMigratorTest {
                 anyString(), eq(Integer.class), eq("time_letters"), eq("delivered_at")))
                 .willReturn(1);
         given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("users"), anyString()))
+                .willReturn(1);
+        given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("diary"), eq("entry_date")))
                 .willReturn(1);
 
         new MysqlSchemaCompatibilityMigrator(jdbcTemplate, dataSource)
@@ -159,6 +163,8 @@ class MysqlSchemaCompatibilityMigratorTest {
                 .willReturn(0);
         given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("users"), anyString()))
                 .willReturn(1);
+        given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("diary"), eq("entry_date")))
+                .willReturn(1);
 
         new MysqlSchemaCompatibilityMigrator(jdbcTemplate, dataSource)
                 .run(new DefaultApplicationArguments());
@@ -200,6 +206,39 @@ class MysqlSchemaCompatibilityMigratorTest {
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("MySQL schema compatibility migration failed")
                 .hasRootCauseMessage("afternote.category_type has 2 NULL row(s); cannot apply NOT NULL (#240)");
+    }
+
+    @Test
+    @DisplayName("diary.entry_date 가 없으면 created_at 으로 백필한 뒤 NOT NULL 로 추가한다")
+    void addDiaryEntryDateFromCreatedAt() throws Exception {
+        given(dataSource.getConnection()).willReturn(connection);
+        given(connection.getMetaData()).willReturn(metaData);
+        given(metaData.getDatabaseProductName()).willReturn("MySQL");
+
+        given(jdbcTemplate.query(contains("DATA_TYPE = 'enum'"), any(RowMapper.class)))
+                .willReturn(List.of());
+        given(jdbcTemplate.query(contains("CONSTRAINT_TYPE = 'CHECK'"), any(RowMapper.class)))
+                .willReturn(List.of());
+        given(jdbcTemplate.query(contains("emotion_category"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("YES");
+        given(jdbcTemplate.query(contains("time_letter_receiver"), any(org.springframework.jdbc.core.ResultSetExtractor.class)))
+                .willReturn("YES");
+        given(jdbcTemplate.queryForObject(
+                anyString(), eq(Integer.class), eq("time_letters"), eq("delivered_at")))
+                .willReturn(0);
+        given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("users"), anyString()))
+                .willReturn(1);
+        given(jdbcTemplate.queryForObject(anyString(), eq(Integer.class), eq("diary"), eq("entry_date")))
+                .willReturn(0);
+
+        new MysqlSchemaCompatibilityMigrator(jdbcTemplate, dataSource)
+                .run(new DefaultApplicationArguments());
+
+        verify(jdbcTemplate).execute("ALTER TABLE `diary` ADD COLUMN `entry_date` date null");
+        verify(jdbcTemplate).update(
+                "UPDATE diary SET entry_date = DATE(created_at) WHERE entry_date IS NULL AND created_at IS NOT NULL"
+        );
+        verify(jdbcTemplate).execute("ALTER TABLE `diary` MODIFY COLUMN `entry_date` date not null");
     }
 
     @Test

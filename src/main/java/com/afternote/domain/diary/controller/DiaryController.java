@@ -29,7 +29,7 @@ public class DiaryController {
     @Operation(summary = "Diary 작성", description = "새로운 다이어리를 작성합니다.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Diary 작성 성공"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 값이 올바르지 않음 (code: 1400)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 값이 올바르지 않음 (code: 1400). 미래 기록일(code: 2101)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)")
     })
     @PostMapping
@@ -40,10 +40,10 @@ public class DiaryController {
         return ApiResponse.success(diaryService.createDiary(userId, request));
     }
 
-    @Operation(summary = "Diary 월 단위 조회", description = "지정한 yyyy-MM 한 달의 다이어리 전체를 최신순으로 조회합니다. "
-            + "캘린더형 화면은 응답을 날짜별로 그룹핑하여 셀에 표시하고, 카드형 화면은 그대로 그리드에 렌더하면 됩니다. "
+    @Operation(summary = "Diary 월 단위 조회", description = "지정한 yyyy-MM 한 달의 다이어리를 기록일(date) 기준으로 조회합니다. "
+            + "캘린더형 화면은 응답 date로 날짜별 그룹핑하고, 카드형 화면은 그대로 그리드에 렌더하면 됩니다. "
             + "draftOnly=true이면 해당 달의 임시저장만 반환합니다. "
-            + "응답에는 조회 대상 달의 정식(비임시) 다이어리 개수(monthDiaryCount)와 최근 7일(서버 기준 오늘 포함) 정식 다이어리 중 최빈 기분(weeklyDominantMood)이 포함됩니다.")
+            + "monthDiaryCount·weeklyDominantMood도 작성 시각이 아니라 기록일 기준입니다.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Diary 조회 성공"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 값이 올바르지 않음 (code: 1400)"),
@@ -63,7 +63,7 @@ public class DiaryController {
     @Operation(summary = "Diary 수정", description = "다이어리를 수정합니다.")
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "Diary 수정 성공"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 값이 올바르지 않음 (code: 1400)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "요청 값이 올바르지 않음 (code: 1400). 미래 기록일(code: 2101)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "다이어리를 찾을 수 없음 (code: 2100)")
     })

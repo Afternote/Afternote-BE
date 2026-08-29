@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.List;
 
 @Repository
@@ -35,13 +35,13 @@ public interface DiaryReceiverRepository extends JpaRepository<DiaryReceiver, Lo
         JOIN FETCH dr.diary d
         WHERE dr.receiver.id = :receiverId
           AND d.isDraft = false
-          AND (:start IS NULL OR d.createdAt >= :start)
-          AND (:end IS NULL OR d.createdAt < :end)
+          AND (:start IS NULL OR d.entryDate >= :start)
+          AND (:end IS NULL OR d.entryDate <= :end)
     """)
     List<DiaryReceiver> findReceivedDiaries(
             @Param("receiverId") Long receiverId,
-            @Param("start") LocalDateTime start,
-            @Param("end") LocalDateTime end
+            @Param("start") LocalDate start,
+            @Param("end") LocalDate end
     );
 
     boolean existsByReceiverId(Long receiverId);

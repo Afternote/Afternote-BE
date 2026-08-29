@@ -5,6 +5,7 @@ import com.afternote.domain.diary.model.Diary;
 import com.afternote.domain.diary.repository.DiaryRepository;
 import com.afternote.domain.deepthought.model.DeepThought;
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
+import com.afternote.domain.mindrecord.emotion.EmotionAnalysisPolicy;
 import com.afternote.domain.mindrecord.emotion.EmotionCategoryAllowlist;
 import com.afternote.domain.mindrecord.emotion.model.EmotionSourceType;
 import com.afternote.domain.mindrecord.emotion.service.EmotionService;
@@ -15,6 +16,7 @@ import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -31,7 +33,8 @@ public class EmotionAnalysisRunner {
     private record DailyQuestionEmotionSnapshot(
             String questionContent,
             String answerContent,
-            LocalDateTime createdAt
+            LocalDateTime createdAt,
+            LocalDate questionDate
     ) {}
 
     private final TransactionTemplate transactionTemplate;
@@ -40,6 +43,7 @@ public class EmotionAnalysisRunner {
     private final DeepThoughtRepository deepThoughtRepository;
     private final GeminiService geminiService;
     private final EmotionService emotionService;
+    private final EmotionAnalysisPolicy emotionAnalysisPolicy;
 
     @Async
     public void runDiaryAnalysis(Long userId, Long diaryId) {
@@ -54,11 +58,15 @@ public class EmotionAnalysisRunner {
             return;
         }
         String mood = diary.getTodayMood() != null ? diary.getTodayMood().name() : null;
+        LocalDate recordDate = diary.getEntryDate() != null
+                ? diary.getEntryDate()
+                : (diary.getCreatedAt() != null ? diary.getCreatedAt().toLocalDate() : null);
         analyze(
                 userId,
                 EmotionSourceType.DIARY,
                 diaryId,
                 diary.getCreatedAt(),
+                recordDate,
                 () -> geminiService.analyzeEmotionFromDiary(diary.getTitle(), diary.getContent(), mood)
         );
     }
@@ -72,7 +80,8 @@ public class EmotionAnalysisRunner {
                     .map(uq -> new DailyQuestionEmotionSnapshot(
                             uq.getDailyQuestion().getContent(),
                             uq.getContent(),
-                            uq.getCreatedAt() != null ? uq.getCreatedAt() : LocalDateTime.now()
+                            uq.getCreatedAt() != null ? uq.getCreatedAt() : LocalDateTime.now(),
+                            uq.getQuestionDate()
                     ));
         });
         if (snapshot == null || snapshot.isEmpty()) {
@@ -86,6 +95,7 @@ public class EmotionAnalysisRunner {
                 EmotionSourceType.DAILY_QUESTION,
                 userDailyQuestionId,
                 s.createdAt(),
+                s.questionDate(),
                 () -> geminiService.analyzeEmotionFromDailyQuestion(s.questionContent(), s.answerContent())
         );
     }
@@ -102,11 +112,13 @@ public class EmotionAnalysisRunner {
             log.debug("[EmotionAnalysis] skip draft deepThought userId={} id={}", userId, deepThoughtId);
             return;
         }
+        LocalDate recordDate = dt.getCreatedAt() != null ? dt.getCreatedAt().toLocalDate() : null;
         analyze(
                 userId,
                 EmotionSourceType.DEEP_THOUGHT,
                 deepThoughtId,
                 dt.getCreatedAt(),
+                recordDate,
                 () -> geminiService.analyzeEmotionFromDeepThought(dt.getTitle(), dt.getContent())
         );
     }
@@ -116,12 +128,26 @@ public class EmotionAnalysisRunner {
             EmotionSourceType sourceType,
             Long sourceId,
             LocalDateTime sourceCreatedAt,
+            LocalDate recordDate,
             Supplier<String> geminiCall
     ) {
+        if (!emotionAnalysisPolicy.allowAnalysis(userId, sourceType, sourceId, recordDate)) {
+            return;
+        }
         emotionService.ensurePending(userId, sourceType, sourceId, sourceCreatedAt);
 
         for (int i = 0; i < IMMEDIATE_ATTEMPTS; i++) {
+            if (!emotionService.hasRetryBudget(userId, sourceType, sourceId)) {
+                log.info("[EmotionAnalysis] daytime budget exhausted userId={} sourceType={} sourceId={}",
+                        userId, sourceType, sourceId);
+                return;
+            }
             sleepQuietly(IMMEDIATE_BACKOFF_MS[Math.min(i, IMMEDIATE_BACKOFF_MS.length - 1)]);
+            if (Thread.currentThread().isInterrupted()) {
+                log.info("[EmotionAnalysis] interrupted userId={} sourceType={} sourceId={}",
+                        userId, sourceType, sourceId);
+                return;
+            }
             emotionService.markAttemptStarted(userId, sourceType, sourceId);
 
             String category;
@@ -151,7 +177,7 @@ public class EmotionAnalysisRunner {
             emotionService.markSucceeded(userId, sourceType, sourceId, category);
             return;
         }
-        // 즉시 재시도 소진 후에도 PENDING이면 스케줄러가 backoff 후 이어서 처리
+        // 당일 상한 전이면 5분 백필, 소진(FAILED)이면 매일 01:00 스윕이 열린 주만 리셋
         log.warn("[EmotionAnalysis] immediate retries exhausted userId={} sourceType={} sourceId={}",
                 userId, sourceType, sourceId);
     }

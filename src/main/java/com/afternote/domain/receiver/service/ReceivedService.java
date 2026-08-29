@@ -367,8 +367,8 @@ public class ReceivedService {
      * 수신자가 받은 일기 목록 조회
      * - 수신자 ID 기준으로 DiaryReceiver 목록을 조회한다.
      * - 임시저장이 아닌 정식 등록 일기만 반환한다.
-     * - startDate/endDate가 있으면 원본 일기 작성일 기준으로 기간 필터링한다.
-     * - sort 값에 따라 최신순 또는 오래된순으로 정렬한다.
+     * - startDate/endDate가 있으면 원본 일기 기록일(date) 기준으로 기간 필터링한다.
+     * - sort 값에 따라 기록일 최신순 또는 오래된순으로 정렬한다.
      */
     public ReceivedDiaryListResponse getReceivedDiaries(
             Long receiverId,
@@ -379,16 +379,12 @@ public class ReceivedService {
         // 사후 전달 조건 검증 (다이어리)
         deliveryConditionService.requireFulfilled(receiverId, DeliveryContentType.DIARY);
 
-        // 날짜 조건을 LocalDateTime 범위로 변환
-        LocalDateTime start = toStartDateTime(startDate);
-        LocalDateTime end = toEndDateTime(endDate);
-
         List<DiaryResponse> diaries = diaryReceiverRepository
-                .findReceivedDiaries(receiverId, start, end)
+                .findReceivedDiaries(receiverId, startDate, endDate)
                 .stream()
                 // 연결 엔티티에서 실제 Diary 엔티티만 꺼낸다.
                 .map(DiaryReceiver::getDiary)
-                // 요청한 정렬 기준에 따라 createdAt 기준 정렬
+                // 요청한 정렬 기준에 따라 기록일(entryDate) 기준 정렬
                 .sorted(diaryComparator(sort))
                 // 기존 Diary 응답 DTO로 변환
                 .map(DiaryResponse::from)
@@ -533,11 +529,13 @@ public class ReceivedService {
 
     /**
      * 일기 정렬 조건 생성
-     * - LATEST이면 createdAt 기준 최신순
-     * - OLDEST이면 createdAt 기준 오래된순
+     * - LATEST이면 기록일(entryDate) 기준 최신순, 같은 날이면 createdAt 최신순
+     * - OLDEST이면 기록일 기준 오래된순
      */
     private Comparator<Diary> diaryComparator(ReceivedRecordSort sort) {
-        Comparator<Diary> comparator = Comparator.comparing(Diary::getCreatedAt);
+        Comparator<Diary> comparator = Comparator
+                .comparing(Diary::getEntryDate, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(Diary::getCreatedAt, Comparator.nullsLast(Comparator.naturalOrder()));
         return sort == ReceivedRecordSort.OLDEST ? comparator : comparator.reversed();
     }
 

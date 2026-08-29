@@ -39,13 +39,13 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(e.getErrorCode()));
     }
 
-    // 2. @Valid 검증 실패 처리
+    // 2. @Valid 검증 실패 처리 (code: 1400)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationException(MethodArgumentNotValidException e) {
         String errorMessage = e.getBindingResult().getAllErrors().get(0).getDefaultMessage();
         return ResponseEntity
                 .badRequest()
-                .body(ApiResponse.error(400, 400, errorMessage));
+                .body(ApiResponse.error(400, ErrorCode.INVALID_INPUT_VALUE.getCode(), errorMessage));
     }
 
     // 2-1. @Validated + @Min/@Max 등 메서드 파라미터 검증
@@ -60,12 +60,16 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(400, ErrorCode.INVALID_INPUT_VALUE.getCode(), errorMessage));
     }
 
-    // 3. JSON 파싱 에러 처리 (잘못된 형식의 요청)
+    // 3. JSON 파싱 에러 처리 (잘못된 형식의 요청, code: 1400)
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ApiResponse<Void>> handleJsonParseException(HttpMessageNotReadableException e) {
         return ResponseEntity
                 .badRequest()
-                .body(ApiResponse.error(400, 400, "잘못된 요청 형식입니다. JSON 데이터를 확인해주세요."));
+                .body(ApiResponse.error(
+                        400,
+                        ErrorCode.INVALID_INPUT_VALUE.getCode(),
+                        "잘못된 요청 형식입니다. JSON 데이터를 확인해주세요."
+                ));
     }
 
     // 4. 경로 변수/쿼리 파라미터 타입 불일치·누락 (예: yearMonth=, page 문자열)

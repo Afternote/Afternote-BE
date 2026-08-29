@@ -40,7 +40,7 @@ class EmotionServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(emotionService, "maxRetry", 5);
+        ReflectionTestUtils.setField(emotionService, "maxRetry", 3);
     }
 
     @Test
@@ -98,15 +98,44 @@ class EmotionServiceTest {
     void recordFailedAttempt_MaxRetry() {
         User user = sampleUser(1L);
         Emotion pending = Emotion.createPending(user, EmotionSourceType.DIARY, 10L, LocalDateTime.now());
-        ReflectionTestUtils.setField(pending, "retryCount", 4);
+        ReflectionTestUtils.setField(pending, "retryCount", 2);
         given(emotionRepository.findByUserIdAndSourceTypeAndSourceId(1L, EmotionSourceType.DIARY, 10L))
                 .willReturn(Optional.of(pending));
         given(emotionRepository.save(any(Emotion.class))).willAnswer(inv -> inv.getArgument(0));
 
         emotionService.recordFailedAttempt(1L, EmotionSourceType.DIARY, 10L);
 
-        assertThat(pending.getRetryCount()).isEqualTo(5);
+        assertThat(pending.getRetryCount()).isEqualTo(3);
         assertThat(pending.getStatus()).isEqualTo(EmotionAnalysisStatus.FAILED);
+    }
+
+    @Test
+    @DisplayName("FAILED는 새벽 부활 시 PENDING·retryCount 0으로 돌아간다")
+    void reviveFailed_resetsBudget() {
+        User user = sampleUser(1L);
+        Emotion failed = Emotion.createPending(user, EmotionSourceType.DIARY, 10L, LocalDateTime.now());
+        ReflectionTestUtils.setField(failed, "retryCount", 3);
+        ReflectionTestUtils.setField(failed, "status", EmotionAnalysisStatus.FAILED);
+        given(emotionRepository.findByUserIdAndSourceTypeAndSourceId(1L, EmotionSourceType.DIARY, 10L))
+                .willReturn(Optional.of(failed));
+        given(emotionRepository.save(any(Emotion.class))).willAnswer(inv -> inv.getArgument(0));
+
+        assertThat(emotionService.reviveFailed(1L, EmotionSourceType.DIARY, 10L)).isTrue();
+        assertThat(failed.getStatus()).isEqualTo(EmotionAnalysisStatus.PENDING);
+        assertThat(failed.getRetryCount()).isEqualTo(0);
+    }
+
+    @Test
+    @DisplayName("당일 상한을 소진하면 hasRetryBudget 이 false")
+    void hasRetryBudget_exhausted() {
+        User user = sampleUser(1L);
+        Emotion failed = Emotion.createPending(user, EmotionSourceType.DIARY, 10L, LocalDateTime.now());
+        ReflectionTestUtils.setField(failed, "status", EmotionAnalysisStatus.FAILED);
+        ReflectionTestUtils.setField(failed, "retryCount", 3);
+        given(emotionRepository.findByUserIdAndSourceTypeAndSourceId(1L, EmotionSourceType.DIARY, 10L))
+                .willReturn(Optional.of(failed));
+
+        assertThat(emotionService.hasRetryBudget(1L, EmotionSourceType.DIARY, 10L)).isFalse();
     }
 
     private static User sampleUser(Long id) {

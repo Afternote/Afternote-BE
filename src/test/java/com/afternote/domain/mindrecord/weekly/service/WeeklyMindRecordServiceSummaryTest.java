@@ -3,6 +3,7 @@ package com.afternote.domain.mindrecord.weekly.service;
 import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
 import com.afternote.domain.diary.repository.DiaryRepository;
+import com.afternote.domain.mindrecord.emotion.EmotionAnalysisPolicy;
 import com.afternote.domain.mindrecord.emotion.repository.EmotionRepository;
 import com.afternote.domain.mindrecord.weekly.model.WeeklyReport;
 import com.afternote.domain.mindrecord.weekly.repository.WeeklyReportRepository;
@@ -54,6 +55,8 @@ class WeeklyMindRecordServiceSummaryTest {
     private GeminiService geminiService;
     @Mock
     private ObjectMapper objectMapper;
+    @Mock
+    private EmotionAnalysisPolicy emotionAnalysisPolicy;
 
     @Test
     @DisplayName("keywordJson 동일·유효 요약이 있으면 Gemini를 호출하지 않는다")
@@ -72,7 +75,7 @@ class WeeklyMindRecordServiceSummaryTest {
 
         given(userRepository.findById(1L)).willReturn(Optional.of(user));
         given(diaryRepository
-                .findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+                .findByUserIdAndIsDraftFalseAndEntryDateGreaterThanEqualAndEntryDateLessThanOrderByEntryDateAscCreatedAtAsc(
                         any(), any(), any()))
                 .willReturn(List.of());
         given(userDailyQuestionRepository
@@ -84,6 +87,7 @@ class WeeklyMindRecordServiceSummaryTest {
                 .willReturn(List.of());
         given(objectMapper.writeValueAsString(any())).willReturn("[]");
         given(weeklyReportRepository.findByUserIdAndStartDate(1L, weekStart)).willReturn(Optional.of(cached));
+        given(emotionAnalysisPolicy.isWeekClosed(1L, date)).willReturn(false);
 
         var response = weeklyMindRecordService.getWeeklyMindRecord(1L, date);
 
@@ -104,6 +108,73 @@ class WeeklyMindRecordServiceSummaryTest {
         );
 
         assertThat(same).isTrue();
+    }
+
+    @Test
+    @DisplayName("닫힌 주는 저장된 요약·키워드를 쓰고 Gemini를 호출하지 않는다")
+    void closedWeek_usesFrozenSummary() throws Exception {
+        User user = sampleUser(1L);
+        LocalDate date = LocalDate.of(2026, 8, 3);
+        LocalDateTime weekStart = date.atStartOfDay();
+        String storedJson = "[{\"keyword\":\"감사\",\"percentage\":100}]";
+        WeeklyReport cached = WeeklyReport.create(
+                user, weekStart, date.plusDays(6).atTime(23, 59, 59), "고정된 요약", storedJson);
+
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(diaryRepository
+                .findByUserIdAndIsDraftFalseAndEntryDateGreaterThanEqualAndEntryDateLessThanOrderByEntryDateAscCreatedAtAsc(
+                        any(), any(), any()))
+                .willReturn(List.of());
+        given(userDailyQuestionRepository
+                .findByUserIdAndQuestionDateBetweenOrderByQuestionDateAscCreatedAtAsc(any(), any(), any()))
+                .willReturn(List.of());
+        given(deepThoughtRepository
+                .findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+                        any(), any(), any()))
+                .willReturn(List.of());
+        given(weeklyReportRepository.findByUserIdAndStartDate(1L, weekStart)).willReturn(Optional.of(cached));
+        given(emotionAnalysisPolicy.isWeekClosed(1L, date)).willReturn(true);
+        ReflectionTestUtils.setField(weeklyMindRecordService, "objectMapper", new ObjectMapper());
+
+        var response = weeklyMindRecordService.getWeeklyMindRecord(1L, date);
+
+        assertThat(response.summaryText()).isEqualTo("고정된 요약");
+        assertThat(response.emotions()).hasSize(1);
+        assertThat(response.emotions().get(0).keyword()).isEqualTo("감사");
+        verify(geminiService, never()).generateWeeklyMindRecordSummary(anyString());
+    }
+
+    @Test
+    @DisplayName("스케줄러는 직전 주 기록이 있는 사용자에게 리포트를 저장한다")
+    void generateReportsForWeek_persists() throws Exception {
+        User user = sampleUser(1L);
+        LocalDate weekMonday = LocalDate.of(2026, 8, 3);
+        given(diaryRepository.findUserIdsWithFinalDiariesInEntryDateRange(weekMonday, weekMonday.plusWeeks(1)))
+                .willReturn(List.of(1L));
+        given(userDailyQuestionRepository.findUserIdsWithFinalAnswersInQuestionDateRange(
+                weekMonday, weekMonday.plusDays(6)))
+                .willReturn(List.of());
+        given(deepThoughtRepository.findUserIdsWithFinalDeepThoughtsInCreatedAtRange(any(), any()))
+                .willReturn(List.of());
+        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(diaryRepository
+                .findByUserIdAndIsDraftFalseAndEntryDateGreaterThanEqualAndEntryDateLessThanOrderByEntryDateAscCreatedAtAsc(
+                        any(), any(), any()))
+                .willReturn(List.of());
+        given(userDailyQuestionRepository
+                .findByUserIdAndQuestionDateBetweenOrderByQuestionDateAscCreatedAtAsc(any(), any(), any()))
+                .willReturn(List.of());
+        given(deepThoughtRepository
+                .findByUserIdAndIsDraftFalseAndCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtAsc(
+                        any(), any(), any()))
+                .willReturn(List.of());
+        given(objectMapper.writeValueAsString(any())).willReturn("[]");
+
+        int created = weeklyMindRecordService.generateReportsForWeek(weekMonday);
+
+        assertThat(created).isEqualTo(1);
+        verify(weeklyReportRepository).save(any(WeeklyReport.class));
+        verify(geminiService, never()).generateWeeklyMindRecordSummary(anyString());
     }
 
     private static User sampleUser(Long id) {

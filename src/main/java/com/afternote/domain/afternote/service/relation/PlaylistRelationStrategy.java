@@ -30,18 +30,19 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
         if (request.getPlaylist() == null) return;
 
         Long userId = afternote.getUser().getId();
-        AfternotePlaylist.MemorialVideo memorialVideo = createMemorialVideo(userId, request.getPlaylist().getMemorialVideo());
+        AfternoteCreateRequest.PlaylistRequest playlistRequest = request.getPlaylist();
         AfternotePlaylist playlist = createPlaylist(
                 afternote,
-                request.getPlaylist().getAtmosphere(),
-                promoteKey(userId, request.getPlaylist().getMemorialPhotoUrl()),
-                memorialVideo);
+                playlistRequest.getAtmosphere(),
+                createMediaSlot(userId, playlistRequest.getMemorialPhotoUrl(), S3Service.MediaKind.IMAGE),
+                createMemorialVideo(userId, playlistRequest.getMemorialVideo()),
+                createMediaSlot(userId, playlistRequest.getMemorialAudioUrl(), S3Service.MediaKind.AUDIO));
 
         playlist = playlistRepository.save(playlist);
 
-        if (request.getPlaylist().getSongs() != null) {
+        if (playlistRequest.getSongs() != null) {
             int sortOrder = 1;
-            for (AfternoteCreateRequest.SongRequest songReq : request.getPlaylist().getSongs()) {
+            for (AfternoteCreateRequest.SongRequest songReq : playlistRequest.getSongs()) {
                 playlist.getItems().add(createPlaylistItem(userId, playlist, songReq, sortOrder++));
             }
             playlistRepository.save(playlist);
@@ -54,21 +55,21 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
 
         Long userId = afternote.getUser().getId();
         AfternotePlaylist playlist = afternote.getPlaylist();
+        AfternoteCreateRequest.PlaylistRequest playlistRequest = request.getPlaylist();
 
         if (playlist == null) {
             AfternotePlaylist newPlaylist = createPlaylist(
                     afternote,
-                    request.getPlaylist().getAtmosphere(),
-                    promoteKey(userId, request.getPlaylist().getMemorialPhotoUrl()),
-                    request.getPlaylist().getMemorialVideo() != null
-                            ? createMemorialVideo(userId, request.getPlaylist().getMemorialVideo())
-                            : null);
+                    playlistRequest.getAtmosphere(),
+                    createMediaSlot(userId, playlistRequest.getMemorialPhotoUrl(), S3Service.MediaKind.IMAGE),
+                    createMemorialVideo(userId, playlistRequest.getMemorialVideo()),
+                    createMediaSlot(userId, playlistRequest.getMemorialAudioUrl(), S3Service.MediaKind.AUDIO));
 
             newPlaylist = playlistRepository.save(newPlaylist);
 
-            if (request.getPlaylist().getSongs() != null) {
+            if (playlistRequest.getSongs() != null) {
                 int sortOrder = 1;
-                for (AfternoteCreateRequest.SongRequest songReq : request.getPlaylist().getSongs()) {
+                for (AfternoteCreateRequest.SongRequest songReq : playlistRequest.getSongs()) {
                     newPlaylist.getItems().add(createPlaylistItem(userId, newPlaylist, songReq, sortOrder++));
                 }
                 playlistRepository.save(newPlaylist);
@@ -76,18 +77,33 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
             return;
         }
 
-        AfternotePlaylist.MemorialVideo memorialVideo = request.getPlaylist().getMemorialVideo() != null
-                ? createMemorialVideo(userId, request.getPlaylist().getMemorialVideo())
-                : null;
         playlist.update(
-                request.getPlaylist().getAtmosphere(),
-                promoteKey(userId, request.getPlaylist().getMemorialPhotoUrl()),
-                memorialVideo);
+                playlistRequest.getAtmosphere(),
+                applyMediaSlot(
+                        userId,
+                        playlist.getMemorialPhotoUrl(),
+                        playlistRequest.getMemorialPhotoUrl(),
+                        playlistRequest.memorialPhotoUrlSpecified(),
+                        S3Service.MediaKind.IMAGE),
+                playlistRequest.memorialPhotoUrlSpecified(),
+                applyMemorialVideo(
+                        userId,
+                        playlist.getMemorialVideo(),
+                        playlistRequest.getMemorialVideo(),
+                        playlistRequest.memorialVideoSpecified()),
+                playlistRequest.memorialVideoSpecified(),
+                applyMediaSlot(
+                        userId,
+                        playlist.getMemorialAudioUrl(),
+                        playlistRequest.getMemorialAudioUrl(),
+                        playlistRequest.memorialAudioUrlSpecified(),
+                        S3Service.MediaKind.AUDIO),
+                playlistRequest.memorialAudioUrlSpecified());
 
-        if (request.getPlaylist().getSongs() != null) {
+        if (playlistRequest.getSongs() != null) {
             playlist.getItems().clear();
             int sortOrder = 1;
-            for (AfternoteCreateRequest.SongRequest songReq : request.getPlaylist().getSongs()) {
+            for (AfternoteCreateRequest.SongRequest songReq : playlistRequest.getSongs()) {
                 playlist.getItems().add(createPlaylistItem(userId, playlist, songReq, sortOrder++));
             }
         }
@@ -95,12 +111,44 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
         playlistRepository.save(playlist);
     }
 
-    private AfternotePlaylist.MemorialVideo createMemorialVideo(Long userId, AfternoteCreateRequest.MemorialVideoRequest request) {
+    private AfternotePlaylist.MemorialVideo createMemorialVideo(
+            Long userId,
+            AfternoteCreateRequest.MemorialVideoRequest request
+    ) {
         if (request == null) return null;
 
         return AfternotePlaylist.MemorialVideo.builder()
-                .videoUrl(promoteKey(userId, request.getVideoUrl()))
-                .thumbnailUrl(promoteKey(userId, request.getThumbnailUrl()))
+                .videoUrl(createMediaSlot(userId, request.getVideoUrl(), S3Service.MediaKind.VIDEO))
+                .thumbnailUrl(createMediaSlot(userId, request.getThumbnailUrl(), S3Service.MediaKind.IMAGE))
+                .build();
+    }
+
+    private AfternotePlaylist.MemorialVideo applyMemorialVideo(
+            Long userId,
+            AfternotePlaylist.MemorialVideo current,
+            AfternoteCreateRequest.MemorialVideoRequest requested,
+            boolean specified
+    ) {
+        if (!specified) {
+            return current;
+        }
+        if (requested == null) {
+            if (current != null) {
+                s3Service.deleteManagedObject(current.getVideoUrl(), AFTERNOTES_DIRECTORY);
+                s3Service.deleteManagedObject(current.getThumbnailUrl(), AFTERNOTES_DIRECTORY);
+            }
+            return null;
+        }
+
+        String nextVideo = createMediaSlot(userId, requested.getVideoUrl(), S3Service.MediaKind.VIDEO);
+        String nextThumbnail = createMediaSlot(userId, requested.getThumbnailUrl(), S3Service.MediaKind.IMAGE);
+        if (current != null) {
+            replaceIfChanged(current.getVideoUrl(), nextVideo);
+            replaceIfChanged(current.getThumbnailUrl(), nextThumbnail);
+        }
+        return AfternotePlaylist.MemorialVideo.builder()
+                .videoUrl(nextVideo)
+                .thumbnailUrl(nextThumbnail)
                 .build();
     }
 
@@ -108,7 +156,8 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
             Afternote afternote,
             String atmosphere,
             String memorialPhotoUrl,
-            AfternotePlaylist.MemorialVideo memorialVideo
+            AfternotePlaylist.MemorialVideo memorialVideo,
+            String memorialAudioUrl
     ) {
         return AfternotePlaylist.builder()
                 .afternote(afternote)
@@ -116,6 +165,7 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
                 .atmosphere(atmosphere)
                 .memorialPhotoUrl(memorialPhotoUrl)
                 .memorialVideo(memorialVideo)
+                .memorialAudioUrl(memorialAudioUrl)
                 .build();
     }
 
@@ -137,15 +187,40 @@ public class PlaylistRelationStrategy implements AfternoteCategoryRelationStrate
                 .playlist(playlist)
                 .songTitle(song.getTitle())
                 .artist(song.getArtist())
-                .coverUrl(promoteKey(userId, song.getCoverUrl()))
+                .coverUrl(createMediaSlot(userId, song.getCoverUrl(), S3Service.MediaKind.IMAGE))
                 .sortOrder(sortOrder)
                 .build();
     }
 
-    private String promoteKey(Long userId, String rawUrlOrKey) {
+    private String createMediaSlot(Long userId, String rawUrlOrKey, S3Service.MediaKind kind) {
         if (rawUrlOrKey == null || rawUrlOrKey.isBlank()) {
-            return rawUrlOrKey;
+            return null;
         }
-        return s3Service.promoteMediaKey(AFTERNOTES_DIRECTORY, userId, rawUrlOrKey);
+        return s3Service.promoteManagedMediaKey(AFTERNOTES_DIRECTORY, userId, rawUrlOrKey, kind);
+    }
+
+    private String applyMediaSlot(
+            Long userId,
+            String current,
+            String requested,
+            boolean specified,
+            S3Service.MediaKind kind
+    ) {
+        if (!specified) {
+            return current;
+        }
+        if (requested == null || requested.isBlank()) {
+            s3Service.deleteManagedObject(current, AFTERNOTES_DIRECTORY);
+            return null;
+        }
+        String promoted = s3Service.promoteManagedMediaKey(AFTERNOTES_DIRECTORY, userId, requested, kind);
+        replaceIfChanged(current, promoted);
+        return promoted;
+    }
+
+    private void replaceIfChanged(String current, String next) {
+        if (current != null && (next == null || !s3Service.sameStorageKey(current, next))) {
+            s3Service.deleteManagedObject(current, AFTERNOTES_DIRECTORY);
+        }
     }
 }

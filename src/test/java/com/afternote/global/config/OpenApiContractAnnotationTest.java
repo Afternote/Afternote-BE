@@ -2,6 +2,7 @@ package com.afternote.global.config;
 
 import com.afternote.domain.afternote.controller.AfternoteController;
 import com.afternote.domain.afternote.dto.AfternotedetailResponse;
+import com.afternote.domain.afternote.dto.AfternoteCreateRequest;
 import com.afternote.domain.afternote.dto.AfternoteUpdateRequest;
 import com.afternote.domain.appversion.controller.AppVersionController;
 import com.afternote.domain.appversion.dto.AppVersionCheckResponse;
@@ -151,6 +152,24 @@ class OpenApiContractAnnotationTest {
         assertThat(schema.nullable()).isTrue();
         assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
         assertThat(schema.description()).contains("생략");
+    }
+
+    @Test
+    @DisplayName("PATCH 플레이리스트 미디어는 생략=유지, JSON null=삭제로 OpenAPI에 적힌다")
+    void afternoteUpdatePlaylist_DocumentsNullDeletesMedia() throws Exception {
+        Schema playlist = AfternoteUpdateRequest.class.getDeclaredMethod("playlist").getAnnotation(Schema.class);
+        assertThat(playlist).isNotNull();
+        assertThat(playlist.description()).contains("JSON null").contains("삭제");
+
+        Schema photo = AfternoteCreateRequest.PlaylistRequest.class
+                .getDeclaredMethod("memorialPhotoUrl")
+                .getAnnotation(Schema.class);
+        Schema audio = AfternoteCreateRequest.PlaylistRequest.class
+                .getDeclaredMethod("memorialAudioUrl")
+                .getAnnotation(Schema.class);
+        assertThat(photo.description()).contains("JSON null").contains("삭제");
+        assertThat(audio.description()).contains("JSON null").contains("삭제");
+        assertThat(audio.nullable()).isTrue();
     }
 
     @Test

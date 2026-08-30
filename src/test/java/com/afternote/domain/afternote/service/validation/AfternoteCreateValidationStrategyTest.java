@@ -18,7 +18,7 @@ class AfternoteCreateValidationStrategyTest {
     private final SocialValidationStrategy social = new SocialValidationStrategy();
     private final BusinessValidationStrategy business = new BusinessValidationStrategy();
     private final GalleryValidationStrategy gallery = new GalleryValidationStrategy();
-    private final PlaylistValidationStrategy playlist = new PlaylistValidationStrategy();
+    private final PlaylistValidationStrategy playlist = new PlaylistValidationStrategy(null);
 
     @Test
     @DisplayName("SOCIAL 생성 - receivers·actions 없어도 성공")
@@ -68,6 +68,7 @@ class AfternoteCreateValidationStrategyTest {
                         null,
                         null,
                         List.of(new AfternoteCreateRequest.SongRequest("곡", "가수", null)),
+                        null,
                         null
                 ),
                 null
@@ -116,6 +117,7 @@ class AfternoteCreateValidationStrategyTest {
                         null,
                         null,
                         List.of(new AfternoteCreateRequest.SongRequest("곡", "가수", null)),
+                        null,
                         null
                 ),
                 null
@@ -181,6 +183,7 @@ class AfternoteCreateValidationStrategyTest {
                         null,
                         null,
                         List.of(new AfternoteCreateRequest.SongRequest("곡", "가수", null)),
+                        null,
                         null
                 ),
                 null
@@ -229,6 +232,7 @@ class AfternoteCreateValidationStrategyTest {
                         null,
                         null,
                         List.of(new AfternoteCreateRequest.SongRequest("곡", "가수", null)),
+                        null,
                         null
                 ),
                 null
@@ -316,6 +320,7 @@ class AfternoteCreateValidationStrategyTest {
                         null,
                         null,
                         List.of(new AfternoteCreateRequest.SongRequest("곡", "가수", null)),
+                        null,
                         null
                 ),
                 null
@@ -353,7 +358,7 @@ class AfternoteCreateValidationStrategyTest {
                 null,
                 null,
                 null,
-                new AfternoteCreateRequest.PlaylistRequest(null, null, songs, null),
+                new AfternoteCreateRequest.PlaylistRequest(null, null, songs, null, null),
                 true
         );
 

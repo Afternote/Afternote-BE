@@ -160,6 +160,19 @@ class OpenApiGeneratedDocsTest {
         assertThat(patchRef).contains("AfternoteUpdateRequest");
         JsonNode patchRequired = schemas.at("/AfternoteUpdateRequest/required");
         assertThat(textValues(patchRequired)).doesNotContain("category");
+
+        JsonNode patchOp = docs.at("/paths/~1api~1v1~1afternotes~1{afternoteId}/patch");
+        assertThat(patchOp.path("description").asText()).contains("JSON null").contains("삭제");
+
+        JsonNode patchPlaylist = schemas.at("/AfternoteUpdateRequest/properties/playlist");
+        assertThat(patchPlaylist.path("description").asText()).contains("JSON null").contains("삭제");
+
+        JsonNode publishedPlaylist = schemas.get("AfternotePublishedPlaylistResponse");
+        assertThat(propertyNames(publishedPlaylist))
+                .as("AfternotePublishedPlaylistResponse=%s", publishedPlaylist)
+                .contains("memorialAudioUrl", "memorialPhotoUrl", "memorialVideo", "songs");
+        assertThat(textValues(publishedPlaylist.path("required")))
+                .doesNotContain("memorialPhotoUrlSpecified", "memorialVideoSpecified", "memorialAudioUrlSpecified");
     }
 
     private JsonNode fetchDocs() throws Exception {

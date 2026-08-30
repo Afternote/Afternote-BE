@@ -31,7 +31,11 @@ public record AfternotePublishedPlaylistResponse(
                 allOf = AfternoteCreateRequest.MemorialVideoRequest.class
         )
         @Getter
-        AfternoteCreateRequest.MemorialVideoRequest memorialVideo
+        AfternoteCreateRequest.MemorialVideoRequest memorialVideo,
+
+        @Schema(description = "추모 음성 URL", nullable = true)
+        @Getter
+        String memorialAudioUrl
 ) {
 
     public static AfternotePublishedPlaylistResponse from(AfternoteCreateRequest.PlaylistRequest playlist) {
@@ -39,7 +43,8 @@ public record AfternotePublishedPlaylistResponse(
                 playlist.getAtmosphere(),
                 playlist.getMemorialPhotoUrl(),
                 playlist.getSongs(),
-                playlist.getMemorialVideo()
+                playlist.getMemorialVideo(),
+                playlist.getMemorialAudioUrl()
         );
     }
 }

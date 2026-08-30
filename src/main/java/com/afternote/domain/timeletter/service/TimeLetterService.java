@@ -507,7 +507,7 @@ public class TimeLetterService {
 
     /**
      * 블록 URL 정규화
-     * - IMAGE/AUDIO/FILE은 staging/legacy를 permanent로 승격한 storage key로 저장한다.
+     * - IMAGE/AUDIO/FILE은 관리되는 timeletters 키만 받아 staging/legacy를 permanent로 승격한다.
      * - LINK는 외부 URL이므로 그대로 저장한다.
      */
     private String normalizeBlockUrl(Long userId, TimeLetterBlockType blockType, String rawUrlOrKey) {
@@ -519,6 +519,6 @@ public class TimeLetterService {
             return rawUrlOrKey;
         }
 
-        return s3Service.promoteMediaKey("timeletters", userId, rawUrlOrKey);
+        return s3Service.promoteManagedMediaKey("timeletters", userId, rawUrlOrKey);
     }
 }

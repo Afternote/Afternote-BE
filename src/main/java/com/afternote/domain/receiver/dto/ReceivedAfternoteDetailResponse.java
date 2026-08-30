@@ -60,13 +60,21 @@ public record ReceivedAfternoteDetailResponse(
             @Getter
             String atmosphere,
 
+            @Schema(description = "영정 사진 URL")
+            @Getter
+            String memorialPhotoUrl,
+
             @Schema(description = "노래 목록")
             @Getter
             List<SongInfo> songs,
 
             @Schema(description = "추모 영상")
             @Getter
-            MemorialVideoInfo memorialVideo
+            MemorialVideoInfo memorialVideo,
+
+            @Schema(description = "추모 음성 URL")
+            @Getter
+            String memorialAudioUrl
     ) {
 
 
@@ -156,8 +164,10 @@ public record ReceivedAfternoteDetailResponse(
 
             playlistInfo = PlaylistInfo.builder()
                     .atmosphere(pl.getAtmosphere())
+                    .memorialPhotoUrl(urlResolver.apply(pl.getMemorialPhotoUrl()))
                     .songs(songs)
                     .memorialVideo(video)
+                    .memorialAudioUrl(urlResolver.apply(pl.getMemorialAudioUrl()))
                     .build();
         }
 

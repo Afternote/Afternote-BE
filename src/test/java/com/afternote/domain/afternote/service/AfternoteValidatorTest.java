@@ -33,7 +33,7 @@ class AfternoteValidatorTest {
                 new SocialValidationStrategy(),
                 new BusinessValidationStrategy(),
                 new GalleryValidationStrategy(),
-                new PlaylistValidationStrategy()
+                new PlaylistValidationStrategy(null)
         ));
         ReflectionTestUtils.invokeMethod(factory, "init");
         validator = new AfternoteValidator(factory);
@@ -172,6 +172,7 @@ class AfternoteValidatorTest {
                         null,
                         null,
                         List.of(new AfternoteCreateRequest.SongRequest("곡", "가수", null)),
+                        null,
                         null
                 ),
                 false

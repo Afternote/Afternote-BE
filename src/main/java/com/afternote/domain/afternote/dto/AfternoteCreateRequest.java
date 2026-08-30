@@ -1,6 +1,7 @@
 package com.afternote.domain.afternote.dto;
 
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -86,7 +87,10 @@ public record AfternoteCreateRequest(
             @Getter
             String atmosphere,
 
-            @Schema(description = "영정 사진 URL")
+            @Schema(
+                    description = PATCH_MEDIA_DESCRIPTION_PREFIX + "영정 사진 URL. 생성 시 생략/null 이면 없음.",
+                    nullable = true
+            )
             @Getter
             String memorialPhotoUrl,
 
@@ -94,13 +98,79 @@ public record AfternoteCreateRequest(
             @Getter
             List<SongRequest> songs,
 
-            @Schema(description = "추모 영상")
+            @Schema(
+                    description = PATCH_MEDIA_DESCRIPTION_PREFIX + "추모 영상. 생성 시 생략/null 이면 없음. "
+                            + "PATCH에서 null 이면 영상·썸네일을 함께 삭제한다.",
+                    nullable = true
+            )
             @Getter
-            MemorialVideoRequest memorialVideo
+            MemorialVideoRequest memorialVideo,
+
+            @Schema(
+                    description = PATCH_MEDIA_DESCRIPTION_PREFIX + "추모 음성 URL. 생성 시 생략/null 이면 없음. "
+                            + "플레이리스트당 1개(mp3/m4a/wav).",
+                    nullable = true
+            )
+            @Getter
+            String memorialAudioUrl,
+
+            @JsonIgnore
+            @Schema(hidden = true)
+            boolean memorialPhotoUrlSpecified,
+
+            @JsonIgnore
+            @Schema(hidden = true)
+            boolean memorialVideoSpecified,
+
+            @JsonIgnore
+            @Schema(hidden = true)
+            boolean memorialAudioUrlSpecified
     ) {
-        
-        
-        
+
+        static final String PATCH_MEDIA_DESCRIPTION_PREFIX =
+                "PATCH: 필드 생략 시 유지, JSON null 이면 삭제(DB·S3). ";
+
+        @JsonIgnore
+        public PlaylistRequest(
+                String atmosphere,
+                String memorialPhotoUrl,
+                List<SongRequest> songs,
+                MemorialVideoRequest memorialVideo,
+                String memorialAudioUrl
+        ) {
+            this(
+                    atmosphere,
+                    memorialPhotoUrl,
+                    songs,
+                    memorialVideo,
+                    memorialAudioUrl,
+                    memorialPhotoUrl != null,
+                    memorialVideo != null,
+                    memorialAudioUrl != null
+            );
+        }
+
+        public static PlaylistRequest parsed(
+                String atmosphere,
+                String memorialPhotoUrl,
+                List<SongRequest> songs,
+                MemorialVideoRequest memorialVideo,
+                String memorialAudioUrl,
+                boolean memorialPhotoUrlSpecified,
+                boolean memorialVideoSpecified,
+                boolean memorialAudioUrlSpecified
+        ) {
+            return new PlaylistRequest(
+                    atmosphere,
+                    memorialPhotoUrl,
+                    songs,
+                    memorialVideo,
+                    memorialAudioUrl,
+                    memorialPhotoUrlSpecified,
+                    memorialVideoSpecified,
+                    memorialAudioUrlSpecified
+            );
+        }
     }
 
     public static record SongRequest(
@@ -112,7 +182,7 @@ public record AfternoteCreateRequest(
             @Getter
             String artist,
 
-            @Schema(description = "커버 이미지 URL")
+            @Schema(description = "커버 이미지 URL. 있으면 업로드로 발급된 afternotes 이미지 키만 허용", nullable = true)
             @Getter
             String coverUrl
     ) {
@@ -121,14 +191,13 @@ public record AfternoteCreateRequest(
     }
 
     public static record MemorialVideoRequest(
-            @Schema(description = "영상 URL")
+            @Schema(description = "영상 URL. 업로드로 발급된 afternotes 영상(mp4/mov) 키만 허용")
             @Getter
             String videoUrl,
 
-            @Schema(description = "썸네일 URL")
+            @Schema(description = "썸네일 URL. 있으면 업로드로 발급된 afternotes 이미지 키만 허용", nullable = true)
             @Getter
             String thumbnailUrl
     ) {
-        
     }
 }

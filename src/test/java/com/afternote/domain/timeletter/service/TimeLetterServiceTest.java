@@ -131,6 +131,33 @@ class TimeLetterServiceTest {
     }
 
     @Test
+    @DisplayName("IMAGE 블록의 비관리 URL 은 1805")
+    void createTimeLetter_ImageBlock_UnmanagedUrl_Fail() {
+        TimeLetterBlockRequest imageBlock = mock(TimeLetterBlockRequest.class);
+        given(imageBlock.getBlockType()).willReturn(TimeLetterBlockType.IMAGE);
+        given(imageBlock.getBlockOrder()).willReturn(1);
+        given(imageBlock.getUrl()).willReturn("javascript:alert(1)");
+
+        TimeLetterCreateRequest request = mock(TimeLetterCreateRequest.class);
+        given(request.getStatus()).willReturn(TimeLetterStatus.DRAFT);
+        given(request.getTitle()).willReturn("임시저장 제목");
+        given(request.getBlocks()).willReturn(List.of(imageBlock));
+        given(request.getSendAt()).willReturn(null);
+        given(request.getReceiverIds()).willReturn(List.of());
+
+        given(userRepository.existsById(1L)).willReturn(true);
+        given(userRepository.getReferenceById(1L)).willReturn(testUser);
+        given(s3Service.promoteManagedMediaKey("timeletters", 1L, "javascript:alert(1)"))
+                .willThrow(new CustomException(ErrorCode.UNMANAGED_MEDIA_URL));
+
+        assertThatThrownBy(() -> timeLetterService.createTimeLetter(1L, request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.UNMANAGED_MEDIA_URL));
+        verify(timeLetterRepository, never()).save(any());
+    }
+
+    @Test
     @DisplayName("DRAFT는 제목, 본문, 발송일시, 수신자 없이 생성할 수 있다")
     void createTimeLetter_DRAFT_WithoutOptionalFields_Success() {
         TimeLetterCreateRequest request = mock(TimeLetterCreateRequest.class);

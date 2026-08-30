@@ -211,11 +211,16 @@ public class AfternoteService {
                 ? s3Service.generateGetPresignedUrl(playlist.getMemorialPhotoUrl())
                 : null;
 
+        String memorialAudioUrlPresigned = playlist.getMemorialAudioUrl() != null
+                ? s3Service.generateGetPresignedUrl(playlist.getMemorialAudioUrl())
+                : null;
+
         return new AfternoteCreateRequest.PlaylistRequest(
                 playlist.getAtmosphere(),
                 memorialPhotoUrlPresigned,
                 songs,
-                memorialVideo
+                memorialVideo,
+                memorialAudioUrlPresigned
         );
     }
 

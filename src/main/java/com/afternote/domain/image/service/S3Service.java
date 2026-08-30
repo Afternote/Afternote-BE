@@ -8,10 +8,13 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
@@ -300,6 +303,8 @@ public class S3Service {
 
     /**
      * 해당 디렉터리의 관리 객체만 삭제한다. 비관리 값은 무시한다.
+     * S3 장애는 요청을 실패시키지 않는다. DB 참조 제거가 사용자 의도이고,
+     * SDK가 이미 재시도하며 없는 키 delete는 성공한다.
      */
     public void deleteManagedObject(String rawUrlOrKey, String directory) {
         if (!isManagedObjectKeyInDirectory(rawUrlOrKey, directory)) {
@@ -313,8 +318,7 @@ public class S3Service {
                     .build());
             log.debug("Deleted S3 object {}", key);
         } catch (Exception e) {
-            log.error("S3 delete failed key={}", key, e);
-            throw new CustomException(ErrorCode.MEDIA_DELETE_FAILED);
+            log.warn("S3 delete failed, leaving orphan key={}", key, e);
         }
     }
 
@@ -348,8 +352,12 @@ public class S3Service {
                     .build());
             log.debug("Promoted S3 object {} -> {}", sourceKey, permanentKey);
         } catch (Exception e) {
+            if (isMissingSourceObject(e)) {
+                log.info("S3 promote source missing sourceKey={}", sourceKey);
+                throw new CustomException(ErrorCode.MEDIA_NOT_UPLOADED);
+            }
             log.error("S3 promote failed sourceKey={} permanentKey={}", sourceKey, permanentKey, e);
-            throw new CustomException(ErrorCode.PRESIGNED_URL_GENERATION_FAILED);
+            throw new CustomException(ErrorCode.MEDIA_PROMOTE_FAILED);
         }
 
         if (isStagingKey(sourceKey, directory, owner)) {
@@ -357,6 +365,20 @@ public class S3Service {
         }
 
         return permanentKey;
+    }
+
+    /**
+     * copy 원본이 없으면 클라이언트가 PUT을 건너뛴 경우다. 버킷 부재(NoSuchBucket)는 여기 넣지 않는다.
+     */
+    static boolean isMissingSourceObject(Exception e) {
+        if (e instanceof NoSuchKeyException) {
+            return true;
+        }
+        if (e instanceof S3Exception s3) {
+            AwsErrorDetails details = s3.awsErrorDetails();
+            return details != null && "NoSuchKey".equalsIgnoreCase(details.errorCode());
+        }
+        return false;
     }
 
     private void deleteStagingOriginal(String sourceKey) {

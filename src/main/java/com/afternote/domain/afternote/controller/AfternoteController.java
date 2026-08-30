@@ -105,7 +105,8 @@ public class AfternoteController {
                     + "isDraft=false(정식 등록)로 남거나 전환되면 credentials/playlist 등 필수값을 "
                     + "요청·기존 데이터 합쳐 검증합니다. 임시저장(isDraft=true)이면 필수 검증을 완화합니다. "
                     + "PLAYLIST 미디어(memorialPhotoUrl, memorialVideo, memorialAudioUrl)는 "
-                    + "필드 생략 시 유지, JSON null 이면 삭제(DB·S3)이다."
+                    + "필드 생략 시 유지, JSON null 이면 삭제(DB·S3)이다. "
+                    + "업로드가 끝나지 않은 키는 400(code 1807)이다."
     )
     @PatchMapping("/{afternoteId}")
     public ApiResponse<AfternoteCreateResponse> updateAfternote(

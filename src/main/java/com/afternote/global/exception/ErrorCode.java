@@ -185,7 +185,10 @@ public enum ErrorCode {
     FILE_SIZE_EXCEEDED(HttpStatus.BAD_REQUEST, 1803, "업로드 파일 크기가 허용 한도를 초과했습니다."),
     INVALID_FILE_SIZE(HttpStatus.BAD_REQUEST, 1804, "업로드 파일 크기는 1바이트 이상이어야 합니다."),
     UNMANAGED_MEDIA_URL(HttpStatus.BAD_REQUEST, 1805, "업로드로 발급된 파일만 사용할 수 있습니다."),
+    /** S3 삭제는 best-effort. 요청을 이 코드로 실패시키지 않는다. */
     MEDIA_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1806, "미디어 파일 삭제에 실패했습니다."),
+    MEDIA_NOT_UPLOADED(HttpStatus.BAD_REQUEST, 1807, "업로드가 완료되지 않았거나 파일을 찾을 수 없습니다."),
+    MEDIA_PROMOTE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1808, "미디어 파일 저장에 실패했습니다."),
 
     // ======================================
     // 9. 수신자 인증/외부 API 관련 오류 (code: 1900 ~ 1999)

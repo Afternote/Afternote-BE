@@ -9,8 +9,5 @@ public enum ReceivedRecordStatus {
     STORED,
 
     @Schema(description = "보관된 기록 없음")
-    EMPTY,
-
-    @Schema(description = "삭제됨")
-    DELETED
+    EMPTY
 }

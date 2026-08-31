@@ -61,6 +61,11 @@ public class SwaggerConfig {
         return new AfternoteDetailOpenApiCustomizer();
     }
 
+    @Bean
+    public OpenApiCustomizer receiverOpenApiCustomizer() {
+        return new ReceiverOpenApiCustomizer();
+    }
+
     private Info apiInfo() {
         return new Info()
                 .title("AfterNote API 명세서")

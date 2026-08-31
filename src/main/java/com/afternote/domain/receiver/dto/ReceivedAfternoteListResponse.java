@@ -9,17 +9,14 @@ import java.util.List;
 @Schema(description = "수신한 애프터노트 목록 응답")
 @Builder
 public record ReceivedAfternoteListResponse(
-        @Schema(description = "애프터노트 목록")
+        @Schema(description = "애프터노트 목록. 없으면 빈 배열", requiredMode = Schema.RequiredMode.REQUIRED)
         @Getter
         List<ReceivedAfternoteResponse> afternotes,
 
-        @Schema(description = "총 개수", example = "3")
+        @Schema(description = "총 개수", example = "3", requiredMode = Schema.RequiredMode.REQUIRED)
         @Getter
         int totalCount
 ) {
-
-
-
     public static ReceivedAfternoteListResponse from(List<ReceivedAfternoteResponse> afternotes) {
         return ReceivedAfternoteListResponse.builder()
                 .afternotes(afternotes)

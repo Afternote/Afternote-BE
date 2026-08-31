@@ -15,56 +15,90 @@ import java.util.function.Function;
 @Schema(description = "수신한 타임레터 응답")
 @Builder
 public record ReceivedTimeLetterResponse(
-        @Schema(description = "타임레터 ID", example = "1")
+        @Schema(description = "타임레터 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
         @Getter
         Long id,
 
-        @Schema(description = "수신 타임레터 ID (상세 조회 시 사용)", example = "1")
+        @Schema(description = "수신 타임레터 ID (상세 조회 시 사용)", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
         @Getter
         Long timeLetterReceiverId,
 
-        @Schema(description = "제목", example = "미래의 나에게")
+        @Schema(
+                description = TITLE_DESCRIPTION,
+                example = "미래의 나에게",
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         @Getter
         String title,
 
-        @Schema(description = "본문 블록 목록")
+        @Schema(description = "본문 블록 목록. 발송 전이면 빈 배열", requiredMode = Schema.RequiredMode.REQUIRED)
         @Getter
         List<TimeLetterBlockResponse> blocks,
 
-        @Schema(description = "발송 예정 시간")
+        @Schema(
+                description = SEND_AT_DESCRIPTION,
+                example = ReceivedRecordBoxResponse.LOCAL_DATE_TIME_EXAMPLE,
+                type = "string",
+                format = ReceivedRecordBoxResponse.LOCAL_DATE_TIME_FORMAT,
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         @Getter
         LocalDateTime sendAt,
 
-        @Schema(description = "상태")
+        @Schema(description = "상태", requiredMode = Schema.RequiredMode.REQUIRED)
         @Getter
         TimeLetterStatus status,
 
-        @Schema(description = "발신자 이름", example = "김철수")
+        @Schema(
+                description = SENDER_NAME_DESCRIPTION,
+                example = "김철수",
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         @Getter
         String senderName,
 
-        @Schema(description = "배달 시간")
+        @Schema(
+                description = "배달 시간. 오프셋 없는 ISO-8601 로컬 시각(Asia/Seoul)",
+                example = ReceivedRecordBoxResponse.LOCAL_DATE_TIME_EXAMPLE,
+                type = "string",
+                format = ReceivedRecordBoxResponse.LOCAL_DATE_TIME_FORMAT,
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         @Getter
         LocalDateTime deliveredAt,
 
-        @Schema(description = "작성 시간")
+        @Schema(
+                description = CREATED_AT_DESCRIPTION,
+                example = ReceivedRecordBoxResponse.LOCAL_DATE_TIME_EXAMPLE,
+                type = "string",
+                format = ReceivedRecordBoxResponse.LOCAL_DATE_TIME_FORMAT,
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         @Getter
         LocalDateTime createdAt,
 
-        @Schema(description = "읽음 여부")
+        @Schema(
+                description = IS_READ_DESCRIPTION,
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
         @Getter
         Boolean isRead
 ) {
-
-
-
-
-
-
-
-
-
-
+    public static final String TITLE_DESCRIPTION =
+            "제목. DATE 타임레터는 sendAt이 지나기 전이면 null. POST_DEATH는 수신 경로에 올리면 공개";
+    public static final String SEND_AT_DESCRIPTION =
+            "발송 예정 시간. POST_DEATH이거나 미설정이면 null. 오프셋 없는 ISO-8601 로컬 시각(Asia/Seoul)";
+    public static final String SENDER_NAME_DESCRIPTION =
+            "발신자 이름. DATE 타임레터는 sendAt이 지나기 전이면 null";
+    public static final String CREATED_AT_DESCRIPTION =
+            "작성 시간. DATE 타임레터는 sendAt이 지나기 전이면 null. 오프셋 없는 ISO-8601 로컬 시각(Asia/Seoul)";
+    public static final String IS_READ_DESCRIPTION =
+            "읽음 여부. DATE 타임레터는 sendAt이 지나기 전이면 null";
 
     public static ReceivedTimeLetterResponse from(TimeLetterReceiver timeLetterReceiver) {
         return from(timeLetterReceiver, null);

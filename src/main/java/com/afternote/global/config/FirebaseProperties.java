@@ -9,9 +9,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 @ConfigurationProperties(prefix = "firebase")
 public class FirebaseProperties {
 
-    private String projectId = "afternote-7471f";
+    private String projectId = "afternote-android";
 
-    private String androidPackageName = "com.afternote.app";
+    private String androidPackageName = "com.afternote.afternote_fe";
 
     private String serviceAccountJson = "";
 

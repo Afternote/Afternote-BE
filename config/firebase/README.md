@@ -9,23 +9,23 @@
 
 `google-services.json`만으로는 서버에서 푸시를 **보낼 수 없습니다**. 콘솔 → 프로젝트 설정 → 서비스 계정 → **새 비공개 키 생성** JSON이 추가로 필요합니다.
 
-## 이 프로젝트 (afternote-7471f)
+## 이 프로젝트 (afternote-android)
 
-- **project_id:** `afternote-7471f`
-- **Android package:** `com.afternote.app`
+- **project_id:** `afternote-android` (project_number `918752702102`)
+- **Android package:** `com.afternote.afternote_fe`
 
 로컬 참고용 `google-services.json`은 이 폴더에 두고 git에는 올리지 않습니다 (`.gitignore`).
 
 ## 서버 env
 
 ```bash
-FIREBASE_PROJECT_ID=afternote-7471f
-FIREBASE_ANDROID_PACKAGE_NAME=com.afternote.app
+FIREBASE_PROJECT_ID=afternote-android
+FIREBASE_ANDROID_PACKAGE_NAME=com.afternote.afternote_fe
 # 서비스 계정 JSON 전체를 한 줄(또는 이스케이프)로
 FIREBASE_SERVICE_ACCOUNT_JSON={"type":"service_account",...}
 ```
 
-`FIREBASE_SERVICE_ACCOUNT_JSON`이 비어 있으면 토큰 등록 API는 동작하고, 실제 FCM 발송만 비활성(no-op)됩니다.
+`FIREBASE_SERVICE_ACCOUNT_JSON`이 비어 있으면 토큰 등록 API는 동작하고, 실제 FCM 발송만 비활성(no-op)됩니다. 서비스 계정 JSON은 **같은 프로젝트(`afternote-android`)에서 발급한 키**여야 합니다. `afternote-7471f` 키를 쓰면 발송 API는 200이어도 기기에 닿지 않습니다 (#266).
 
 ## 테스트 발송 (관리자)
 

@@ -105,8 +105,8 @@ afternote:
 
 # FCM — google-services.json 의 project_id / package 와 동일해야 함
 firebase:
-  project-id: ${FIREBASE_PROJECT_ID:afternote-7471f}
-  android-package-name: ${FIREBASE_ANDROID_PACKAGE_NAME:com.afternote.app}
+  project-id: ${FIREBASE_PROJECT_ID:afternote-android}
+  android-package-name: ${FIREBASE_ANDROID_PACKAGE_NAME:com.afternote.afternote_fe}
   service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
 
 # Passkeys (WebAuthn). SHA-256 은 FE 키스토어 지문. 비어 있으면 assetlinks 배열만 빈 채 200.

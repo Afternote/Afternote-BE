@@ -4,6 +4,8 @@ import com.afternote.domain.afternote.dto.AfternoteCreateRequest;
 import com.afternote.domain.afternote.dto.AfternoteUpdateRequest;
 import com.afternote.domain.afternote.model.Afternote;
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
+import com.afternote.domain.afternote.model.AfternotePlaylist;
+import com.afternote.domain.afternote.model.AfternotePlaylistItem;
 import com.afternote.domain.afternote.service.validation.AfternoteValidationStrategyFactory;
 import com.afternote.domain.afternote.service.validation.BusinessValidationStrategy;
 import com.afternote.domain.afternote.service.validation.GalleryValidationStrategy;
@@ -17,7 +19,6 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -182,6 +183,93 @@ class AfternoteValidatorTest {
                 .doesNotThrowAnyException();
     }
 
+    @Test
+    @DisplayName("수정 발행 PLAYLIST - 기존 곡 있고 songs 생략이면 통과")
+    void update_PublishedPlaylist_OmitSongs_KeepsExisting() {
+        Afternote afternote = publishedPlaylistWithSong();
+        AfternoteCreateRequest write = new AfternoteCreateRequest(
+                AfternoteCategoryType.PLAYLIST,
+                null,
+                null,
+                null,
+                null,
+                null,
+                AfternoteCreateRequest.PlaylistRequest.parsed(
+                        null, null, null, null, null, true, false, false),
+                null
+        );
+
+        assertThatCode(() -> validator.validatePublishRequirements(write, afternote))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("수정 발행 PLAYLIST - songs 빈 배열이면 1610")
+    void update_PublishedPlaylist_EmptySongs_Fails() {
+        Afternote afternote = publishedPlaylistWithSong();
+        AfternoteCreateRequest write = new AfternoteCreateRequest(
+                AfternoteCategoryType.PLAYLIST,
+                null,
+                null,
+                null,
+                null,
+                null,
+                new AfternoteCreateRequest.PlaylistRequest(null, null, List.of(), null, null),
+                null
+        );
+
+        assertThatThrownBy(() -> validator.validatePublishRequirements(write, afternote))
+                .isInstanceOf(CustomException.class)
+                .extracting(ex -> ((CustomException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.PLAYLIST_SONGS_REQUIRED);
+    }
+
+    @Test
+    @DisplayName("수정 발행 PLAYLIST - 기존 곡 없고 songs 생략이면 1610, NPE 없음")
+    void update_PublishedPlaylist_OmitSongsWithoutExisting_FailsWithoutNpe() {
+        Afternote afternote = publishedPlaylistWithSong();
+        ReflectionTestUtils.setField(afternote, "playlist", null);
+        AfternoteCreateRequest write = new AfternoteCreateRequest(
+                AfternoteCategoryType.PLAYLIST,
+                null,
+                null,
+                null,
+                null,
+                null,
+                AfternoteCreateRequest.PlaylistRequest.parsed(
+                        null, null, null, null, null, true, false, false),
+                null
+        );
+
+        assertThatThrownBy(() -> validator.validatePublishRequirements(write, afternote))
+                .isInstanceOf(CustomException.class)
+                .extracting(ex -> ((CustomException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.PLAYLIST_SONGS_REQUIRED);
+    }
+
+    @Test
+    @DisplayName("수정 발행 PLAYLIST - items 가 null 이어도 NPE 없이 1610")
+    void update_PublishedPlaylist_NullItems_FailsWithoutNpe() {
+        Afternote afternote = publishedPlaylistWithSong();
+        ReflectionTestUtils.setField(afternote.getPlaylist(), "items", null);
+        AfternoteCreateRequest write = new AfternoteCreateRequest(
+                AfternoteCategoryType.PLAYLIST,
+                null,
+                null,
+                null,
+                null,
+                null,
+                AfternoteCreateRequest.PlaylistRequest.parsed(
+                        null, null, null, null, null, true, false, false),
+                null
+        );
+
+        assertThatThrownBy(() -> validator.validatePublishRequirements(write, afternote))
+                .isInstanceOf(CustomException.class)
+                .extracting(ex -> ((CustomException) ex).getErrorCode())
+                .isEqualTo(ErrorCode.PLAYLIST_SONGS_REQUIRED);
+    }
+
     private static Afternote draftPlaylist() {
         User user = new User();
         ReflectionTestUtils.setField(user, "id", 1L);
@@ -192,6 +280,31 @@ class AfternoteValidatorTest {
                 .isDraft(true)
                 .sortOrder(1)
                 .build();
+        ReflectionTestUtils.setField(afternote, "id", 10L);
+        return afternote;
+    }
+
+    private static Afternote publishedPlaylistWithSong() {
+        User user = new User();
+        ReflectionTestUtils.setField(user, "id", 1L);
+        Afternote afternote = Afternote.builder()
+                .user(user)
+                .categoryType(AfternoteCategoryType.PLAYLIST)
+                .title("추억")
+                .isDraft(false)
+                .sortOrder(1)
+                .build();
+        AfternotePlaylist playlist = AfternotePlaylist.builder()
+                .afternote(afternote)
+                .title("추억")
+                .build();
+        playlist.getItems().add(AfternotePlaylistItem.builder()
+                .playlist(playlist)
+                .songTitle("곡")
+                .artist("가수")
+                .sortOrder(1)
+                .build());
+        ReflectionTestUtils.setField(afternote, "playlist", playlist);
         ReflectionTestUtils.setField(afternote, "id", 10L);
         return afternote;
     }

@@ -26,6 +26,7 @@ class PlaylistRequestDeserializerTest {
         assertThat(playlist.memorialAudioUrlSpecified()).isFalse();
         assertThat(playlist.getMemorialPhotoUrl()).isNull();
         assertThat(playlist.getMemorialAudioUrl()).isNull();
+        assertThat(playlist.getSongs()).isNull();
     }
 
     @Test
@@ -74,5 +75,17 @@ class PlaylistRequestDeserializerTest {
         assertThat(playlist.getMemorialPhotoUrl()).isEqualTo("afternotes/staging/1/a.jpg");
         assertThat(playlist.getMemorialAudioUrl()).isEqualTo("afternotes/staging/1/a.m4a");
         assertThat(playlist.memorialVideoSpecified()).isFalse();
+        assertThat(playlist.getSongs()).isNull();
+    }
+
+    @Test
+    @DisplayName("PATCH에서 songs 빈 배열은 빈 리스트(전부 삭제)")
+    void emptySongsArray_IsEmptyList() throws Exception {
+        AfternoteUpdateRequest request = objectMapper.readValue(
+                "{\"playlist\":{\"songs\":[]}}",
+                AfternoteUpdateRequest.class
+        );
+
+        assertThat(request.getPlaylist().getSongs()).isEmpty();
     }
 }

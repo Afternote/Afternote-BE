@@ -20,6 +20,7 @@ import com.afternote.domain.timeletter.dto.request.TimeLetterUpdateRequest;
 import com.afternote.domain.user.controller.UserController;
 import com.afternote.domain.user.dto.ReceiverDetailResponse;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -168,6 +169,14 @@ class OpenApiContractAnnotationTest {
         Schema playlist = AfternoteUpdateRequest.class.getDeclaredMethod("playlist").getAnnotation(Schema.class);
         assertThat(playlist).isNotNull();
         assertThat(playlist.description()).contains("JSON null").contains("삭제");
+        assertThat(playlist.description()).contains("songs 생략").contains("기존 곡 유지");
+
+        ArraySchema songsArray = AfternoteCreateRequest.PlaylistRequest.class
+                .getDeclaredMethod("songs")
+                .getAnnotation(ArraySchema.class);
+        assertThat(songsArray).isNotNull();
+        assertThat(songsArray.arraySchema().nullable()).isTrue();
+        assertThat(songsArray.arraySchema().description()).contains("생략").contains("기존 곡 유지");
 
         Schema photo = AfternoteCreateRequest.PlaylistRequest.class
                 .getDeclaredMethod("memorialPhotoUrl")

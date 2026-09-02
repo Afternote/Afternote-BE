@@ -106,6 +106,7 @@ public class AfternoteController {
                     + "요청·기존 데이터 합쳐 검증합니다. 임시저장(isDraft=true)이면 필수 검증을 완화합니다. "
                     + "PLAYLIST 미디어(memorialPhotoUrl, memorialVideo, memorialAudioUrl)는 "
                     + "필드 생략 시 유지, JSON null 이면 삭제(DB·S3)이다. "
+                    + "발행된 PLAYLIST에서 songs 를 생략하면 기존 곡을 유지하고, 빈 배열은 거절(1610)한다. "
                     + "업로드가 끝나지 않은 키는 400(code 1807)이다."
     )
     @PatchMapping("/{afternoteId}")

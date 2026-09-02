@@ -40,7 +40,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
 
 @Slf4j
 @Service
@@ -292,11 +294,32 @@ public class PasskeyService {
     }
 
     private ServerProperty serverProperty(Challenge challenge) {
-        return new ServerProperty(
-                new Origin(passkeyProperties.getOrigin()),
-                passkeyProperties.getRpId(),
-                challenge
-        );
+        Set<Origin> origins = new LinkedHashSet<>();
+        for (String originUrl : passkeyProperties.trustedOriginUrls()) {
+            Origin parsed = parseOrigin(originUrl);
+            if (parsed != null) {
+                origins.add(parsed);
+            }
+        }
+        if (origins.isEmpty()) {
+            Origin fallback = parseOrigin(passkeyProperties.getOrigin());
+            if (fallback != null) {
+                origins.add(fallback);
+            }
+        }
+        return new ServerProperty(origins, passkeyProperties.getRpId(), challenge);
+    }
+
+    private static Origin parseOrigin(String originUrl) {
+        if (originUrl == null || originUrl.isBlank()) {
+            return null;
+        }
+        try {
+            return new Origin(originUrl);
+        } catch (RuntimeException e) {
+            log.warn("passkey skip invalid origin: {}", originUrl);
+            return null;
+        }
     }
 
     private List<PublicKeyCredentialParameters> pubKeyCredParams() {

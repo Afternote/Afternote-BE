@@ -2,6 +2,7 @@ package com.afternote.domain.afternote.dto;
 
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
@@ -94,7 +95,11 @@ public record AfternoteCreateRequest(
             @Getter
             String memorialPhotoUrl,
 
-            @Schema(description = "노래 목록")
+            @ArraySchema(arraySchema = @Schema(
+                    description = "노래 목록. PATCH: 필드 생략(null) 시 기존 곡 유지, 빈 배열 [] 은 전부 삭제(발행 노트는 1610). "
+                            + "생성 정식 등록이면 1곡 이상 필수.",
+                    nullable = true
+            ))
             @Getter
             List<SongRequest> songs,
 

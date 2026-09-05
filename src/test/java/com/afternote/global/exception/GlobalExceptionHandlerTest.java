@@ -3,6 +3,7 @@ package com.afternote.global.exception;
 import com.afternote.global.common.ApiResponse;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.MethodParameter;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpInputMessage;
@@ -14,6 +15,8 @@ import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
@@ -55,6 +58,35 @@ class GlobalExceptionHandlerTest {
         assertThat(response.getBody().getStatus()).isEqualTo(400);
         assertThat(response.getBody().getCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE.getCode());
         assertThat(response.getBody().getMessage()).isEqualTo("잘못된 요청 형식입니다. JSON 데이터를 확인해주세요.");
+    }
+
+    @Test
+    @DisplayName("필수 헤더 누락은 HTTP 400 / code 1400 이고 헤더 이름이 메시지에 있다")
+    void missingRequestHeader() {
+        MissingRequestHeaderException exception = new MissingRequestHeaderException(
+                "X-Auth-Code", mock(MethodParameter.class));
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleMissingRequestValue(exception);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getStatus()).isEqualTo(400);
+        assertThat(response.getBody().getCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE.getCode());
+        assertThat(response.getBody().getMessage()).isEqualTo("필수 요청 헤더가 없습니다: X-Auth-Code");
+    }
+
+    @Test
+    @DisplayName("필수 쿼리 파라미터 누락은 HTTP 400 / code 1400 이고 파라미터 이름이 메시지에 있다")
+    void missingServletRequestParameter() {
+        MissingServletRequestParameterException exception =
+                new MissingServletRequestParameterException("page", "Integer");
+
+        ResponseEntity<ApiResponse<Void>> response = handler.handleMissingRequestValue(exception);
+
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE.getCode());
+        assertThat(response.getBody().getMessage()).isEqualTo("필수 요청 파라미터가 없습니다: page");
     }
 
     @Test

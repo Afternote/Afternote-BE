@@ -16,6 +16,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -72,17 +73,35 @@ public class GlobalExceptionHandler {
                 ));
     }
 
-    // 4. 경로 변수/쿼리 파라미터 타입 불일치·누락 (예: yearMonth=, page 문자열)
+    // 4. 경로 변수/쿼리 파라미터 타입 불일치 (예: yearMonth=, page 문자열)
     @ExceptionHandler({
             MethodArgumentTypeMismatchException.class,
             TypeMismatchException.class,
-            ConversionFailedException.class,
-            MissingServletRequestParameterException.class
+            ConversionFailedException.class
     })
     public ResponseEntity<ApiResponse<Void>> handleTypeMismatchException(Exception e) {
         return ResponseEntity
                 .badRequest()
                 .body(ApiResponse.error(400, ErrorCode.INVALID_INPUT_VALUE.getCode(), "요청 파라미터 형식이 올바르지 않습니다."));
+    }
+
+    // 4-1. 필수 헤더/쿼리 파라미터 누락 — 폴백 500/Sentry 로 보내지 않는다
+    @ExceptionHandler({
+            MissingRequestHeaderException.class,
+            MissingServletRequestParameterException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleMissingRequestValue(Exception e) {
+        String message;
+        if (e instanceof MissingRequestHeaderException headerEx) {
+            message = "필수 요청 헤더가 없습니다: " + headerEx.getHeaderName();
+        } else if (e instanceof MissingServletRequestParameterException paramEx) {
+            message = "필수 요청 파라미터가 없습니다: " + paramEx.getParameterName();
+        } else {
+            message = "필수 요청 값이 없습니다.";
+        }
+        return ResponseEntity
+                .badRequest()
+                .body(ApiResponse.error(400, ErrorCode.INVALID_INPUT_VALUE.getCode(), message));
     }
 
     // 5. 허용되지 않은 HTTP 메서드 (예: POST만 있는 path에 DELETE)

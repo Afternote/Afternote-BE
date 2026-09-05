@@ -2,6 +2,8 @@ package com.afternote.domain.receiver.controller;
 
 import com.afternote.domain.receiver.dto.ReceiverEmailAuthCodeSendResponse;
 import com.afternote.domain.receiver.service.ReceiverAuthService;
+import com.afternote.global.exception.ErrorCode;
+import com.afternote.global.exception.GlobalExceptionHandler;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
@@ -46,8 +48,19 @@ class ReceiverAuthControllerTest {
                 .registerModule(new JavaTimeModule())
                 .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
         mockMvc = MockMvcBuilders.standaloneSetup(receiverAuthController)
+                .setControllerAdvice(new GlobalExceptionHandler())
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(objectMapper))
                 .build();
+    }
+
+    @Test
+    @DisplayName("X-Auth-Code 누락은 500이 아니라 400 / 1400")
+    void recordBoxes_missingAuthHeader_returnsBadRequest() throws Exception {
+        mockMvc.perform(get("/api/v1/receiver-auth/record-boxes"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.code").value(ErrorCode.INVALID_INPUT_VALUE.getCode()))
+                .andExpect(jsonPath("$.message").value("필수 요청 헤더가 없습니다: X-Auth-Code"));
     }
 
     @Test

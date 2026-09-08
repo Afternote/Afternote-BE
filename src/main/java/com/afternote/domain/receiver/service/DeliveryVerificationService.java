@@ -5,7 +5,6 @@ import com.afternote.domain.receiver.model.DeliveryVerification;
 import com.afternote.domain.receiver.model.Receiver;
 import com.afternote.domain.receiver.model.VerificationStatus;
 import com.afternote.domain.receiver.repository.DeliveryVerificationRepository;
-import com.afternote.domain.receiver.repository.ReceiverRepository;
 import com.afternote.domain.user.model.DeliveryConditionType;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
@@ -24,16 +23,16 @@ import java.util.List;
 public class DeliveryVerificationService {
 
     private final DeliveryVerificationRepository deliveryVerificationRepository;
-    private final ReceiverRepository receiverRepository;
     private final UserRepository userRepository;
     private final S3Service s3Service;
     private final com.afternote.domain.delivery.service.DeliveryConditionService deliveryConditionService;
 
     @Transactional
-    public DeliveryVerification submitVerification(String authCode, String deathCertUrl, String familyRelationCertUrl) {
-        Receiver receiver = receiverRepository.findByAuthCode(authCode)
-                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_AUTH_CODE));
-
+    public DeliveryVerification submitVerification(
+            Receiver receiver,
+            String deathCertUrl,
+            String familyRelationCertUrl
+    ) {
         User user = userRepository.findById(receiver.getUserId())
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
@@ -73,14 +72,12 @@ public class DeliveryVerificationService {
         return deliveryVerificationRepository.save(verification);
     }
 
-    public DeliveryVerification getVerificationStatus(String authCode) {
-        Receiver receiver = receiverRepository.findByAuthCode(authCode)
-                .orElseThrow(() -> new CustomException(ErrorCode.INVALID_AUTH_CODE));
-
+    public DeliveryVerification getVerificationStatus(Receiver receiver) {
         User user = userRepository.findById(receiver.getUserId())
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
 
-        return deliveryVerificationRepository.findFirstByUserIdOrderByCreatedAtDesc(user.getId())
+        return deliveryVerificationRepository.findFirstByUserIdAndReceiverIdOrderByCreatedAtDesc(
+                        user.getId(), receiver.getId())
                 .orElseThrow(() -> new CustomException(ErrorCode.VERIFICATION_NOT_FOUND));
     }
 

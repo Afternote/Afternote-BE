@@ -1,8 +1,8 @@
 package com.afternote.global.config;
 
-import com.afternote.domain.receiver.controller.ReceiverAuthController;
+import com.afternote.domain.receiver.controller.ReceivedRecordController;
 import com.afternote.domain.receiver.dto.ReceivedRecordBoxResponse;
-import com.afternote.domain.receiver.service.ReceiverAuthService;
+import com.afternote.domain.receiver.service.ReceivedRecordService;
 import com.afternote.global.jwt.JwtAuthenticationFilter;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * #269: 수신자 응답의 required·nullable이 생성 OpenAPI에 실제로 남는지 고정한다.
  */
 @WebMvcTest(
-        controllers = ReceiverAuthController.class,
+        controllers = ReceivedRecordController.class,
         excludeAutoConfiguration = {
                 SecurityAutoConfiguration.class,
                 SecurityFilterAutoConfiguration.class
@@ -52,7 +52,7 @@ class ReceiverOpenApiGeneratedDocsTest {
     private MockMvc mockMvc;
 
     @MockBean
-    private ReceiverAuthService receiverAuthService;
+    private ReceivedRecordService receivedRecordService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -64,7 +64,7 @@ class ReceiverOpenApiGeneratedDocsTest {
         assertThat(schema).isNotNull();
 
         assertThat(textValues(schema.path("required"))).contains(
-                "receiverId", "accessCode", "senderName", "receiverName", "recordStatus", "viewStatus"
+                "receiverId", "senderName", "receiverName", "recordStatus", "viewStatus"
         );
         assertThat(textValues(schema.path("required")))
                 .doesNotContain("relation", "verificationStatus", "requestedAt", "approvedAt");
@@ -91,7 +91,7 @@ class ReceiverOpenApiGeneratedDocsTest {
     }
 
     @Test
-    @DisplayName("생성 OpenAPI에서 수신 타임레터·인증·메시지·상세 playlist nullable이 산출물에 남는다")
+    @DisplayName("생성 OpenAPI에서 수신 타임레터·메시지·상세 playlist nullable이 산출물에 남는다")
     void generatedOpenApi_OtherReceiverResponsesKeepNullable() throws Exception {
         JsonNode schemas = fetchSchemas();
 
@@ -102,10 +102,6 @@ class ReceiverOpenApiGeneratedDocsTest {
         assertThat(timeLetter.at("/properties/sendAt/nullable").asBoolean()).isTrue();
         assertThat(timeLetter.at("/properties/sendAt/format").asText())
                 .isEqualTo(ReceivedRecordBoxResponse.LOCAL_DATE_TIME_FORMAT);
-
-        JsonNode verify = schemas.get("ReceiverAuthVerifyResponse");
-        assertThat(textValues(verify.path("required"))).contains("receiverId", "receiverName", "senderName");
-        assertThat(verify.at("/properties/relation/nullable").asBoolean()).isTrue();
 
         JsonNode message = schemas.get("ReceiverMessageResponse");
         assertThat(textValues(message.path("required"))).contains("senderName", "createdAt");

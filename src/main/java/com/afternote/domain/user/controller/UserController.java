@@ -208,20 +208,6 @@ public class UserController {
     }
 
     @Operation(
-            summary = "수신자 등록 API",
-            description = "로그인한 사용자가 새로운 수신자를 등록합니다."
-    )
-    @PostMapping("/receivers")
-    public ApiResponse<UserCreateReceiverResponse> createReceiver(
-            @Parameter(hidden = true) @UserId Long userId,
-            @Valid @RequestBody UserCreateReceiverRequest request
-    ) {
-        return ApiResponse.success(
-                userService.createReceiver(userId, request)
-        );
-    }
-
-    @Operation(
             summary = "수신인 상세 조회 API",
             description = "특정 수신인의 상세 정보를 조회합니다."
     )
@@ -246,6 +232,20 @@ public class UserController {
             @Valid @RequestBody UserUpdateReceiverMessageRequest request
     ) {
         userService.updateReceiverMessage(userId, receiverId, request);
+        return ApiResponse.success(null);
+    }
+
+    @Operation(
+            summary = "수신자 관계 수정 API",
+            description = "초대 수락 시 비어 있는 관계를 등록하거나 기존 관계를 수정합니다."
+    )
+    @PatchMapping("/receivers/{receiverId}/relation")
+    public ApiResponse<Void> updateReceiverRelation(
+            @Parameter(hidden = true) @UserId Long userId,
+            @PathVariable Long receiverId,
+            @Valid @RequestBody UserUpdateReceiverRelationRequest request
+    ) {
+        userService.updateReceiverRelation(userId, receiverId, request);
         return ApiResponse.success(null);
     }
 

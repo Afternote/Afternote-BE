@@ -85,7 +85,7 @@ public class User extends BaseEntity {
     @Column(name = "marketing_sms_enabled", nullable = false, columnDefinition = "tinyint(1) not null default 0")
     private boolean marketingSmsEnabled;
 
-    /** 마케팅/광고 이메일. 가입·찾기·수신자 인증 메일은 이 값과 관계없이 발송한다. */
+    /** 마케팅/광고 이메일. 가입·계정 찾기 메일은 이 값과 관계없이 발송한다. */
     @Column(name = "marketing_email_enabled", nullable = false, columnDefinition = "tinyint(1) not null default 0")
     private boolean marketingEmailEnabled;
 

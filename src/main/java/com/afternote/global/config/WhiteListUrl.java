@@ -24,9 +24,6 @@ public enum WhiteListUrl {
     AUTH_PASSKEY_AUTHENTICATE("/api/v1/auth/passkey/authenticate/**"),
     WELL_KNOWN_ASSETLINKS("/.well-known/assetlinks.json"),
 
-    // 수신자 인증
-    RECEIVER_AUTH("/api/receiver-auth/**"),
-
     // 앱 버전 확인 (스플래시)
     APP_VERSION("/api/v1/app/version"),
 

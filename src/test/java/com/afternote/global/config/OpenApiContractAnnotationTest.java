@@ -12,7 +12,6 @@ import com.afternote.domain.receiver.dto.DeliveryVerificationResponse;
 import com.afternote.domain.receiver.dto.ReceivedAfternoteDetailResponse;
 import com.afternote.domain.receiver.dto.ReceivedRecordBoxResponse;
 import com.afternote.domain.receiver.dto.ReceivedTimeLetterResponse;
-import com.afternote.domain.receiver.dto.ReceiverAuthVerifyResponse;
 import com.afternote.domain.receiver.dto.ReceiverMessageResponse;
 import com.afternote.domain.receiver.model.ReceivedRecordStatus;
 import com.afternote.domain.timeletter.dto.request.TimeLetterCreateRequest;
@@ -218,7 +217,7 @@ class OpenApiContractAnnotationTest {
     @DisplayName("받은 기록함 응답은 항상 필드 required, 조건부 필드는 nullable과 비는 조건을 적는다")
     void receivedRecordBox_DocumentsRequiredAndNullableContract() throws Exception {
         for (String field : Set.of(
-                "receiverId", "accessCode", "senderName", "receiverName", "recordStatus", "viewStatus"
+                "receiverId", "senderName", "receiverName", "recordStatus", "viewStatus"
         )) {
             Schema schema = ReceivedRecordBoxResponse.class.getDeclaredMethod(field).getAnnotation(Schema.class);
             assertThat(schema).as("@Schema on ReceivedRecordBoxResponse.%s", field).isNotNull();
@@ -261,7 +260,7 @@ class OpenApiContractAnnotationTest {
     }
 
     @Test
-    @DisplayName("수신 타임레터·인증·메시지 응답도 required·nullable을 구현과 같게 적는다")
+    @DisplayName("수신 타임레터·메시지 응답도 required·nullable을 구현과 같게 적는다")
     void receiverResponses_DocumentRequiredAndNullableContract() throws Exception {
         for (String field : Set.of("id", "timeLetterReceiverId", "blocks", "status", "deliveredAt")) {
             Schema schema = ReceivedTimeLetterResponse.class.getDeclaredMethod(field).getAnnotation(Schema.class);
@@ -271,13 +270,6 @@ class OpenApiContractAnnotationTest {
         Schema title = ReceivedTimeLetterResponse.class.getDeclaredMethod("title").getAnnotation(Schema.class);
         assertThat(title.nullable()).isTrue();
         assertThat(title.description()).contains("sendAt이 지나기 전이면 null");
-
-        for (String field : Set.of("receiverId", "receiverName", "senderName")) {
-            Schema schema = ReceiverAuthVerifyResponse.class.getDeclaredMethod(field).getAnnotation(Schema.class);
-            assertThat(schema.requiredMode()).isEqualTo(Schema.RequiredMode.REQUIRED);
-        }
-        Schema relation = ReceiverAuthVerifyResponse.class.getDeclaredMethod("relation").getAnnotation(Schema.class);
-        assertThat(relation.nullable()).isTrue();
 
         Schema message = ReceiverMessageResponse.class.getDeclaredMethod("message").getAnnotation(Schema.class);
         assertThat(message.nullable()).isTrue();

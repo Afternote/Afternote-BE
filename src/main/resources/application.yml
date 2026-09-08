@@ -78,9 +78,9 @@ logging:
 # Admin 계정 (서버 기동 시 1회). 운영/로컬 모두 환경 변수로만 설정합니다.
 # ADMIN_EMAIL, ADMIN_PASSWORD — 둘 다 있을 때만 LOCAL Admin 계정 생성 또는 기존 유저를 ADMIN으로 승격
 app:
-  auth-code:
-    email:
-      enabled: true
+  receiver-invitation:
+    base-url: ${RECEIVER_INVITATION_BASE_URL:https://afternote.kro.kr/invitations}
+    expiration-days: ${RECEIVER_INVITATION_EXPIRATION_DAYS:7}
   version:
     seed:
       android:

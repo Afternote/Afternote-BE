@@ -250,6 +250,20 @@ public class UserController {
     }
 
     @Operation(
+            summary = "수신자 관계 수정 API",
+            description = "초대 수락 시 비어 있는 관계를 등록하거나 기존 관계를 수정합니다."
+    )
+    @PatchMapping("/receivers/{receiverId}/relation")
+    public ApiResponse<Void> updateReceiverRelation(
+            @Parameter(hidden = true) @UserId Long userId,
+            @PathVariable Long receiverId,
+            @Valid @RequestBody UserUpdateReceiverRelationRequest request
+    ) {
+        userService.updateReceiverRelation(userId, receiverId, request);
+        return ApiResponse.success(null);
+    }
+
+    @Operation(
             summary = "활동 기록(ping) API",
             description = "앱 실행 등 사용자 활동을 기록하여 미사용 자동 전달 타이머를 갱신합니다."
     )

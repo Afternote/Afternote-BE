@@ -200,6 +200,11 @@ public enum ErrorCode {
     RECEIVER_EMAIL_AUTH_CODE_NOT_FOUND(HttpStatus.BAD_REQUEST, 1902, "인증번호가 만료되었거나 존재하지 않습니다. 다시 요청해주세요."),
     RECEIVER_EMAIL_AUTH_CODE_MISMATCH(HttpStatus.BAD_REQUEST, 1903, "이메일 인증번호가 일치하지 않습니다."),
     RECEIVER_EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1904, "이메일 인증번호 발송에 실패했습니다."),
+    RECEIVER_INVITATION_NOT_FOUND(HttpStatus.NOT_FOUND, 1905, "수신자 초대를 찾을 수 없습니다."),
+    RECEIVER_INVITATION_EXPIRED(HttpStatus.GONE, 1906, "만료된 수신자 초대입니다."),
+    RECEIVER_INVITATION_ALREADY_ACCEPTED(HttpStatus.CONFLICT, 1907, "이미 다른 사용자가 수락한 초대입니다."),
+    RECEIVER_INVITATION_SELF_ACCEPT(HttpStatus.BAD_REQUEST, 1908, "본인이 만든 수신자 초대는 수락할 수 없습니다."),
+    RECEIVER_ALREADY_REGISTERED(HttpStatus.CONFLICT, 1909, "이미 등록된 수신자입니다."),
 
 
     // ======================================

@@ -241,6 +241,18 @@ class UserControllerTest {
     }
 
     @Test
+    @DisplayName("수신자 관계 수정 API 성공")
+    void updateReceiverRelation_Success() throws Exception {
+        mockMvc.perform(patch("/api/v1/users/receivers/{receiverId}/relation", 2L)
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"relation\":\"친구\"}"))
+                .andExpect(status().isOk());
+
+        verify(userService).updateReceiverRelation(eq(USER_ID), eq(2L), any());
+    }
+
+    @Test
     @DisplayName("활동 기록(ping) API 성공")
     void recordActivity_Success() throws Exception {
         mockMvc.perform(post("/api/v1/users/me/activity")

@@ -262,6 +262,15 @@ public class UserService {
     }
 
     @Transactional
+    public void updateReceiverRelation(Long userId, Long receiverId, UserUpdateReceiverRelationRequest request) {
+        User user = findUserById(userId);
+        UserReceiver userReceiver = userReceiverRepository.findByUserAndReceiverId(user, receiverId)
+                .orElseThrow(() -> new CustomException(ErrorCode.RECEIVER_NOT_FOUND));
+
+        userReceiver.getReceiver().updateRelation(request.relation());
+    }
+
+    @Transactional
     public void deleteAccount(Long userId) {
         accountWithdrawalService.withdraw(userId);
     }

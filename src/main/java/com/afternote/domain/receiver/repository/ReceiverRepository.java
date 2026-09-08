@@ -12,6 +12,7 @@ public interface ReceiverRepository extends JpaRepository<Receiver, Long> {
     Optional<Receiver> findByAuthCode(String authCode);
     List<Receiver> findAllByEmailIgnoreCaseOrderByIdDesc(String email);
     List<Receiver> findAllByUserId(Long userId);
+    boolean existsByUserIdAndAcceptedUserId(Long userId, Long acceptedUserId);
 
     void deleteByUserId(Long userId);
 }

@@ -16,6 +16,7 @@ import com.afternote.domain.receiver.repository.DeepThoughtReceiverRepository;
 import com.afternote.domain.receiver.repository.DeliveryVerificationRepository;
 import com.afternote.domain.receiver.repository.DiaryReceiverRepository;
 import com.afternote.domain.receiver.repository.ReceiverRepository;
+import com.afternote.domain.receiver.repository.ReceiverInvitationRepository;
 import com.afternote.domain.receiver.repository.TimeLetterReceiverRepository;
 import com.afternote.domain.receiver.repository.UserDailyQuestionReceiverRepository;
 import com.afternote.domain.receiver.repository.UserReceiverRepository;
@@ -72,6 +73,7 @@ public class AccountWithdrawalService {
 
     private final UserReceiverRepository userReceiverRepository;
     private final ReceiverRepository receiverRepository;
+    private final ReceiverInvitationRepository receiverInvitationRepository;
     private final UserPushTokenService userPushTokenService;
     private final PasskeyService passkeyService;
 
@@ -123,14 +125,18 @@ public class AccountWithdrawalService {
         deepThoughtRepository.clearCategoryByUserId(userId);
         deepThoughtCategoryRepository.deleteByUser_Id(userId);
 
-        // 5) 수신자 (UserReceiver → Receiver). 다른 조인이 이미 정리된 뒤 삭제.
+        // 5) 초대 연결 정리. 수락 회원 ID는 FK가 아닌 식별용 스냅샷이므로 탈퇴 시 연결만 해제한다.
+        receiverInvitationRepository.deleteByInviterUserIdOrAcceptedUserId(userId, userId);
+        receiverRepository.clearAcceptedUserId(userId);
+
+        // 6) 수신자 (UserReceiver → Receiver). 다른 조인이 이미 정리된 뒤 삭제.
         userReceiverRepository.deleteByUser_Id(userId);
         receiverRepository.deleteByUserId(userId);
 
         userPushTokenService.deleteAllForUser(userId);
         passkeyService.deleteAllForUser(userId);
 
-        // 6) 탈퇴 이력 저장 후 User hard delete (잔여 cascade: timeLetters, diaries, ...)
+        // 7) 탈퇴 이력 저장 후 User hard delete (잔여 cascade: timeLetters, diaries, ...)
         withdrawnUserRepository.save(WithdrawnUser.of(email, userId));
         userRepository.delete(user);
         userRepository.flush();

@@ -208,20 +208,6 @@ public class UserController {
     }
 
     @Operation(
-            summary = "수신자 등록 API",
-            description = "로그인한 사용자가 새로운 수신자를 등록합니다."
-    )
-    @PostMapping("/receivers")
-    public ApiResponse<UserCreateReceiverResponse> createReceiver(
-            @Parameter(hidden = true) @UserId Long userId,
-            @Valid @RequestBody UserCreateReceiverRequest request
-    ) {
-        return ApiResponse.success(
-                userService.createReceiver(userId, request)
-        );
-    }
-
-    @Operation(
             summary = "수신인 상세 조회 API",
             description = "특정 수신인의 상세 정보를 조회합니다."
     )

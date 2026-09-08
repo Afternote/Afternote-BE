@@ -162,7 +162,6 @@ public enum ErrorCode {
     INVALID_PHONE_FORMAT(HttpStatus.BAD_REQUEST, 1627, "전화번호 형식이 올바르지 않습니다. (예: 010-1234-5678)"),
     DUPLICATE_RECEIVER_PHONE(HttpStatus.CONFLICT, 1628, "이미 등록된 수신자 전화번호입니다."),
     RECEIVER_IN_USE(HttpStatus.CONFLICT, 1629, "이미 콘텐츠에 연결된 수신자는 삭제할 수 없습니다. 연결을 해제한 뒤 다시 시도해주세요."),
-    RECEIVER_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, 1630, "수신자 이메일은 필수입니다."),
     PLAYLIST_SONG_INVALID(HttpStatus.BAD_REQUEST, 1631, "곡 목록 형식이 올바르지 않습니다. title·artist가 있는 곡 객체만 보내주세요."),
     MEMORIAL_PHOTO_URL_CANNOT_BE_EMPTY(HttpStatus.BAD_REQUEST, 1632, "영정 사진 URL은 공백일 수 없습니다."),
     MEMORIAL_AUDIO_URL_CANNOT_BE_EMPTY(HttpStatus.BAD_REQUEST, 1633, "추모 음성 URL은 공백일 수 없습니다."),
@@ -193,13 +192,6 @@ public enum ErrorCode {
     // ======================================
     // 9. 수신자 인증/외부 API 관련 오류 (code: 1900 ~ 1999)
     // ======================================
-    INVALID_AUTH_CODE(HttpStatus.NOT_FOUND, 1900, "유효하지 않은 인증번호입니다."),
-
-    //gemini api
-    RECEIVER_EMAIL_NOT_FOUND(HttpStatus.NOT_FOUND, 1901, "등록된 수신자 이메일이 아닙니다."),
-    RECEIVER_EMAIL_AUTH_CODE_NOT_FOUND(HttpStatus.BAD_REQUEST, 1902, "인증번호가 만료되었거나 존재하지 않습니다. 다시 요청해주세요."),
-    RECEIVER_EMAIL_AUTH_CODE_MISMATCH(HttpStatus.BAD_REQUEST, 1903, "이메일 인증번호가 일치하지 않습니다."),
-    RECEIVER_EMAIL_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, 1904, "이메일 인증번호 발송에 실패했습니다."),
     RECEIVER_INVITATION_NOT_FOUND(HttpStatus.NOT_FOUND, 1905, "수신자 초대를 찾을 수 없습니다."),
     RECEIVER_INVITATION_EXPIRED(HttpStatus.GONE, 1906, "만료된 수신자 초대입니다."),
     RECEIVER_INVITATION_ALREADY_ACCEPTED(HttpStatus.CONFLICT, 1907, "이미 다른 사용자가 수락한 초대입니다."),

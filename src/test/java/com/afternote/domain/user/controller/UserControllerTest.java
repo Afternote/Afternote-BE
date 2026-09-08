@@ -183,40 +183,6 @@ class UserControllerTest {
     }
 
     @Test
-    @DisplayName("수신자 등록 API 성공")
-    void createReceiver_Success() throws Exception {
-        given(userService.createReceiver(eq(USER_ID), any())).willReturn(null);
-
-        mockMvc.perform(post("/api/v1/users/receivers")
-                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"kim\",\"relation\":\"DAUGHTER\",\"phone\":\"010-1234-5678\",\"email\":\"a@a.com\"}"))
-                .andExpect(status().isOk());
-
-        verify(userService).createReceiver(eq(USER_ID), any());
-    }
-
-    @Test
-    @DisplayName("수신자 등록 API 실패 - 필수 name 누락")
-    void createReceiver_MissingName_Fail() throws Exception {
-        mockMvc.perform(post("/api/v1/users/receivers")
-                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"relation\":\"DAUGHTER\"}"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
-    @DisplayName("수신자 등록 API 실패 - 필수 email 누락")
-    void createReceiver_MissingEmail_Fail() throws Exception {
-        mockMvc.perform(post("/api/v1/users/receivers")
-                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"name\":\"kim\",\"relation\":\"DAUGHTER\"}"))
-                .andExpect(status().isBadRequest());
-    }
-
-    @Test
     @DisplayName("수신인 상세 조회 API 성공")
     void getReceiverDetail_Success() throws Exception {
         given(userService.getReceiverDetail(USER_ID, 2L)).willReturn(null);

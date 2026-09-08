@@ -61,15 +61,7 @@ public record ReceiverDetailResponse(
                 requiredMode = Schema.RequiredMode.NOT_REQUIRED
         )
         @Getter
-        String message,
-
-        @Schema(
-                description = "수신자 인증번호",
-                example = "550e8400-e29b-41d4-a716-446655440000",
-                requiredMode = Schema.RequiredMode.REQUIRED
-        )
-        @Getter
-        String authCode
+        String message
 ) {
 
 
@@ -98,7 +90,6 @@ public record ReceiverDetailResponse(
                 .dailyQuestionCount(dailyQuestionCount)
                 .timeLetterCount(timeLetterCount)
                 .afterNoteCount(afterNoteCount)
-                .authCode(receiver.getAuthCode())
                 .build();
     }
 }

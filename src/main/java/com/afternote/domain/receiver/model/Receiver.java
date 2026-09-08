@@ -8,7 +8,6 @@ import lombok.*;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 
 @Entity
 @Table(
@@ -30,7 +29,7 @@ public class Receiver extends BaseEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
-    /** 초대 수락으로 등록된 회원 ID. 기존 수동 등록 수신자는 null이다. */
+    /** 초대를 수락한 회원 ID */
     @Column(name = "accepted_user_id")
     private Long acceptedUserId;
 
@@ -49,9 +48,6 @@ public class Receiver extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String message;
 
-    @Column(name = "auth_code", unique = true, length = 36)
-    private String authCode;
-
     @Column(name = "sort_order", nullable = false)
     private Integer sortOrder;
 
@@ -67,7 +63,6 @@ public class Receiver extends BaseEntity {
         this.message = message;
         this.userId = userId;
         this.sortOrder = 0;
-        this.authCode = UUID.randomUUID().toString();
     }
 
     public static Receiver fromAcceptedInvitation(User user, Long inviterUserId) {

@@ -5,8 +5,6 @@ import com.afternote.domain.auth.service.social.SocialLoginFactory;
 import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.receiver.model.Receiver;
 import com.afternote.domain.receiver.model.UserReceiver;
-import com.afternote.domain.receiver.event.ReceiverAuthCodeEmailRequestedEvent;
-import com.afternote.domain.receiver.service.DeliveryVerificationService;
 import com.afternote.domain.receiver.repository.ReceiverRepository;
 import com.afternote.domain.receiver.repository.UserReceiverRepository;
 import com.afternote.domain.user.dto.*;
@@ -19,7 +17,6 @@ import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
 import com.afternote.global.util.PhoneNumbers;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,9 +31,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final UserReceiverRepository userReceiverRepository;
     private final ReceiverRepository receiverRepository;
-    private final ApplicationEventPublisher eventPublisher;
     private final S3Service s3Service;
-    private final DeliveryVerificationService deliveryVerificationService;
     private final com.afternote.domain.auth.service.TokenService tokenService;
     private final SocialLoginFactory socialLoginFactory;
     private final UserProviderRepository userProviderRepository;
@@ -202,51 +197,6 @@ public class UserService {
     public void recordActivity(Long userId) {
         findUserById(userId); // 존재 확인
         activityTouchService.touch(userId);
-    }
-
-    @Transactional
-    public UserCreateReceiverResponse createReceiver(
-            Long userId,
-            UserCreateReceiverRequest request
-    ) {
-        User user = findUserById(userId);
-
-        String email = request.getEmail() != null ? request.getEmail().trim() : null;
-        if (email == null || email.isBlank()) {
-            throw new CustomException(ErrorCode.RECEIVER_EMAIL_REQUIRED);
-        }
-
-        PhoneNumbers.validateOptional(request.getPhone());
-        ensureUniqueReceiverPhone(user.getId(), request.getPhone(), null);
-
-        Receiver receiver = Receiver.builder()
-                .name(request.getName())
-                .relation(request.getRelation())
-                .phone(request.getPhone())
-                .email(email)
-                .message(request.getMessage())
-                .userId(user.getId())
-                .build();
-
-        receiverRepository.save(receiver);
-
-        UserReceiver userReceiver = UserReceiver.builder()
-                .user(user)
-                .receiver(receiver)
-                .build();
-
-        userReceiverRepository.save(userReceiver);
-
-        // SMTP는 커밋 후 비동기로 보내 요청 지연을 줄인다.
-        eventPublisher.publishEvent(new ReceiverAuthCodeEmailRequestedEvent(
-                receiver.getId(),
-                receiver.getEmail(),
-                receiver.getAuthCode(),
-                user.getName(),
-                receiver.getName()
-        ));
-
-        return UserCreateReceiverResponse.from(receiver.getId(), receiver.getAuthCode());
     }
 
     @Transactional

@@ -171,7 +171,8 @@ public class AuthService {
         }
         withdrawalCooldownService.assertNotInCooldown(request.getEmail());
         return EmailSendResponse.of(
-                emailService.sendCode(request.getEmail(), EmailVerificationPurpose.SIGNUP)
+                emailService.sendCode(request.getEmail(), EmailVerificationPurpose.SIGNUP),
+                emailService.codeTtlSeconds()
         );
     }
 
@@ -191,7 +192,8 @@ public class AuthService {
     public EmailSendResponse findSendCode(FindSendCodeRequest request) {
         findActiveLocalUserForRecovery(request.getEmail());
         return EmailSendResponse.of(
-                emailService.sendCode(request.getEmail(), EmailVerificationPurpose.FIND)
+                emailService.sendCode(request.getEmail(), EmailVerificationPurpose.FIND),
+                emailService.codeTtlSeconds()
         );
     }
 

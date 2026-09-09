@@ -39,7 +39,7 @@ public record AfternoteCreateRequest(
         @Getter
         List<ReceiverRequest> receivers,
 
-        @Schema(description = "플레이리스트 정보 (Playlist 전용)")
+        @Schema(description = "플레이리스트 정보 (Playlist 전용)", implementation = PlaylistRequest.class)
         @Getter
         PlaylistRequest playlist,
 
@@ -83,6 +83,7 @@ public record AfternoteCreateRequest(
     ) {
     }
 
+    @Schema(description = "플레이리스트 미디어·곡. PATCH에서 필드 생략 시 유지, JSON null 이면 삭제.")
     public static record PlaylistRequest(
             @Schema(description = "분위기 설명", example = "차분하고 조용하게 보내주세요.")
             @Getter
@@ -132,7 +133,7 @@ public record AfternoteCreateRequest(
             boolean memorialAudioUrlSpecified
     ) {
 
-        static final String PATCH_MEDIA_DESCRIPTION_PREFIX =
+        public static final String PATCH_MEDIA_DESCRIPTION_PREFIX =
                 "PATCH: 필드 생략 시 유지, JSON null 이면 삭제(DB·S3). ";
 
         @JsonIgnore

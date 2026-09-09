@@ -78,6 +78,10 @@ public class EmailService {
         return expiresAt;
     }
 
+    public int codeTtlSeconds() {
+        return Math.toIntExact(CODE_TTL.toSeconds());
+    }
+
     public boolean verifyCode(String email, String inputCode, EmailVerificationPurpose purpose) {
         String redisCode = redisTemplate.opsForValue().get(buildCodeKey(email, purpose));
         return redisCode != null && redisCode.equals(inputCode);

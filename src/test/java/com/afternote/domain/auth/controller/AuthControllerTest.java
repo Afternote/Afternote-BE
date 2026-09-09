@@ -200,7 +200,7 @@ class AuthControllerTest {
     @DisplayName("이메일 인증번호 전송 API 성공")
     void emailSend_Success() throws Exception {
         given(authService.emailSend(any()))
-                .willReturn(EmailSendResponse.of(java.time.Instant.parse("2026-07-06T13:45:30Z")));
+                .willReturn(EmailSendResponse.of(java.time.Instant.parse("2026-07-06T13:45:30Z"), 180));
 
         String requestBody = """
                 {
@@ -213,7 +213,8 @@ class AuthControllerTest {
                         .content(requestBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
-                .andExpect(jsonPath("$.data.expiresAt").value("2026-07-06T13:45:30Z"));
+                .andExpect(jsonPath("$.data.expiresAt").value("2026-07-06T13:45:30Z"))
+                .andExpect(jsonPath("$.data.ttlSeconds").value(180));
 
         verify(authService).emailSend(any());
     }
@@ -270,7 +271,7 @@ class AuthControllerTest {
     @DisplayName("아이디/비밀번호 찾기 인증번호 발송 API")
     void findSendCode_Success() throws Exception {
         given(authService.findSendCode(any()))
-                .willReturn(EmailSendResponse.of(java.time.Instant.parse("2026-07-06T13:45:30Z")));
+                .willReturn(EmailSendResponse.of(java.time.Instant.parse("2026-07-06T13:45:30Z"), 180));
 
         String requestBody = """
                 {
@@ -283,7 +284,8 @@ class AuthControllerTest {
                         .content(requestBody))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value(200))
-                .andExpect(jsonPath("$.data.expiresAt").value("2026-07-06T13:45:30Z"));
+                .andExpect(jsonPath("$.data.expiresAt").value("2026-07-06T13:45:30Z"))
+                .andExpect(jsonPath("$.data.ttlSeconds").value(180));
 
         verify(authService).findSendCode(any());
     }

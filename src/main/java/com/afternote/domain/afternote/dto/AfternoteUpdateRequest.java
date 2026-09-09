@@ -52,7 +52,8 @@ public record AfternoteUpdateRequest(
                         + "memorialPhotoUrl·memorialVideo·memorialAudioUrl 은 필드 생략 시 유지, "
                         + "JSON null 이면 해당 미디어를 삭제한다(DB 참조 제거 + S3 객체 삭제). "
                         + "값이 있으면 교체(업로드로 발급된 afternotes 키만 허용).",
-                nullable = true
+                nullable = true,
+                implementation = AfternoteCreateRequest.PlaylistRequest.class
         )
         @Getter
         @JsonDeserialize(using = PlaylistRequestDeserializer.class)

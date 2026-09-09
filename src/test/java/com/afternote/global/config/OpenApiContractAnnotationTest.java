@@ -168,6 +168,7 @@ class OpenApiContractAnnotationTest {
         Schema playlist = AfternoteUpdateRequest.class.getDeclaredMethod("playlist").getAnnotation(Schema.class);
         assertThat(playlist).isNotNull();
         assertThat(playlist.description()).contains("JSON null").contains("삭제");
+        assertThat(playlist.implementation()).isEqualTo(AfternoteCreateRequest.PlaylistRequest.class);
         assertThat(playlist.description()).contains("songs 생략").contains("기존 곡 유지");
 
         ArraySchema songsArray = AfternoteCreateRequest.PlaylistRequest.class

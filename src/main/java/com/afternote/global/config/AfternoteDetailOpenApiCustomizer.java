@@ -1,12 +1,16 @@
 package com.afternote.global.config;
 
+import com.afternote.domain.afternote.dto.AfternoteCreateRequest;
 import com.afternote.domain.afternote.dto.AfternotedetailResponse;
 import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.media.ArraySchema;
 import io.swagger.v3.oas.models.media.ComposedSchema;
 import io.swagger.v3.oas.models.media.Schema;
+import io.swagger.v3.oas.models.media.StringSchema;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -33,6 +37,8 @@ public class AfternoteDetailOpenApiCustomizer implements OpenApiCustomizer {
             return;
         }
         Map<String, Schema> schemas = openApi.getComponents().getSchemas();
+
+        ensurePlaylistRequestProperties(schemas);
 
         wrapNullableRef(
                 schemas.get("AfternoteDraftDetailResponse"),
@@ -82,6 +88,133 @@ public class AfternoteDetailOpenApiCustomizer implements OpenApiCustomizer {
 
         replaceUnionSchema(schemas);
         ensureAlwaysRequired(schemas);
+    }
+
+    /**
+     * springdoc는 커스텀 JsonDeserializer가 붙은 PlaylistRequest의 필드를 비운다.
+     * PATCH omit/null 구분은 런타임 deserializer가 맡고, 문서의 필드 목록만 여기서 채운다.
+     */
+    @SuppressWarnings("rawtypes")
+    static void ensurePlaylistRequestProperties(Map<String, Schema> schemas) {
+        Schema playlist = schemas.computeIfAbsent("PlaylistRequest", name -> {
+            Schema schema = new Schema<>();
+            schema.setType("object");
+            return schema;
+        });
+        if (playlist.getType() == null) {
+            playlist.setType("object");
+        }
+
+        Map<String, Schema> properties = playlist.getProperties() == null
+                ? new LinkedHashMap<>()
+                : new LinkedHashMap<>(playlist.getProperties());
+        properties.remove("memorialPhotoUrlSpecified");
+        properties.remove("memorialVideoSpecified");
+        properties.remove("memorialAudioUrlSpecified");
+
+        String prefix = AfternoteCreateRequest.PlaylistRequest.PATCH_MEDIA_DESCRIPTION_PREFIX;
+        putStringProperty(properties, "atmosphere", "분위기 설명", false);
+        putStringProperty(
+                properties,
+                "memorialPhotoUrl",
+                prefix + "영정 사진 URL. 생성 시 생략/null 이면 없음.",
+                true
+        );
+        if (!hasUsableProperty(properties, "songs")) {
+            ArraySchema songs = new ArraySchema();
+            songs.setDescription(
+                    "노래 목록. PATCH: 필드 생략(null) 시 기존 곡 유지, 빈 배열 [] 은 전부 삭제(발행 노트는 1610). "
+                            + "생성 정식 등록이면 1곡 이상 필수."
+            );
+            songs.setItems(new Schema<>().$ref(componentRef(schemas, "SongRequest")));
+            properties.put("songs", songs);
+        }
+        if (!hasUsableProperty(properties, "memorialVideo")) {
+            Schema ref = new Schema<>().$ref(componentRef(schemas, "MemorialVideoRequest"));
+            properties.put(
+                    "memorialVideo",
+                    toAllOf(
+                            ref,
+                            prefix + "추모 영상. 생성 시 생략/null 이면 없음. "
+                                    + "PATCH에서 null 이면 영상·썸네일을 함께 삭제한다.",
+                            true
+                    )
+            );
+        } else {
+            Schema video = properties.get("memorialVideo");
+            if (video.getDescription() == null || video.getDescription().isBlank()) {
+                video.setDescription(
+                        prefix + "추모 영상. 생성 시 생략/null 이면 없음. "
+                                + "PATCH에서 null 이면 영상·썸네일을 함께 삭제한다."
+                );
+            }
+            if (video.getNullable() == null) {
+                video.setNullable(true);
+            }
+        }
+        putStringProperty(
+                properties,
+                "memorialAudioUrl",
+                prefix + "추모 음성 URL. 생성 시 생략/null 이면 없음. "
+                        + "플레이리스트당 1개(mp3/m4a/wav).",
+                true
+        );
+
+        playlist.setProperties(properties);
+        if (playlist.getDescription() == null || playlist.getDescription().isBlank()) {
+            playlist.setDescription("플레이리스트 미디어·곡. PATCH에서 필드 생략 시 유지, JSON null 이면 삭제.");
+        }
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static boolean hasUsableProperty(Map<String, Schema> properties, String name) {
+        Schema property = properties.get(name);
+        if (property == null) {
+            return false;
+        }
+        return property.get$ref() != null
+                || property.getType() != null
+                || property.getItems() != null
+                || (property.getAllOf() != null && !property.getAllOf().isEmpty())
+                || (property.getProperties() != null && !property.getProperties().isEmpty());
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static void putStringProperty(
+            Map<String, Schema> properties,
+            String name,
+            String description,
+            boolean nullable
+    ) {
+        Schema existing = properties.get(name);
+        if (hasUsableProperty(properties, name)) {
+            if (existing.getDescription() == null || existing.getDescription().isBlank()) {
+                existing.setDescription(description);
+            }
+            if (nullable && existing.getNullable() == null) {
+                existing.setNullable(true);
+            }
+            return;
+        }
+        StringSchema schema = new StringSchema();
+        schema.setDescription(description);
+        if (nullable) {
+            schema.setNullable(true);
+        }
+        properties.put(name, schema);
+    }
+
+    @SuppressWarnings("rawtypes")
+    private static String componentRef(Map<String, Schema> schemas, String preferredName) {
+        if (schemas.containsKey(preferredName)) {
+            return "#/components/schemas/" + preferredName;
+        }
+        for (String name : schemas.keySet()) {
+            if (name.endsWith(preferredName)) {
+                return "#/components/schemas/" + name;
+            }
+        }
+        return "#/components/schemas/" + preferredName;
     }
 
     private void replaceUnionSchema(Map<String, Schema> schemas) {

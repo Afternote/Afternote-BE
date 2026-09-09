@@ -31,6 +31,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @ExtendWith(MockitoExtension.class)
@@ -125,6 +126,34 @@ class AfternoteControllerTest {
                 .andExpect(status().isOk());
 
         verify(afternoteService).createAfternote(eq(USER_ID), any());
+    }
+
+    @Test
+    @DisplayName("Content-Type 불일치는 500이 아니라 415 / 1007")
+    void createAfternote_unsupportedMediaType_returns415() throws Exception {
+        mockMvc.perform(post("/api/v1/afternotes")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("{\"category\":\"SOCIAL\",\"title\":\"title\"}"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.status").value(415))
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNSUPPORTED_MEDIA_TYPE.getCode()))
+                .andExpect(jsonPath("$.message").value(ErrorCode.UNSUPPORTED_MEDIA_TYPE.getMessage()));
+    }
+
+    @Test
+    @DisplayName("Accept 불일치는 500이 아니라 406 / 1008")
+    void createAfternote_notAcceptable_returns406() throws Exception {
+        given(afternoteService.createAfternote(eq(USER_ID), any())).willReturn(null);
+
+        mockMvc.perform(post("/api/v1/afternotes")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_XML)
+                        .content("{\"category\":\"SOCIAL\",\"title\":\"title\"}"))
+                .andExpect(status().isNotAcceptable())
+                .andExpect(jsonPath("$.status").value(406))
+                .andExpect(jsonPath("$.code").value(ErrorCode.NOT_ACCEPTABLE.getCode()));
     }
 
     @Test

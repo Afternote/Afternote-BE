@@ -66,7 +66,7 @@ public class AuthController {
         return ApiResponse.success(null);
     }
 
-    @Operation(summary = "이메일 인증번호 전송 API", description = "이메일을 입력해 인증번호를 받습니다. 응답의 expiresAt으로 입력 화면 만료 카운트다운을 맞춥니다.")
+    @Operation(summary = "이메일 인증번호 전송 API", description = "이메일을 입력해 인증번호를 받습니다. 응답의 ttlSeconds(180)·expiresAt으로 입력 화면 만료 카운트다운을 맞춥니다.")
     @PostMapping("/email/send")
     public ApiResponse<EmailSendResponse> emailSend(
             @Valid @RequestBody  EmailSendRequest emailSendRequest
@@ -85,7 +85,7 @@ public class AuthController {
 
     @Operation(
             summary = "아이디/비밀번호 찾기 인증번호 발송 API",
-            description = "로컬(이메일) 계정의 아이디/비밀번호 찾기용 인증번호를 발송합니다. 응답의 expiresAt으로 입력 화면 만료 카운트다운을 맞춥니다."
+            description = "로컬(이메일) 계정의 아이디/비밀번호 찾기용 인증번호를 발송합니다. 응답의 ttlSeconds(180)·expiresAt으로 입력 화면 만료 카운트다운을 맞춥니다."
     )
     @PostMapping("/find/send/code")
     public ApiResponse<EmailSendResponse> findSendCode(

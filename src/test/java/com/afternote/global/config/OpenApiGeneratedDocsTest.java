@@ -193,6 +193,35 @@ class OpenApiGeneratedDocsTest {
                 .doesNotContain("memorialPhotoUrlSpecified", "memorialVideoSpecified", "memorialAudioUrlSpecified");
     }
 
+    @Test
+    @DisplayName("생성 OpenAPI에서 PlaylistRequest 미디어·곡 필드가 properties로 나온다")
+    void generatedOpenApi_PlaylistRequestDocumentsMediaFields() throws Exception {
+        JsonNode schemas = fetchSchemas();
+        JsonNode playlist = schemas.get("PlaylistRequest");
+        assertThat(playlist).isNotNull();
+        assertThat(propertyNames(playlist))
+                .as("PlaylistRequest=%s", playlist)
+                .contains("atmosphere", "memorialPhotoUrl", "memorialAudioUrl", "memorialVideo", "songs")
+                .doesNotContain(
+                        "memorialPhotoUrlSpecified",
+                        "memorialVideoSpecified",
+                        "memorialAudioUrlSpecified"
+                );
+
+        assertThat(playlist.at("/properties/memorialPhotoUrl/description").asText())
+                .contains("JSON null")
+                .contains("삭제");
+        assertThat(playlist.at("/properties/memorialAudioUrl/description").asText())
+                .contains("JSON null")
+                .contains("삭제");
+        assertThat(playlist.at("/properties/memorialAudioUrl/nullable").asBoolean()).isTrue();
+        assertThat(playlist.at("/properties/songs").isMissingNode()).isFalse();
+
+        JsonNode updatePlaylist = schemas.at("/AfternoteUpdateRequest/properties/playlist");
+        assertThat(updatePlaylist.isMissingNode()).isFalse();
+        assertThat(updatePlaylist.path("description").asText()).contains("JSON null").contains("삭제");
+    }
+
     private JsonNode fetchDocs() throws Exception {
         MvcResult result = mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())

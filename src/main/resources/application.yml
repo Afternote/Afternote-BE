@@ -110,6 +110,7 @@ firebase:
   service-account-json: ${FIREBASE_SERVICE_ACCOUNT_JSON:}
 
 # Passkeys (WebAuthn). SHA-256 은 FE 키스토어 지문. 비어 있으면 assetlinks 배열만 빈 채 200.
+# 같은 지문으로 Android origin(android:apk-key-hash:…) 을 파생해 등록·인증 검증에 쓴다.
 passkey:
   rp-id: ${PASSKEY_RP_ID:afternote.kro.kr}
   rp-name: ${PASSKEY_RP_NAME:AfterNote}

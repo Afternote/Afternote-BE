@@ -165,7 +165,25 @@ class OpenApiGeneratedDocsTest {
         assertThat(patchOp.path("description").asText()).contains("JSON null").contains("삭제");
 
         JsonNode patchPlaylist = schemas.at("/AfternoteUpdateRequest/properties/playlist");
-        assertThat(patchPlaylist.path("description").asText()).contains("JSON null").contains("삭제");
+        assertThat(patchPlaylist.path("description").asText())
+                .contains("JSON null")
+                .contains("삭제")
+                .contains("songs 생략");
+        assertThat(textValues(schemas.at("/AfternoteUpdateRequest/required"))).doesNotContain("playlist");
+
+        JsonNode playlistRequest = schemas.get("PlaylistRequest");
+        assertThat(playlistRequest)
+                .as("schemaNames=%s", schemaNames(schemas))
+                .isNotNull();
+        assertThat(textValues(playlistRequest.path("required")))
+                .as("PATCH와 공유하는 PlaylistRequest.songs 는 생략 가능해야 한다. schema=%s", playlistRequest)
+                .doesNotContain("songs");
+        JsonNode requestSongs = playlistRequestSongs(playlistRequest);
+        assertThat(requestSongs.path("description").asText())
+                .as("PlaylistRequest=%s songs=%s", playlistRequest, requestSongs)
+                .contains("생략")
+                .contains("기존 곡 유지");
+        assertThat(requestSongs.path("nullable").asBoolean(false)).isTrue();
 
         JsonNode publishedPlaylist = schemas.get("AfternotePublishedPlaylistResponse");
         assertThat(propertyNames(publishedPlaylist))
@@ -225,5 +243,22 @@ class OpenApiGeneratedDocsTest {
             values.add(item.asText());
         }
         return values;
+    }
+
+    private static JsonNode playlistRequestSongs(JsonNode playlistRequest) {
+        JsonNode direct = playlistRequest.at("/properties/songs");
+        if (!direct.isMissingNode()) {
+            return direct;
+        }
+        JsonNode allOf = playlistRequest.get("allOf");
+        if (allOf != null && allOf.isArray()) {
+            for (JsonNode part : allOf) {
+                JsonNode songs = part.at("/properties/songs");
+                if (!songs.isMissingNode()) {
+                    return songs;
+                }
+            }
+        }
+        return direct;
     }
 }

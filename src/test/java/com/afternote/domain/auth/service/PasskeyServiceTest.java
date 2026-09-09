@@ -12,6 +12,9 @@ import com.afternote.global.exception.ErrorCode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.webauthn4j.WebAuthnManager;
 import com.webauthn4j.converter.util.ObjectConverter;
+import com.webauthn4j.data.client.Origin;
+import com.webauthn4j.data.client.challenge.DefaultChallenge;
+import com.webauthn4j.server.ServerProperty;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -132,6 +135,56 @@ class PasskeyServiceTest {
 
         passkeyService.delete(1L, 4L);
         verify(userPasskeyRepository).delete(passkey);
+    }
+
+    @Test
+    @DisplayName("신뢰 origin 에 Android apk-key-hash 가 포함된다")
+    void serverPropertyIncludesAndroidOrigin() {
+        PasskeyProperties properties = new PasskeyProperties();
+        properties.setAndroidSha256(
+                "82:D9:C6:1E:84:22:AE:F0:04:0A:7D:A6:A1:B8:FF:15:AA:55:25:6D:EF:03:0F:DD:08:D4:F5:77:81:2E:C7:FB"
+        );
+        PasskeyService service = new PasskeyService(
+                userRepository,
+                userPasskeyRepository,
+                passkeyChallengeService,
+                properties,
+                webAuthnManager,
+                new ObjectConverter(),
+                new ObjectMapper(),
+                authService
+        );
+
+        ServerProperty serverProperty = ReflectionTestUtils.invokeMethod(
+                service, "serverProperty", new DefaultChallenge());
+
+        assertThat(serverProperty.getOrigins()).contains(
+                new Origin("https://afternote.kro.kr"),
+                new Origin("android:apk-key-hash:gtnGHoQirvAECn2mobj_FapVJW3vAw_dCNT1d4Eux_s")
+        );
+    }
+
+    @Test
+    @DisplayName("깨진 SHA-256 지문이 있어도 ServerProperty 생성이 500 으로 터지지 않는다")
+    void serverPropertyIgnoresMalformedFingerprints() {
+        PasskeyProperties properties = new PasskeyProperties();
+        properties.setAndroidSha256("not-a-fingerprint, :::, not-hex");
+        PasskeyService service = new PasskeyService(
+                userRepository,
+                userPasskeyRepository,
+                passkeyChallengeService,
+                properties,
+                webAuthnManager,
+                new ObjectConverter(),
+                new ObjectMapper(),
+                authService
+        );
+
+        ServerProperty serverProperty = ReflectionTestUtils.invokeMethod(
+                service, "serverProperty", new DefaultChallenge());
+
+        assertThat(serverProperty).isNotNull();
+        assertThat(serverProperty.getOrigins()).containsExactly(new Origin("https://afternote.kro.kr"));
     }
 
     private static User sampleUser() {

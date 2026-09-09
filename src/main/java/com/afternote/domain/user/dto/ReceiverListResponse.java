@@ -17,11 +17,7 @@ public record ReceiverListResponse(
 
         @Schema(description = "수신인과의 관계", example = "딸")
         @Getter
-        String relation,
-
-        @Schema(description = "수신자 인증번호", example = "550e8400-e29b-41d4-a716-446655440000")
-        @Getter
-        String authCode
+        String relation
 ) {
 
 
@@ -33,7 +29,6 @@ public record ReceiverListResponse(
                 .receiverId(receiver.getId())
                 .name(receiver.getName())
                 .relation(receiver.getRelation())
-                .authCode(receiver.getAuthCode())
                 .build();
     }
 }

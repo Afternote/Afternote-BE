@@ -13,6 +13,7 @@ import com.afternote.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+import java.util.List;
 import java.util.Map;
 import java.util.function.BiConsumer;
 
@@ -108,17 +109,31 @@ public class AfternoteValidator {
     }
 
     private void validatePlaylistPublish(AfternoteCreateRequest request, Afternote afternote) {
-        if (request.getPlaylist() != null) {
-            if (request.getPlaylist().getSongs() == null || request.getPlaylist().getSongs().isEmpty()) {
+        boolean hasExistingSongs = hasExistingPlaylistSongs(afternote);
+
+        if (request.getPlaylist() == null) {
+            if (!hasExistingSongs) {
+                throw new CustomException(ErrorCode.PLAYLIST_REQUIRED);
+            }
+            return;
+        }
+
+        List<AfternoteCreateRequest.SongRequest> songs = request.getPlaylist().getSongs();
+        if (songs == null) {
+            if (!hasExistingSongs) {
                 throw new CustomException(ErrorCode.PLAYLIST_SONGS_REQUIRED);
             }
             return;
         }
-        if (afternote.getPlaylist() == null
-                || afternote.getPlaylist().getItems() == null
-                || afternote.getPlaylist().getItems().isEmpty()) {
-            throw new CustomException(ErrorCode.PLAYLIST_REQUIRED);
+        if (songs.isEmpty()) {
+            throw new CustomException(ErrorCode.PLAYLIST_SONGS_REQUIRED);
         }
+    }
+
+    private boolean hasExistingPlaylistSongs(Afternote afternote) {
+        return afternote.getPlaylist() != null
+                && afternote.getPlaylist().getItems() != null
+                && !afternote.getPlaylist().getItems().isEmpty();
     }
 
     private boolean hasSecureKey(Afternote afternote, EncryptedKey key) {

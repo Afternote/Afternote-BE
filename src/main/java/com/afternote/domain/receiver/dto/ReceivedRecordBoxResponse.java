@@ -15,13 +15,6 @@ public record ReceivedRecordBoxResponse(
         @Schema(description = "수신자 ID", example = "1", requiredMode = Schema.RequiredMode.REQUIRED)
         Long receiverId,
 
-        @Schema(
-                description = "기록 열람 시 X-Auth-Code에 넣을 접근 코드",
-                example = "550e8400-e29b-41d4-a716-446655440000",
-                requiredMode = Schema.RequiredMode.REQUIRED
-        )
-        String accessCode,
-
         @Schema(description = "발신자 이름", example = "김혜성", requiredMode = Schema.RequiredMode.REQUIRED)
         String senderName,
 
@@ -110,7 +103,6 @@ public record ReceivedRecordBoxResponse(
 
         return new ReceivedRecordBoxResponse(
                 receiver.getId(),
-                receiver.getAuthCode(),
                 sender.getName(),
                 receiver.getName(),
                 receiver.getRelation(),

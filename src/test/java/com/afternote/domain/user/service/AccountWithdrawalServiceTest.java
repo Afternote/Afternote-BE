@@ -16,6 +16,7 @@ import com.afternote.domain.receiver.repository.DeepThoughtReceiverRepository;
 import com.afternote.domain.receiver.repository.DeliveryVerificationRepository;
 import com.afternote.domain.receiver.repository.DiaryReceiverRepository;
 import com.afternote.domain.receiver.repository.ReceiverRepository;
+import com.afternote.domain.receiver.repository.ReceiverInvitationRepository;
 import com.afternote.domain.receiver.repository.TimeLetterReceiverRepository;
 import com.afternote.domain.receiver.repository.UserDailyQuestionReceiverRepository;
 import com.afternote.domain.receiver.repository.UserReceiverRepository;
@@ -71,6 +72,7 @@ class AccountWithdrawalServiceTest {
     @Mock private WeeklyReportRepository weeklyReportRepository;
     @Mock private UserReceiverRepository userReceiverRepository;
     @Mock private ReceiverRepository receiverRepository;
+    @Mock private ReceiverInvitationRepository receiverInvitationRepository;
     @Mock private UserPushTokenService userPushTokenService;
     @Mock private PasskeyService passkeyService;
 
@@ -100,6 +102,8 @@ class AccountWithdrawalServiceTest {
         verify(timeLetterReceiverRepository).deleteByTimeLetterIdIn(List.of(100L, 101L));
         verify(timeLetterMediaRepository).deleteByTimeLetterIdIn(List.of(100L, 101L));
         verify(receiverRepository).deleteByUserId(10L);
+        verify(receiverInvitationRepository).deleteByInviterUserIdOrAcceptedUserId(10L, 10L);
+        verify(receiverRepository).clearAcceptedUserId(10L);
         verify(userPushTokenService).deleteAllForUser(10L);
         verify(passkeyService).deleteAllForUser(10L);
 

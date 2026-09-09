@@ -13,7 +13,7 @@ public record EmailSendResponse(
         Instant expiresAt,
 
         @Schema(
-                description = "인증번호 유효 시간(초). 회원가입·찾기 메일은 180, 수신자 메일은 별도 계약.",
+                description = "인증번호 유효 시간(초). 회원가입·아이디/비밀번호 찾기는 180.",
                 example = "180",
                 requiredMode = Schema.RequiredMode.REQUIRED
         )

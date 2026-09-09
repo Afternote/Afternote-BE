@@ -168,6 +168,7 @@ class OpenApiContractAnnotationTest {
         Schema playlist = AfternoteUpdateRequest.class.getDeclaredMethod("playlist").getAnnotation(Schema.class);
         assertThat(playlist).isNotNull();
         assertThat(playlist.description()).contains("JSON null").contains("삭제");
+        assertThat(playlist.implementation()).isEqualTo(AfternoteCreateRequest.PlaylistRequest.class);
 
         Schema photo = AfternoteCreateRequest.PlaylistRequest.class
                 .getDeclaredMethod("memorialPhotoUrl")

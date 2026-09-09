@@ -336,10 +336,12 @@ class AuthServiceTest {
         given(userRepository.existsByEmail("new@test.com")).willReturn(false);
         java.time.Instant expiresAt = java.time.Instant.parse("2026-07-06T13:45:30Z");
         given(emailService.sendCode("new@test.com", EmailVerificationPurpose.SIGNUP)).willReturn(expiresAt);
+        given(emailService.codeTtlSeconds()).willReturn(180);
 
         EmailSendResponse response = authService.emailSend(request);
 
         assertThat(response.getExpiresAt()).isEqualTo(expiresAt);
+        assertThat(response.getTtlSeconds()).isEqualTo(180);
         verify(emailService).sendCode("new@test.com", EmailVerificationPurpose.SIGNUP);
     }
 
@@ -460,10 +462,12 @@ class AuthServiceTest {
         given(userRepository.findByEmail("test@test.com")).willReturn(Optional.of(user));
         java.time.Instant expiresAt = java.time.Instant.parse("2026-07-06T13:45:30Z");
         given(emailService.sendCode("test@test.com", EmailVerificationPurpose.FIND)).willReturn(expiresAt);
+        given(emailService.codeTtlSeconds()).willReturn(180);
 
         EmailSendResponse response = authService.findSendCode(request);
 
         assertThat(response.getExpiresAt()).isEqualTo(expiresAt);
+        assertThat(response.getTtlSeconds()).isEqualTo(180);
         verify(emailService).sendCode("test@test.com", EmailVerificationPurpose.FIND);
     }
 

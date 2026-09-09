@@ -170,7 +170,10 @@ public class ReceiverAuthService {
                 redisKey
         );
 
-        return ReceiverEmailAuthCodeSendResponse.of(expiresAt);
+        return ReceiverEmailAuthCodeSendResponse.of(
+                expiresAt,
+                Math.toIntExact(EMAIL_AUTH_CODE_TTL.toSeconds())
+        );
     }
 
     public ReceiverEmailAuthVerifyResponse verifyEmailAuthCode(String email, String inputAuthCode) {

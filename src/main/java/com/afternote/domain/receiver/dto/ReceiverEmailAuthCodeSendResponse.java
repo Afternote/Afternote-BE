@@ -17,11 +17,20 @@ public record ReceiverEmailAuthCodeSendResponse(
                 requiredMode = Schema.RequiredMode.REQUIRED
         )
         @Getter
-        Instant expiresAt
+        Instant expiresAt,
+
+        @Schema(
+                description = "인증번호 유효 시간(초). 수신자 이메일은 300(5분). 회원 가입 메일의 180과 다르다.",
+                example = "300",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        @Getter
+        int ttlSeconds
 ) {
-    public static ReceiverEmailAuthCodeSendResponse of(Instant expiresAt) {
+    public static ReceiverEmailAuthCodeSendResponse of(Instant expiresAt, int ttlSeconds) {
         return ReceiverEmailAuthCodeSendResponse.builder()
                 .expiresAt(expiresAt)
+                .ttlSeconds(ttlSeconds)
                 .build();
     }
 }

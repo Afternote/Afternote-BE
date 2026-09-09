@@ -203,7 +203,7 @@ public class ReceiverAuthController {
 
     @Operation(
             summary = "수신자 이메일 인증번호 발송",
-            description = "수신자 이메일로 6자리 인증번호를 발송합니다. 응답의 expiresAt으로 입력 화면 만료 카운트다운을 맞춥니다."
+            description = "수신자 이메일로 6자리 인증번호를 발송합니다. 응답의 ttlSeconds(300)·expiresAt으로 입력 화면 만료 카운트다운을 맞춥니다."
     )
     @PostMapping("/email/auth-code")
     public ApiResponse<ReceiverEmailAuthCodeSendResponse> sendEmailAuthCode(

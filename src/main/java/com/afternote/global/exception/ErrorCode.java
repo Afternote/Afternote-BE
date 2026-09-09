@@ -19,6 +19,8 @@ public enum ErrorCode {
     METHOD_NOT_ALLOWED(HttpStatus.METHOD_NOT_ALLOWED, 1005, "허용되지 않은 HTTP 메서드입니다."),
     /** 동시 삭제 등으로 대상이 이미 사라진 경우 (멱등 삭제 경쟁) */
     RESOURCE_ALREADY_DELETED(HttpStatus.NOT_FOUND, 1006, "이미 삭제되었거나 존재하지 않는 리소스입니다."),
+    UNSUPPORTED_MEDIA_TYPE(HttpStatus.UNSUPPORTED_MEDIA_TYPE, 1007, "지원하지 않는 Content-Type입니다."),
+    NOT_ACCEPTABLE(HttpStatus.NOT_ACCEPTABLE, 1008, "요청한 응답 형식을 지원하지 않습니다."),
 
     // ======================================
     // 2. 토큰 관련 오류 (code: 1100 ~ 1199)

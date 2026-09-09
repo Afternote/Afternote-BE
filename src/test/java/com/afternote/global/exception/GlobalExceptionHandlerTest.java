@@ -8,11 +8,14 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.http.HttpInputMessage;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.orm.ObjectOptimisticLockingFailureException;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotAcceptableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
@@ -158,5 +161,37 @@ class GlobalExceptionHandlerTest {
         assertThat(optimistic.getBody().getCode()).isEqualTo(ErrorCode.RESOURCE_ALREADY_DELETED.getCode());
         assertThat(empty.getStatusCode().value()).isEqualTo(404);
         assertThat(empty.getBody().getCode()).isEqualTo(ErrorCode.RESOURCE_ALREADY_DELETED.getCode());
+    }
+
+    @Test
+    @DisplayName("지원하지 않는 Content-Type 은 415 / 1007 — 폴백 500/1004가 아니다")
+    void unsupportedMediaType() {
+        ResponseEntity<ApiResponse<Void>> response = handler.handleMediaTypeNotSupported(
+                new HttpMediaTypeNotSupportedException(
+                        MediaType.TEXT_PLAIN,
+                        java.util.List.of(MediaType.APPLICATION_JSON)
+                )
+        );
+
+        assertThat(response.getStatusCode().value()).isEqualTo(415);
+        assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getStatus()).isEqualTo(415);
+        assertThat(response.getBody().getCode()).isEqualTo(ErrorCode.UNSUPPORTED_MEDIA_TYPE.getCode());
+        assertThat(response.getBody().getMessage()).isEqualTo(ErrorCode.UNSUPPORTED_MEDIA_TYPE.getMessage());
+    }
+
+    @Test
+    @DisplayName("Accept 불일치는 406 / 1008 — Sentry 폴백을 타지 않는다")
+    void notAcceptable() {
+        ResponseEntity<ApiResponse<Void>> response = handler.handleMediaTypeNotAcceptable(
+                new HttpMediaTypeNotAcceptableException("Could not find acceptable representation")
+        );
+
+        assertThat(response.getStatusCode().value()).isEqualTo(406);
+        assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().getStatus()).isEqualTo(406);
+        assertThat(response.getBody().getCode()).isEqualTo(ErrorCode.NOT_ACCEPTABLE.getCode());
     }
 }

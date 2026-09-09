@@ -181,16 +181,43 @@ class ReceiverAuthControllerTest {
     }
 
     @Test
+    @DisplayName("Content-Type 불일치는 500이 아니라 415 / 1007")
+    void verify_unsupportedMediaType_returns415() throws Exception {
+        mockMvc.perform(post("/api/v1/receiver-auth/verify")
+                        .contentType(MediaType.TEXT_PLAIN)
+                        .content("{\"authCode\":\"x\"}"))
+                .andExpect(status().isUnsupportedMediaType())
+                .andExpect(jsonPath("$.status").value(415))
+                .andExpect(jsonPath("$.code").value(ErrorCode.UNSUPPORTED_MEDIA_TYPE.getCode()))
+                .andExpect(jsonPath("$.message").value(ErrorCode.UNSUPPORTED_MEDIA_TYPE.getMessage()));
+    }
+
+    @Test
+    @DisplayName("Accept 불일치는 500이 아니라 406 / 1008")
+    void verify_notAcceptable_returns406() throws Exception {
+        given(receiverAuthService.verifyAuthCode(AUTH_CODE)).willReturn(null);
+
+        mockMvc.perform(post("/api/v1/receiver-auth/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .accept(MediaType.APPLICATION_XML)
+                        .content("{\"authCode\":\"" + AUTH_CODE + "\"}"))
+                .andExpect(status().isNotAcceptable())
+                .andExpect(jsonPath("$.status").value(406))
+                .andExpect(jsonPath("$.code").value(ErrorCode.NOT_ACCEPTABLE.getCode()));
+    }
+
+    @Test
     @DisplayName("수신자 이메일 인증번호 발송 API 성공")
     void sendEmailAuthCode_Success() throws Exception {
         given(receiverAuthService.sendEmailAuthCode("receiver@test.com"))
-                .willReturn(ReceiverEmailAuthCodeSendResponse.of(Instant.parse("2026-07-06T13:45:30Z")));
+                .willReturn(ReceiverEmailAuthCodeSendResponse.of(Instant.parse("2026-07-06T13:45:30Z"), 300));
 
         mockMvc.perform(post("/api/v1/receiver-auth/email/auth-code")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"email\":\"receiver@test.com\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.data.expiresAt").value("2026-07-06T13:45:30Z"));
+                .andExpect(jsonPath("$.data.expiresAt").value("2026-07-06T13:45:30Z"))
+                .andExpect(jsonPath("$.data.ttlSeconds").value(300));
 
         verify(receiverAuthService).sendEmailAuthCode("receiver@test.com");
     }

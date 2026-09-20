@@ -5,7 +5,8 @@ name: TLS certificate expiry
 
 on:
   schedule:
-    - cron: "0 22 * * *"
+    # 13:00 KST (04:00 UTC). EC2 starts at 12:00 KST; 22:00 UTC was 07:00 KST while stopped.
+    - cron: "0 4 * * *"
   workflow_dispatch:
 
 permissions:

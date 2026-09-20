@@ -11,7 +11,7 @@
 | --- | --- |
 | 호스트 systemd `afternote-cert-renew.timer` | 매일 `renew-certs.sh` (잔여 30일 이내면 파일 교체 + nginx reload) |
 | `deploy.yml` | 배포마다 webroot 전환 확인. 잔여 30일 이내면 renew, 21일 이하면 배포 실패 |
-| `tls-expiry.yml` | 매일 공개 HTTPS 잔여 일수 검사 (21일 이하 실패) |
+| `tls-expiry.yml` | 매일 13:00 KST에 공개 HTTPS 잔여 일수 검사 (21일 이하 실패). EC2 기동(12:00 KST) 이후 |
 
 운영 인증서가 예전에 standalone으로 발급됐어도, 배포·dry-run이 `renewal/*.conf`에 `authenticator=webroot`와 `webroot_path=/var/www/certbot`을 씁니다. 인증서만 webroot로 바꾸고 경로가 없으면 certbot이 웹루트를 물어보다가 실패합니다.
 

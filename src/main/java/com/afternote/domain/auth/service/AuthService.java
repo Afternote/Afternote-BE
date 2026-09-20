@@ -287,16 +287,12 @@ public class AuthService {
             user = saveNewUser(user);
             isNewUser = true;
         }
-        
-        // 5. JWT 토큰 생성
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
-        tokenService.saveToken(refreshToken, user.getId());
-        
+
+        LoginResponse tokens = issueTokens(user);
         return SocialLoginResponse.builder()
-                .accessToken(accessToken)
-                .refreshToken(refreshToken)
-                .expiresIn(jwtTokenProvider.getAccessTokenExpirationSeconds())
+                .accessToken(tokens.getAccessToken())
+                .refreshToken(tokens.getRefreshToken())
+                .expiresIn(tokens.getExpiresIn())
                 .isNewUser(isNewUser)
                 .build();
     }

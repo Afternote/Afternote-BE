@@ -372,7 +372,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("소셜 로그인 성공 - 신규 유저 생성, 활동 시각 갱신")
+    @DisplayName("소셜 로그인 성공 - 신규 활동 시각을 INSERT로 저장하고 별도 touch 생략")
     void socialLogin_NewUser_Success() {
         SocialLoginRequest request = org.mockito.Mockito.mock(SocialLoginRequest.class);
         given(request.getProvider()).willReturn("KAKAO");
@@ -402,7 +402,7 @@ class AuthServiceTest {
         assertThat(response.isNewUser()).isTrue();
         assertThat(response.getAccessToken()).isEqualTo("social-access");
         assertThat(response.getExpiresIn()).isEqualTo(3600L);
-        verify(activityTouchService).touch(77L);
+        verify(activityTouchService, never()).touch(any());
         verify(tokenService).saveToken("social-refresh", 77L);
     }
 

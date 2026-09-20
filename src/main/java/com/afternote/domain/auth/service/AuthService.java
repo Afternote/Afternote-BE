@@ -76,7 +76,10 @@ public class AuthService {
 
     public LoginResponse issueTokens(User user) {
         activityTouchService.touch(user.getId());
+        return createTokens(user);
+    }
 
+    private LoginResponse createTokens(User user) {
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
         tokenService.saveToken(refreshToken, user.getId());
@@ -288,7 +291,9 @@ public class AuthService {
             isNewUser = true;
         }
 
-        LoginResponse tokens = issueTokens(user);
+        // 신규 사용자의 활동 시각은 User 생성 시 초기화된다. INSERT가 아직 커밋되지
+        // 않았으므로 REQUIRES_NEW touch로 같은 행을 갱신하면 바깥 트랜잭션을 기다린다.
+        LoginResponse tokens = isNewUser ? createTokens(user) : issueTokens(user);
         return SocialLoginResponse.builder()
                 .accessToken(tokens.getAccessToken())
                 .refreshToken(tokens.getRefreshToken())

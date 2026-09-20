@@ -49,6 +49,7 @@ import org.springframework.boot.test.web.client.TestRestTemplate;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mail.SimpleMailMessage;
@@ -156,6 +157,7 @@ class SocialLoginActivityMySqlTest {
     @Autowired DeliveryConditionScheduler scheduler;
     @Autowired JdbcTemplate jdbc;
     @Autowired TokenService tokens;
+    @Autowired RedisTemplate<String, Long> refreshStore;
     @Autowired JwtTokenProvider jwt;
     @Autowired PasswordEncoder passwords;
     @Autowired AuthService auth;
@@ -176,7 +178,7 @@ class SocialLoginActivityMySqlTest {
         JsonNode data = successfulPost("/social/login", Map.of("provider", "KAKAO", "accessToken", email));
         assertThat(data.path("isNewUser").asBoolean()).isTrue();
         User user = users.findByEmail(email).orElseThrow();
-        assertThat(user.getLastActiveAt()).isAfterOrEqualTo(started);
+        assertThat(user.getLastActiveAt()).isBetween(started, LocalDateTime.now());
         assertThat(jdbc.queryForObject("SELECT provider FROM user_providers WHERE user_id=?", String.class, user.getId())).isEqualTo("KAKAO");
         assertTokens(data, user.getId());
         // Check the DB counter, not wall time: slow CI startup must not look like a lock wait.
@@ -199,10 +201,14 @@ class SocialLoginActivityMySqlTest {
 
         String expired = Jwts.builder().subject(user.getId().toString())
                 .expiration(Date.from(Instant.now().minusSeconds(60))).signWith(jwt.getKey()).compact();
+        tokens.saveToken(expired, user.getId());
+        assertThat(tokens.getUserId(expired)).isEqualTo(user.getId());
+        assertThat(jwt.validateToken(expired)).isFalse();
         LocalDateTime inactive = activity(user.getId());
         assertThat(http.postForEntity("/api/v1/auth/reissue", Map.of("refreshToken", expired), JsonNode.class)
                 .getStatusCode().is4xxClientError()).isTrue();
         assertThat(activity(user.getId())).isEqualTo(inactive);
+        assertThat(tokens.getUserId(expired)).isEqualTo(user.getId());
         LocalDateTime started = LocalDateTime.now();
         JsonNode data = successfulPost("/social/login", Map.of("provider", "KAKAO", "accessToken", user.getEmail()));
         assertThat(data.path("isNewUser").asBoolean()).isFalse();
@@ -243,9 +249,13 @@ class SocialLoginActivityMySqlTest {
         scheduler.evaluateInactivityConditions();
         LocalDateTime inactive = activity(user.getId());
         reset(mail);
+        var refreshKeys = refreshStore.keys("RT:*");
         var response = http.postForEntity("/api/v1/auth/social/login",
                 Map.of("provider", "KAKAO", "accessToken", "rejected"), JsonNode.class);
-        assertThat(response.getStatusCode().isError()).isTrue();
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody()).isNotNull();
+        assertThat(response.getBody().path("data").isNull()).isTrue();
+        assertThat(refreshStore.keys("RT:*")).isEqualTo(refreshKeys);
         assertThat(activity(user.getId())).isEqualTo(inactive);
         scheduler.evaluateInactivityConditions();
         assertThat(conditions.findById(condition.getId()).orElseThrow().getState()).isEqualTo(ConditionState.PENDING_CONFIRMATION);

@@ -372,7 +372,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("소셜 로그인 성공 - 신규 유저 생성")
+    @DisplayName("소셜 로그인 성공 - 신규 유저 생성, 활동 시각 갱신")
     void socialLogin_NewUser_Success() {
         SocialLoginRequest request = org.mockito.Mockito.mock(SocialLoginRequest.class);
         given(request.getProvider()).willReturn("KAKAO");
@@ -402,11 +402,12 @@ class AuthServiceTest {
         assertThat(response.isNewUser()).isTrue();
         assertThat(response.getAccessToken()).isEqualTo("social-access");
         assertThat(response.getExpiresIn()).isEqualTo(3600L);
+        verify(activityTouchService).touch(77L);
         verify(tokenService).saveToken("social-refresh", 77L);
     }
 
     @Test
-    @DisplayName("소셜 로그인 성공 - 기존 유저 재로그인")
+    @DisplayName("소셜 로그인 성공 - 기존 유저 재로그인, 활동 시각 갱신")
     void socialLogin_ExistingUser_Success() {
         SocialLoginRequest request = org.mockito.Mockito.mock(SocialLoginRequest.class);
         given(request.getProvider()).willReturn("KAKAO");
@@ -442,6 +443,7 @@ class AuthServiceTest {
         assertThat(response.getRefreshToken()).isEqualTo("existing-refresh");
         assertThat(response.getExpiresIn()).isEqualTo(3600L);
         verify(userRepository, org.mockito.Mockito.never()).save(any(User.class));
+        verify(activityTouchService).touch(88L);
         verify(tokenService).saveToken("existing-refresh", 88L);
     }
 

@@ -70,6 +70,18 @@ class OpenApiContractAnnotationTest {
     }
 
     @Test
+    @DisplayName("DELETE /users/me 는 200·401과 S3 삭제 설명을 OpenAPI에 선언한다")
+    void usersMeDelete_Documents401AndS3Purge() throws Exception {
+        Method deleteAccount = UserController.class.getDeclaredMethod("deleteAccount", Long.class);
+        Set<String> codes = responseCodes(deleteAccount);
+        io.swagger.v3.oas.annotations.Operation operation =
+                deleteAccount.getAnnotation(io.swagger.v3.oas.annotations.Operation.class);
+
+        assertThat(codes).contains("200", "401");
+        assertThat(operation.description()).contains("S3").contains("30일");
+    }
+
+    @Test
     @DisplayName("GET /afternotes/{id} 는 400·401·404를 OpenAPI에 선언한다")
     void afternoteDetail_Documents401And404() throws Exception {
         Method getDetail = AfternoteController.class.getDeclaredMethod(

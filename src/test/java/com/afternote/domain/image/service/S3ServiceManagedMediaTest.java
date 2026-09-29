@@ -13,8 +13,16 @@ import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -22,6 +30,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.BDDMockito.willThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class S3ServiceManagedMediaTest {
@@ -120,6 +130,99 @@ class S3ServiceManagedMediaTest {
         assertThatCode(() -> s3Service.deleteManagedObject(
                 "afternotes/permanent/1/old.jpg", "afternotes"))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("탈퇴 퍼지는 해당 userId의 staging·permanent prefix 만 지운다")
+    void deleteAllOwnedByUser_DeletesOwnerPrefixesOnly() {
+        given(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).willAnswer(invocation -> {
+            ListObjectsV2Request request = invocation.getArgument(0);
+            if ("profiles/permanent/10/".equals(request.prefix())) {
+                return ListObjectsV2Response.builder()
+                        .contents(S3Object.builder().key("profiles/permanent/10/a.jpg").build())
+                        .isTruncated(false)
+                        .build();
+            }
+            return ListObjectsV2Response.builder().isTruncated(false).build();
+        });
+
+        s3Service.deleteAllOwnedByUser(10L);
+
+        org.mockito.ArgumentCaptor<ListObjectsV2Request> listCaptor =
+                org.mockito.ArgumentCaptor.forClass(ListObjectsV2Request.class);
+        verify(s3Client, org.mockito.Mockito.atLeastOnce()).listObjectsV2(listCaptor.capture());
+        Set<String> prefixes = listCaptor.getAllValues().stream()
+                .map(ListObjectsV2Request::prefix)
+                .collect(Collectors.toSet());
+        assertThat(prefixes).containsExactlyInAnyOrder(
+                "profiles/staging/10/", "profiles/permanent/10/",
+                "timeletters/staging/10/", "timeletters/permanent/10/",
+                "afternotes/staging/10/", "afternotes/permanent/10/",
+                "mindrecords/staging/10/", "mindrecords/permanent/10/",
+                "documents/staging/10/", "documents/permanent/10/"
+        );
+        assertThat(prefixes).noneMatch(prefix -> prefix.contains("/receiver/"));
+        assertThat(prefixes).noneMatch(prefix -> prefix.contains("/100/"));
+
+        org.mockito.ArgumentCaptor<DeleteObjectsRequest> deleteCaptor =
+                org.mockito.ArgumentCaptor.forClass(DeleteObjectsRequest.class);
+        verify(s3Client).deleteObjects(deleteCaptor.capture());
+        List<String> deleted = deleteCaptor.getValue().delete().objects().stream()
+                .map(id -> id.key())
+                .toList();
+        assertThat(deleted).containsExactly("profiles/permanent/10/a.jpg");
+    }
+
+    @Test
+    @DisplayName("탈퇴 퍼지 목록이 잘리면 다음 페이지까지 지운다")
+    void deleteAllOwnedByUser_Paginates() {
+        ListObjectsV2Response first = ListObjectsV2Response.builder()
+                .contents(S3Object.builder().key("afternotes/permanent/7/a.jpg").build())
+                .isTruncated(true)
+                .nextContinuationToken("next")
+                .build();
+        ListObjectsV2Response second = ListObjectsV2Response.builder()
+                .contents(S3Object.builder().key("afternotes/permanent/7/b.jpg").build())
+                .isTruncated(false)
+                .build();
+        given(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).willAnswer(invocation -> {
+            ListObjectsV2Request request = invocation.getArgument(0);
+            if (!"afternotes/permanent/7/".equals(request.prefix())) {
+                return ListObjectsV2Response.builder().isTruncated(false).build();
+            }
+            return "next".equals(request.continuationToken()) ? second : first;
+        });
+
+        s3Service.deleteAllOwnedByUser(7L);
+
+        org.mockito.ArgumentCaptor<DeleteObjectsRequest> deleteCaptor =
+                org.mockito.ArgumentCaptor.forClass(DeleteObjectsRequest.class);
+        verify(s3Client, org.mockito.Mockito.times(2)).deleteObjects(deleteCaptor.capture());
+        List<String> deleted = deleteCaptor.getAllValues().stream()
+                .flatMap(req -> req.delete().objects().stream())
+                .map(id -> id.key())
+                .toList();
+        assertThat(deleted).containsExactly(
+                "afternotes/permanent/7/a.jpg",
+                "afternotes/permanent/7/b.jpg"
+        );
+    }
+
+    @Test
+    @DisplayName("userId 없으면 S3를 호출하지 않는다")
+    void deleteAllOwnedByUser_NullUserId_Skipped() {
+        s3Service.deleteAllOwnedByUser(null);
+        verify(s3Client, never()).listObjectsV2(any(ListObjectsV2Request.class));
+        verify(s3Client, never()).deleteObjects(any(DeleteObjectsRequest.class));
+    }
+
+    @Test
+    @DisplayName("탈퇴 퍼지 S3 실패는 예외를 내지 않는다")
+    void deleteAllOwnedByUser_S3Failure_DoesNotThrow() {
+        given(s3Client.listObjectsV2(any(ListObjectsV2Request.class)))
+                .willThrow(s3Exception(500, "InternalError"));
+
+        assertThatCode(() -> s3Service.deleteAllOwnedByUser(3L)).doesNotThrowAnyException();
     }
 
     private static S3Exception s3Exception(int statusCode, String errorCode) {

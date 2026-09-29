@@ -263,8 +263,12 @@ public class UserController {
 
     @Operation(
             summary = "회원 탈퇴 API",
-            description = "로그인한 사용자의 계정을 삭제합니다. 모든 데이터가 영구적으로 삭제되며, 동일 이메일은 탈퇴 후 30일간 재가입할 수 없습니다."
+            description = "로그인한 사용자의 계정을 삭제합니다. 수신자·콘텐츠·업로드한 미디어(S3)를 포함해 모든 데이터가 영구적으로 삭제되며, 동일 이메일은 탈퇴 후 30일간 재가입할 수 없습니다."
     )
+    @ApiResponses(value = {
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "탈퇴 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)")
+    })
     @DeleteMapping("/me")
     public ApiResponse<Void> deleteAccount(
             @Parameter(hidden = true) @UserId Long userId

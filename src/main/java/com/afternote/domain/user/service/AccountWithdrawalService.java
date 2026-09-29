@@ -9,6 +9,7 @@ import com.afternote.domain.deepthought.repository.DeepThoughtCategoryRepository
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
 import com.afternote.domain.delivery.repository.DeliveryConditionRepository;
 import com.afternote.domain.diary.repository.DiaryRepository;
+import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.mindrecord.emotion.repository.EmotionRepository;
 import com.afternote.domain.mindrecord.weekly.repository.WeeklyReportRepository;
 import com.afternote.domain.receiver.repository.AfternoteReceiverRepository;
@@ -32,12 +33,15 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.util.List;
 
 /**
  * 회원 탈퇴: FK 순서로 종속 데이터를 지운 뒤 User hard delete.
  * cascade만으로는 time_letter_receiver 등 조인 테이블이 남아 500이 난다.
+ * 커밋 후 해당 사용자가 올린 S3 객체도 prefix 단위로 지운다.
  */
 @Slf4j
 @Service
@@ -76,6 +80,7 @@ public class AccountWithdrawalService {
     private final ReceiverInvitationRepository receiverInvitationRepository;
     private final UserPushTokenService userPushTokenService;
     private final PasskeyService passkeyService;
+    private final S3Service s3Service;
 
     @Transactional
     public void withdraw(Long userId) {
@@ -141,6 +146,21 @@ public class AccountWithdrawalService {
         userRepository.delete(user);
         userRepository.flush();
 
+        purgeOwnedMediaAfterCommit(userId);
+
         log.info("Account withdrawn. previousUserId={}, email={}", userId, email);
+    }
+
+    private void purgeOwnedMediaAfterCommit(Long userId) {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+                @Override
+                public void afterCommit() {
+                    s3Service.deleteAllOwnedByUser(userId);
+                }
+            });
+            return;
+        }
+        s3Service.deleteAllOwnedByUser(userId);
     }
 }

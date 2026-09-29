@@ -9,6 +9,7 @@ import com.afternote.domain.deepthought.repository.DeepThoughtCategoryRepository
 import com.afternote.domain.deepthought.repository.DeepThoughtRepository;
 import com.afternote.domain.delivery.repository.DeliveryConditionRepository;
 import com.afternote.domain.diary.repository.DiaryRepository;
+import com.afternote.domain.image.service.S3Service;
 import com.afternote.domain.mindrecord.emotion.repository.EmotionRepository;
 import com.afternote.domain.mindrecord.weekly.repository.WeeklyReportRepository;
 import com.afternote.domain.receiver.repository.AfternoteReceiverRepository;
@@ -75,6 +76,7 @@ class AccountWithdrawalServiceTest {
     @Mock private ReceiverInvitationRepository receiverInvitationRepository;
     @Mock private UserPushTokenService userPushTokenService;
     @Mock private PasskeyService passkeyService;
+    @Mock private S3Service s3Service;
 
     @Test
     @DisplayName("탈퇴 시 타임레터 수신자 조인을 먼저 삭제하고 이력을 남긴다")
@@ -106,6 +108,7 @@ class AccountWithdrawalServiceTest {
         verify(receiverRepository).clearAcceptedUserId(10L);
         verify(userPushTokenService).deleteAllForUser(10L);
         verify(passkeyService).deleteAllForUser(10L);
+        verify(s3Service).deleteAllOwnedByUser(10L);
 
         ArgumentCaptor<com.afternote.domain.user.model.WithdrawnUser> captor =
                 ArgumentCaptor.forClass(com.afternote.domain.user.model.WithdrawnUser.class);

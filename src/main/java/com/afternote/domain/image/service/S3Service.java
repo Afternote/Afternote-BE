@@ -11,16 +11,24 @@ import org.springframework.util.StringUtils;
 import software.amazon.awssdk.awscore.exception.AwsErrorDetails;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
+import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
+import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -319,6 +327,56 @@ public class S3Service {
             log.debug("Deleted S3 object {}", key);
         } catch (Exception e) {
             log.warn("S3 delete failed, leaving orphan key={}", key, e);
+        }
+    }
+
+    /**
+     * 탈퇴한 사용자가 올린 staging·permanent 객체를 디렉터리마다 지운다.
+     * {@code receiver} 공용 prefix 와 다른 사용자 키는 건드리지 않는다.
+     * S3 장애는 탈퇴 요청을 실패시키지 않는다.
+     */
+    public void deleteAllOwnedByUser(Long userId) {
+        if (userId == null) {
+            return;
+        }
+        String owner = String.valueOf(userId);
+        for (String directory : ALLOWED_DIRECTORIES) {
+            deleteOwnedPrefix(directory + "/" + STAGING_SEGMENT + "/" + owner + "/");
+            deleteOwnedPrefix(directory + "/" + PERMANENT_SEGMENT + "/" + owner + "/");
+        }
+    }
+
+    private void deleteOwnedPrefix(String prefix) {
+        try {
+            String continuationToken = null;
+            do {
+                ListObjectsV2Request.Builder request = ListObjectsV2Request.builder()
+                        .bucket(bucket)
+                        .prefix(prefix);
+                if (continuationToken != null) {
+                    request.continuationToken(continuationToken);
+                }
+                ListObjectsV2Response page = s3Client.listObjectsV2(request.build());
+                List<ObjectIdentifier> objects = new ArrayList<>();
+                for (S3Object object : page.contents()) {
+                    String key = object.key();
+                    if (key != null && key.startsWith(prefix)) {
+                        objects.add(ObjectIdentifier.builder().key(key).build());
+                    }
+                }
+                if (!objects.isEmpty()) {
+                    s3Client.deleteObjects(DeleteObjectsRequest.builder()
+                            .bucket(bucket)
+                            .delete(Delete.builder().objects(objects).quiet(true).build())
+                            .build());
+                    log.debug("Deleted {} S3 objects under {}", objects.size(), prefix);
+                }
+                continuationToken = Boolean.TRUE.equals(page.isTruncated())
+                        ? page.nextContinuationToken()
+                        : null;
+            } while (continuationToken != null);
+        } catch (Exception e) {
+            log.warn("S3 prefix delete failed prefix={}", prefix, e);
         }
     }
 

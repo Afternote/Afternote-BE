@@ -18,7 +18,7 @@ AfterNote 프로젝트의 백엔드 서버입니다.
 
 - Backend: Java 17, Spring Boot 3.2.1
 - ORM: Spring Data JPA, Hibernate 6.4.1
-- Database: MySQL 8.0
+- Database: MySQL 8.4
 - Authentication: JWT, Spring Security
 - External APIs: Google Gemini, AWS S3
 - Encryption: ChaCha20-Poly1305 (모바일 최적화)
@@ -42,7 +42,7 @@ AfterNote 프로젝트의 백엔드 서버입니다.
 | **NginX (리버스 프록시)**       | 클라이언트 요청을 Spring 서버로 라우팅, SSL 인증서 관리(Certbot), 요청 분산 처리                  |
 | **Public Subnet**               | 외부에서 접근 가능한 네트워크 영역, 모바일 클라이언트의 HTTPS 통신 지원                           |
 | **Spring Boot (EC2)**           | 안정적인 Java 기반 애플리케이션, 비즈니스 로직 처리, 다양한 라이브러리 생태계                     |
-| **MySQL 8.0**                   | ACID 준수로 데이터 무결성 보장, 복잡한 쿼리와 JOIN 연산 지원, 타임레터/감정 데이터의 신뢰성 필수  |
+| **MySQL 8.4**                   | ACID 준수로 데이터 무결성 보장, 복잡한 쿼리와 JOIN 연산 지원, 타임레터/감정 데이터의 신뢰성 필수  |
 | **Redis**                       | 토큰(JWT Refresh) 빠른 조회/만료 관리 (TTL 설정), Gemini API 감정 분석 결과 캐싱 (1일), 세션 관리 |
 | **AWS S3**                      | 대용량 미디어 파일(사진, 음악) 저장소로 EC2 스토리지 압박 해소, Presigned URL로 보안성 강화       |
 | **ChaCha20-Poly1305**           | 모바일 환경 최적화 + 보안: SNS 계정 정보 암호화, 경량이면서도 높은 보안성 제공                    |

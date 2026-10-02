@@ -135,7 +135,7 @@ aws lambda invoke --function-name afternote-start-env /tmp/afternote-start.json
 ```text
 vpc + 2 public subnets
 ec2 (AL2023, docker, compose systemd) + EIP
-rds mysql 8 (EC2 SG only)
+rds mysql 8.4 (EC2 SG only)
 eventbridge scheduler → stop/start lambda
 sns + cloudwatch alarms/dashboard (afternote-ops)
   - EC2: StatusCheckFailed, CPU>80%

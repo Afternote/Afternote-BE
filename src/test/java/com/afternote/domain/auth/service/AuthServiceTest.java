@@ -15,13 +15,13 @@ import com.afternote.global.jwt.JwtTokenProvider;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.util.ReflectionTestUtils;
 
-import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -372,7 +372,7 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("소셜 로그인 성공 - 신규 유저 생성, 활동 시각 갱신")
+    @DisplayName("소셜 로그인 성공 - 신규 유저 생성, INSERT 커밋 전 touch 생략")
     void socialLogin_NewUser_Success() {
         SocialLoginRequest request = org.mockito.Mockito.mock(SocialLoginRequest.class);
         given(request.getProvider()).willReturn("KAKAO");
@@ -401,8 +401,13 @@ class AuthServiceTest {
 
         assertThat(response.isNewUser()).isTrue();
         assertThat(response.getAccessToken()).isEqualTo("social-access");
+        assertThat(response.getRefreshToken()).isEqualTo("social-refresh");
         assertThat(response.getExpiresIn()).isEqualTo(3600L);
-        verify(activityTouchService).touch(77L);
+
+        ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).saveAndFlush(saved.capture());
+        assertThat(saved.getValue().getLastActiveAt()).isNotNull();
+        verify(activityTouchService, never()).touch(any());
         verify(tokenService).saveToken("social-refresh", 77L);
     }
 
@@ -442,7 +447,8 @@ class AuthServiceTest {
         assertThat(response.getAccessToken()).isEqualTo("existing-access");
         assertThat(response.getRefreshToken()).isEqualTo("existing-refresh");
         assertThat(response.getExpiresIn()).isEqualTo(3600L);
-        verify(userRepository, org.mockito.Mockito.never()).save(any(User.class));
+        verify(userRepository, never()).save(any(User.class));
+        verify(userRepository, never()).saveAndFlush(any(User.class));
         verify(activityTouchService).touch(88L);
         verify(tokenService).saveToken("existing-refresh", 88L);
     }

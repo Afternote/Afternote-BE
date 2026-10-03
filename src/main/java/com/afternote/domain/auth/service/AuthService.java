@@ -76,7 +76,14 @@ public class AuthService {
 
     public LoginResponse issueTokens(User user) {
         activityTouchService.touch(user.getId());
+        return createSessionTokens(user);
+    }
 
+    /**
+     * JWT·refresh만 발급한다. 신규 가입 INSERT가 커밋되기 전에
+     * {@link ActivityTouchService#touch}의 REQUIRES_NEW UPDATE가 같은 행을 기다리지 않게 한다.
+     */
+    private LoginResponse createSessionTokens(User user) {
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
         tokenService.saveToken(refreshToken, user.getId());
@@ -275,7 +282,8 @@ public class AuthService {
         User user = userRepository.findByEmail(socialUserInfo.getEmail())
                 .orElse(null);
         boolean isNewUser = false;
-        
+        LoginResponse tokens;
+
         if (user == null) {
             withdrawalCooldownService.assertNotInCooldown(socialUserInfo.getEmail());
             user = User.builder()
@@ -286,9 +294,11 @@ public class AuthService {
                     .build();
             user = saveNewUser(user);
             isNewUser = true;
+            tokens = createSessionTokens(user);
+        } else {
+            tokens = issueTokens(user);
         }
 
-        LoginResponse tokens = issueTokens(user);
         return SocialLoginResponse.builder()
                 .accessToken(tokens.getAccessToken())
                 .refreshToken(tokens.getRefreshToken())

@@ -14,11 +14,14 @@ import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.Delete;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsResponse;
+import software.amazon.awssdk.services.s3.model.DeletedObject;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.NoSuchKeyException;
 import software.amazon.awssdk.services.s3.model.ObjectIdentifier;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Error;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -27,6 +30,7 @@ import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignReques
 
 import java.time.Duration;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -83,6 +87,11 @@ public class S3Service {
     );
     private static final Set<String> ALLOWED_DIRECTORIES = Set.of(
             "profiles", "timeletters", "afternotes", "mindrecords", "documents"
+    );
+    /** 같은 탈퇴 호출 안에서 객체별 일시 오류를 다시 지우는 횟수. */
+    private static final int MAX_TRANSIENT_DELETE_RETRIES = 2;
+    private static final Set<String> TRANSIENT_DELETE_ERROR_CODES = Set.of(
+            "InternalError", "ServiceUnavailable", "SlowDown", "RequestTimeout"
     );
     private static final Set<String> IMAGE_EXTENSIONS = Set.of(
             "jpg", "jpeg", "png", "gif", "webp", "heic"
@@ -334,6 +343,7 @@ public class S3Service {
      * 탈퇴한 사용자가 올린 staging·permanent 객체를 디렉터리마다 지운다.
      * {@code receiver} 공용 prefix 와 다른 사용자 키는 건드리지 않는다.
      * S3 장애는 탈퇴 요청을 실패시키지 않는다.
+     * 객체별 삭제 실패는 성공으로 세지 않고, 키와 오류 코드를 error 로그로 남긴다.
      */
     public void deleteAllOwnedByUser(Long userId) {
         if (userId == null) {
@@ -365,11 +375,7 @@ public class S3Service {
                     }
                 }
                 if (!objects.isEmpty()) {
-                    s3Client.deleteObjects(DeleteObjectsRequest.builder()
-                            .bucket(bucket)
-                            .delete(Delete.builder().objects(objects).quiet(true).build())
-                            .build());
-                    log.debug("Deleted {} S3 objects under {}", objects.size(), prefix);
+                    deleteObjectBatch(prefix, objects);
                 }
                 continuationToken = Boolean.TRUE.equals(page.isTruncated())
                         ? page.nextContinuationToken()
@@ -378,6 +384,83 @@ public class S3Service {
         } catch (Exception e) {
             log.warn("S3 prefix delete failed prefix={}", prefix, e);
         }
+    }
+
+    /**
+     * {@code DeleteObjects} 는 요청이 성공해도 객체별 오류를 돌려준다.
+     * 성공 목록에 있는 키만 삭제된 것으로 센다. 일시 오류만 다시 지우고,
+     * 권한 오류와 재시도 뒤에 남은 키는 탈퇴 후에도 찾을 수 있게 error 로 남긴다.
+     */
+    private void deleteObjectBatch(String prefix, List<ObjectIdentifier> requested) {
+        List<ObjectIdentifier> pending = requested;
+        int deletedCount = 0;
+        List<S3Error> unresolved = new ArrayList<>();
+
+        for (int attempt = 0; attempt <= MAX_TRANSIENT_DELETE_RETRIES && !pending.isEmpty(); attempt++) {
+            DeleteObjectsResponse response = s3Client.deleteObjects(DeleteObjectsRequest.builder()
+                    .bucket(bucket)
+                    .delete(Delete.builder().objects(pending).quiet(false).build())
+                    .build());
+            if (response == null) {
+                for (ObjectIdentifier object : pending) {
+                    unresolved.add(missingDeleteOutcome(object.key()));
+                }
+                break;
+            }
+
+            List<DeletedObject> deleted = response.deleted() == null ? List.of() : response.deleted();
+            List<S3Error> errors = response.errors() == null ? List.of() : response.errors();
+            Set<String> deletedKeys = new HashSet<>();
+            for (DeletedObject object : deleted) {
+                if (object.key() != null) {
+                    deletedKeys.add(object.key());
+                }
+            }
+            deletedCount += deletedKeys.size();
+
+            Set<String> errorKeys = new HashSet<>();
+            List<ObjectIdentifier> retryable = new ArrayList<>();
+            boolean canRetry = attempt < MAX_TRANSIENT_DELETE_RETRIES;
+            for (S3Error error : errors) {
+                String key = error.key();
+                if (key != null && (deletedKeys.contains(key) || !errorKeys.add(key))) {
+                    continue;
+                }
+                if (canRetry && isTransientDeleteError(error.code()) && key != null) {
+                    retryable.add(ObjectIdentifier.builder().key(key).build());
+                } else {
+                    unresolved.add(error);
+                }
+            }
+            for (ObjectIdentifier object : pending) {
+                String key = object.key();
+                if (key == null || deletedKeys.contains(key) || errorKeys.contains(key)) {
+                    continue;
+                }
+                unresolved.add(missingDeleteOutcome(key));
+            }
+            pending = retryable;
+        }
+
+        for (S3Error error : unresolved) {
+            log.error("S3 object delete failed key={} code={} message={}",
+                    error.key(), error.code(), error.message());
+        }
+        if (deletedCount > 0) {
+            log.debug("Deleted {} S3 objects under {}", deletedCount, prefix);
+        }
+    }
+
+    private static boolean isTransientDeleteError(String code) {
+        return code != null && TRANSIENT_DELETE_ERROR_CODES.contains(code);
+    }
+
+    private static S3Error missingDeleteOutcome(String key) {
+        return S3Error.builder()
+                .key(key)
+                .code("MissingDeleteOutcome")
+                .message("DeleteObjects response omitted this key")
+                .build();
     }
 
     public String resolvePublicUrl(String rawUrlOrKey) {

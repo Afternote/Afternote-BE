@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -14,12 +15,16 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectsRequest;
+import software.amazon.awssdk.services.s3.model.DeleteObjectsResponse;
+import software.amazon.awssdk.services.s3.model.DeletedObject;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
+import software.amazon.awssdk.services.s3.model.S3Error;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.model.S3Object;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -146,6 +151,8 @@ class S3ServiceManagedMediaTest {
             return ListObjectsV2Response.builder().isTruncated(false).build();
         });
 
+        givenDeleteObjectsSucceeds();
+
         s3Service.deleteAllOwnedByUser(10L);
 
         org.mockito.ArgumentCaptor<ListObjectsV2Request> listCaptor =
@@ -167,6 +174,7 @@ class S3ServiceManagedMediaTest {
         org.mockito.ArgumentCaptor<DeleteObjectsRequest> deleteCaptor =
                 org.mockito.ArgumentCaptor.forClass(DeleteObjectsRequest.class);
         verify(s3Client).deleteObjects(deleteCaptor.capture());
+        assertThat(deleteCaptor.getValue().delete().quiet()).isFalse();
         List<String> deleted = deleteCaptor.getValue().delete().objects().stream()
                 .map(id -> id.key())
                 .toList();
@@ -192,6 +200,7 @@ class S3ServiceManagedMediaTest {
             }
             return "next".equals(request.continuationToken()) ? second : first;
         });
+        givenDeleteObjectsSucceeds();
 
         s3Service.deleteAllOwnedByUser(7L);
 
@@ -223,6 +232,102 @@ class S3ServiceManagedMediaTest {
                 .willThrow(s3Exception(500, "InternalError"));
 
         assertThatCode(() -> s3Service.deleteAllOwnedByUser(3L)).doesNotThrowAnyException();
+    }
+
+    @Test
+    @DisplayName("탈퇴 퍼지에서 객체별 오류가 없으면 재시도하지 않는다")
+    void deleteAllOwnedByUser_AllDeleted_DoesNotRetry() {
+        givenListedKeys("profiles/permanent/10/", "profiles/permanent/10/a.jpg");
+        givenDeleteObjectsSucceeds();
+
+        s3Service.deleteAllOwnedByUser(10L);
+
+        verify(s3Client).deleteObjects(any(DeleteObjectsRequest.class));
+    }
+
+    @Test
+    @DisplayName("탈퇴 퍼지의 AccessDenied 키는 성공으로 세지 않고 재시도하지 않는다")
+    void deleteAllOwnedByUser_PartialAccessDenied_DoesNotRetryDeniedKey() {
+        givenListedKeys(
+                "profiles/permanent/10/",
+                "profiles/permanent/10/a.jpg",
+                "profiles/permanent/10/b.jpg");
+        given(s3Client.deleteObjects(any(DeleteObjectsRequest.class))).willReturn(DeleteObjectsResponse.builder()
+                .deleted(DeletedObject.builder().key("profiles/permanent/10/a.jpg").build())
+                .errors(S3Error.builder()
+                        .key("profiles/permanent/10/b.jpg")
+                        .code("AccessDenied")
+                        .message("Simulated per-object failure")
+                        .build())
+                .build());
+
+        assertThatCode(() -> s3Service.deleteAllOwnedByUser(10L)).doesNotThrowAnyException();
+
+        ArgumentCaptor<DeleteObjectsRequest> deleteCaptor = ArgumentCaptor.forClass(DeleteObjectsRequest.class);
+        verify(s3Client).deleteObjects(deleteCaptor.capture());
+        assertThat(keysOf(deleteCaptor.getValue())).containsExactly(
+                "profiles/permanent/10/a.jpg",
+                "profiles/permanent/10/b.jpg");
+    }
+
+    @Test
+    @DisplayName("탈퇴 퍼지의 InternalError 는 실패 키만 두 번 더 지운 뒤 멈춘다")
+    void deleteAllOwnedByUser_AllInternalError_RetriesTwiceThenStops() {
+        givenListedKeys("profiles/permanent/10/", "profiles/permanent/10/a.jpg");
+        given(s3Client.deleteObjects(any(DeleteObjectsRequest.class))).willReturn(deleteError(
+                "profiles/permanent/10/a.jpg", "InternalError"));
+
+        assertThatCode(() -> s3Service.deleteAllOwnedByUser(10L)).doesNotThrowAnyException();
+
+        ArgumentCaptor<DeleteObjectsRequest> deleteCaptor = ArgumentCaptor.forClass(DeleteObjectsRequest.class);
+        verify(s3Client, org.mockito.Mockito.times(3)).deleteObjects(deleteCaptor.capture());
+        assertThat(deleteCaptor.getAllValues()).allSatisfy(request ->
+                assertThat(keysOf(request)).containsExactly("profiles/permanent/10/a.jpg"));
+    }
+
+    @Test
+    @DisplayName("탈퇴 퍼지의 AccessDenied 전부 실패는 다시 지우지 않는다")
+    void deleteAllOwnedByUser_AllAccessDenied_DoesNotRetry() {
+        givenListedKeys("profiles/permanent/10/", "profiles/permanent/10/a.jpg");
+        given(s3Client.deleteObjects(any(DeleteObjectsRequest.class))).willReturn(deleteError(
+                "profiles/permanent/10/a.jpg", "AccessDenied"));
+
+        assertThatCode(() -> s3Service.deleteAllOwnedByUser(10L)).doesNotThrowAnyException();
+
+        verify(s3Client).deleteObjects(any(DeleteObjectsRequest.class));
+    }
+
+    private void givenListedKeys(String prefix, String... keys) {
+        given(s3Client.listObjectsV2(any(ListObjectsV2Request.class))).willAnswer(invocation -> {
+            ListObjectsV2Request request = invocation.getArgument(0);
+            if (!prefix.equals(request.prefix())) {
+                return ListObjectsV2Response.builder().isTruncated(false).build();
+            }
+            List<S3Object> contents = Arrays.stream(keys)
+                    .map(key -> S3Object.builder().key(key).build())
+                    .toList();
+            return ListObjectsV2Response.builder().contents(contents).isTruncated(false).build();
+        });
+    }
+
+    private void givenDeleteObjectsSucceeds() {
+        given(s3Client.deleteObjects(any(DeleteObjectsRequest.class))).willAnswer(invocation -> {
+            DeleteObjectsRequest request = invocation.getArgument(0);
+            List<DeletedObject> deleted = request.delete().objects().stream()
+                    .map(object -> DeletedObject.builder().key(object.key()).build())
+                    .toList();
+            return DeleteObjectsResponse.builder().deleted(deleted).errors(List.of()).build();
+        });
+    }
+
+    private static DeleteObjectsResponse deleteError(String key, String code) {
+        return DeleteObjectsResponse.builder()
+                .errors(S3Error.builder().key(key).code(code).message(code).build())
+                .build();
+    }
+
+    private static List<String> keysOf(DeleteObjectsRequest request) {
+        return request.delete().objects().stream().map(object -> object.key()).toList();
     }
 
     private static S3Exception s3Exception(int statusCode, String errorCode) {

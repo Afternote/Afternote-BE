@@ -46,7 +46,9 @@ public class UserController {
 
     @Operation(
             summary = "프로필 수정 API",
-            description = "로그인한 사용자의 프로필 정보를 수정합니다."
+            description = "로그인한 사용자의 프로필 정보를 수정합니다. "
+                    + "이름은 생략하면 유지하고 공백은 거부합니다. 연락처와 프로필 이미지는 "
+                    + UserUpdateProfileRequest.OPTIONAL_CLEAR_DESCRIPTION
     )
     @PatchMapping("/me")
     public ApiResponse<UserResponse> updateMyProfile(
@@ -223,7 +225,8 @@ public class UserController {
 
     @Operation(
             summary = "수신자 메시지 수정 API",
-            description = "특정 수신자에게 남길 메시지를 등록하거나 수정합니다."
+            description = "특정 수신자에게 남길 메시지를 등록하거나 수정합니다. "
+                    + UserUpdateReceiverMessageRequest.MESSAGE_DESCRIPTION
     )
     @PatchMapping("/receivers/{receiverId}/message")
     public ApiResponse<Void> updateReceiverMessage(

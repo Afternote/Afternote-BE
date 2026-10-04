@@ -51,13 +51,15 @@ public class UserService {
         User user = findUserById(userId);
 
         String profileImageKey = request.getProfileImageUrl();
-        if (profileImageKey != null && !profileImageKey.isBlank()) {
+        if (request.isProfileImageUrlSpecified() && profileImageKey != null) {
             profileImageKey = s3Service.promoteManagedMediaKey("profiles", userId, profileImageKey);
         }
 
         user.updateProfile(
                 request.getName(),
+                request.isPhoneSpecified(),
                 request.getPhone(),
+                request.isProfileImageUrlSpecified(),
                 profileImageKey
         );
 
@@ -206,6 +208,10 @@ public class UserService {
         UserReceiver userReceiver =
                 userReceiverRepository.findByUserAndReceiverId(user, receiverId)
                         .orElseThrow(() -> new CustomException(ErrorCode.RECEIVER_NOT_FOUND));
+
+        if (!request.isMessageSpecified()) {
+            return;
+        }
 
         Receiver receiver = userReceiver.getReceiver();
         receiver.updateMessage(request.getMessage());

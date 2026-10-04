@@ -74,4 +74,46 @@ class UserOpenApiGeneratedDocsTest {
         assertThat(deleteMe.at("/responses/401").isMissingNode()).isFalse();
         assertThat(docs.at("/security/0/bearer-key").isArray()).isTrue();
     }
+
+    @Test
+    @DisplayName("수신자 메시지 수정 스키마는 생략·null 비우기를 구분한다")
+    void generatedOpenApi_ReceiverMessagePatchDocumentsClear() throws Exception {
+        MvcResult result = mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode docs = objectMapper.readTree(result.getResponse().getContentAsByteArray());
+        JsonNode schema = docs.at("/components/schemas/UserUpdateReceiverMessageRequest");
+        JsonNode message = schema.at("/properties/message");
+
+        assertThat(schema.at("/properties/messageSpecified").isMissingNode()).isTrue();
+        assertThat(message.path("nullable").asBoolean()).isTrue();
+        assertThat(textValues(schema.path("required"))).doesNotContain("message");
+        assertThat(message.path("description").asText()).contains("생략").contains("null");
+        assertThat(docs.at("/paths/~1api~1v1~1users~1receivers~1{receiverId}~1message/patch/description").asText())
+                .contains("null");
+    }
+
+    @Test
+    @DisplayName("프로필 수정 스키마는 연락처·사진의 생략과 비우기를 구분한다")
+    void generatedOpenApi_ProfilePatchDocumentsClear() throws Exception {
+        MvcResult result = mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andReturn();
+        JsonNode docs = objectMapper.readTree(result.getResponse().getContentAsByteArray());
+        JsonNode schema = docs.at("/components/schemas/UserUpdateProfileRequest");
+
+        assertThat(schema.at("/properties/phoneSpecified").isMissingNode()).isTrue();
+        assertThat(schema.at("/properties/phone/nullable").asBoolean()).isTrue();
+        assertThat(schema.at("/properties/profileImageUrl/nullable").asBoolean()).isTrue();
+        assertThat(schema.at("/properties/phone/description").asText()).contains("생략").contains("null");
+        assertThat(textValues(schema.path("required"))).doesNotContain("phone", "profileImageUrl");
+    }
+
+    private static java.util.List<String> textValues(JsonNode array) {
+        java.util.List<String> values = new java.util.ArrayList<>();
+        for (JsonNode item : array) {
+            values.add(item.asText());
+        }
+        return values;
+    }
 }

@@ -305,6 +305,13 @@ class OpenApiContractAnnotationTest {
         assertThat(deathCertificate.nullable()).isTrue();
         Schema verificationId = DeliveryVerificationResponse.class.getDeclaredMethod("id").getAnnotation(Schema.class);
         assertThat(verificationId.requiredMode()).isEqualTo(Schema.RequiredMode.REQUIRED);
+        Schema verificationApprovedAt = DeliveryVerificationResponse.class
+                .getDeclaredMethod("approvedAt")
+                .getAnnotation(Schema.class);
+        assertThat(verificationApprovedAt.nullable()).isTrue();
+        assertThat(verificationApprovedAt.requiredMode()).isEqualTo(Schema.RequiredMode.NOT_REQUIRED);
+        assertThat(verificationApprovedAt.format()).isEqualTo(ReceivedRecordBoxResponse.LOCAL_DATE_TIME_FORMAT);
+        assertThat(verificationApprovedAt.description()).contains("APPROVED").contains("오프셋 없는");
 
         Schema playlist = ReceivedAfternoteDetailResponse.class.getDeclaredMethod("playlist").getAnnotation(Schema.class);
         assertThat(playlist.nullable()).isTrue();

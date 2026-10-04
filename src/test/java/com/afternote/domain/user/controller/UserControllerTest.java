@@ -4,10 +4,13 @@ import com.afternote.domain.user.service.UserService;
 import com.afternote.domain.notification.service.UserPushTokenService;
 import com.afternote.global.resolver.UserId;
 import com.afternote.global.resolver.UserIdArgumentResolver;
+import com.afternote.domain.user.dto.UserUpdateProfileRequest;
+import com.afternote.domain.user.dto.UserUpdateReceiverMessageRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -22,6 +25,7 @@ import org.springframework.web.method.support.ModelAndViewContainer;
 
 import java.util.List;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
@@ -81,6 +85,25 @@ class UserControllerTest {
                 .andExpect(status().isOk());
 
         verify(userService).updateMyProfile(eq(USER_ID), any());
+    }
+
+    @Test
+    @DisplayName("프로필 연락처 null은 비우기 요청으로 전달된다")
+    void updateMyProfile_ExplicitNullPhone_ReachesService() throws Exception {
+        given(userService.updateMyProfile(eq(USER_ID), any())).willReturn(null);
+
+        mockMvc.perform(patch("/api/v1/users/me")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":null}"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<UserUpdateProfileRequest> captor =
+                ArgumentCaptor.forClass(UserUpdateProfileRequest.class);
+        verify(userService).updateMyProfile(eq(USER_ID), captor.capture());
+        assertThat(captor.getValue().isPhoneSpecified()).isTrue();
+        assertThat(captor.getValue().getPhone()).isNull();
+        assertThat(captor.getValue().isProfileImageUrlSpecified()).isFalse();
     }
 
     @Test
@@ -204,6 +227,37 @@ class UserControllerTest {
                 .andExpect(status().isOk());
 
         verify(userService).updateReceiverMessage(eq(USER_ID), eq(2L), any());
+    }
+
+    @Test
+    @DisplayName("수신자 메시지 null은 비우기 요청으로 전달된다")
+    void updateReceiverMessage_ExplicitNull_ReachesService() throws Exception {
+        mockMvc.perform(patch("/api/v1/users/receivers/{receiverId}/message", 2L)
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":null}"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<UserUpdateReceiverMessageRequest> captor =
+                ArgumentCaptor.forClass(UserUpdateReceiverMessageRequest.class);
+        verify(userService).updateReceiverMessage(eq(USER_ID), eq(2L), captor.capture());
+        assertThat(captor.getValue().isMessageSpecified()).isTrue();
+        assertThat(captor.getValue().getMessage()).isNull();
+    }
+
+    @Test
+    @DisplayName("수신자 메시지 필드를 생략하면 미지정으로 전달된다")
+    void updateReceiverMessage_Omitted_ReachesService() throws Exception {
+        mockMvc.perform(patch("/api/v1/users/receivers/{receiverId}/message", 2L)
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{}"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<UserUpdateReceiverMessageRequest> captor =
+                ArgumentCaptor.forClass(UserUpdateReceiverMessageRequest.class);
+        verify(userService).updateReceiverMessage(eq(USER_ID), eq(2L), captor.capture());
+        assertThat(captor.getValue().isMessageSpecified()).isFalse();
     }
 
     @Test

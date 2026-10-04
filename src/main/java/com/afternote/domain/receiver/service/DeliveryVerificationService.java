@@ -69,7 +69,8 @@ public class DeliveryVerificationService {
             .familyRelationCertificateUrl(familyRelationCertKey)
                 .build();
 
-        return deliveryVerificationRepository.save(verification);
+        // createdAt은 flush 때 채워진다. 제출 응답에 null이 나가지 않도록 여기서 flush한다.
+        return deliveryVerificationRepository.saveAndFlush(verification);
     }
 
     public DeliveryVerification getVerificationStatus(Receiver receiver) {

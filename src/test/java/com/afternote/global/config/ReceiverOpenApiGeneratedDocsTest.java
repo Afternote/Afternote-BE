@@ -109,8 +109,13 @@ class ReceiverOpenApiGeneratedDocsTest {
 
         JsonNode verification = schemas.get("DeliveryVerificationResponse");
         assertThat(textValues(verification.path("required"))).contains("id", "status", "createdAt");
+        assertThat(textValues(verification.path("required"))).doesNotContain("approvedAt");
         assertThat(verification.at("/properties/deathCertificateUrl/nullable").asBoolean()).isTrue();
         assertThat(verification.at("/properties/adminNote/nullable").asBoolean()).isTrue();
+        assertThat(verification.at("/properties/approvedAt/nullable").asBoolean()).isTrue();
+        assertThat(verification.at("/properties/approvedAt/format").asText())
+                .isEqualTo(ReceivedRecordBoxResponse.LOCAL_DATE_TIME_FORMAT);
+        assertThat(verification.at("/properties/approvedAt/description").asText()).contains("APPROVED");
 
         JsonNode playlist = schemas.at("/ReceivedAfternoteDetailResponse/properties/playlist");
         assertThat(playlist.has("$ref"))

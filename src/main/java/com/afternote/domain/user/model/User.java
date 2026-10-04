@@ -120,17 +120,23 @@ public class User extends BaseEntity {
         this.marketingPushEnabled = false;
     }
 
-    public void updateProfile(String name, String phone, String profileImageUrl) {
+    public void updateProfile(
+            String name,
+            boolean phoneSpecified,
+            String phone,
+            boolean profileImageSpecified,
+            String profileImageUrl
+    ) {
         if (name != null) {
             if (name.isBlank()) {
                 throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
             }
             this.name = name;
         }
-        if (phone != null && !phone.isBlank()) {
+        if (phoneSpecified) {
             this.phone = phone;
         }
-        if (profileImageUrl != null && !profileImageUrl.isBlank()) {
+        if (profileImageSpecified) {
             this.profileImageUrl = profileImageUrl;
         }
     }

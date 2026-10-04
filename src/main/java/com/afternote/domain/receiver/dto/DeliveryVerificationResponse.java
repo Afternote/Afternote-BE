@@ -38,7 +38,16 @@ public record DeliveryVerificationResponse(
                 format = ReceivedRecordBoxResponse.LOCAL_DATE_TIME_FORMAT,
                 requiredMode = Schema.RequiredMode.REQUIRED
         )
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        @Schema(
+                description = ReceivedRecordBoxResponse.APPROVED_AT_DESCRIPTION,
+                example = ReceivedRecordBoxResponse.LOCAL_DATE_TIME_EXAMPLE,
+                type = "string",
+                format = ReceivedRecordBoxResponse.LOCAL_DATE_TIME_FORMAT,
+                nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED
+        )
+        LocalDateTime approvedAt
 ) {
     public static DeliveryVerificationResponse from(DeliveryVerification verification) {
         return from(verification, Function.identity());
@@ -51,7 +60,10 @@ public record DeliveryVerificationResponse(
                 urlResolver.apply(verification.getDeathCertificateUrl()),
                 urlResolver.apply(verification.getFamilyRelationCertificateUrl()),
                 verification.getAdminNote(),
-                verification.getCreatedAt()
+                verification.getCreatedAt(),
+                verification.getStatus() == VerificationStatus.APPROVED
+                        ? verification.getUpdatedAt()
+                        : null
         );
     }
 }

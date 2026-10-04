@@ -10,12 +10,13 @@ resource "aws_db_subnet_group" "main" {
 resource "aws_db_instance" "main" {
   identifier = "${var.project_name}-${var.environment}"
 
-  engine                = "mysql"
-  engine_version        = "8.0"
-  instance_class        = var.db_instance_class
-  allocated_storage     = var.db_allocated_storage
-  max_allocated_storage = 100
-  storage_type          = "gp3"
+  engine                      = "mysql"
+  engine_version              = "8.4"
+  allow_major_version_upgrade = true
+  instance_class              = var.db_instance_class
+  allocated_storage           = var.db_allocated_storage
+  max_allocated_storage       = 100
+  storage_type                = "gp3"
 
   db_name  = var.db_name
   username = var.db_username

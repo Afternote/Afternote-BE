@@ -12,7 +12,7 @@
 
 기본 PR 필수 검사는 이름이 고정된 `CI / build`로 설정한다. 동일 저장소 PR에서는 `contents: write`를 해당 job에만 부여해 `dependency-submission`을 완료한 뒤 `dependency-review`를 실행하고, snapshot 반영을 최대 10분 기다린다. 외부 fork PR에는 write 토큰을 부여하지 않는다. `gradle-test`, `mysql-test`, `docker-image`는 이 흐름과 병렬로 실행하며, 집계 job은 네 검증 결과를 모두 요구한다. `main` push에서는 이벤트 특성상 실행되지 않는 dependency review만 `skipped`로 허용하고 나머지 실패·취소는 실패로 처리한다.
 
-JUnit은 CI에서 두 job으로 나눈다. `gradle-test`의 `standardTest`는 `*MySqlTest`를 제외한 테스트를 실행하고, `mysql-test`는 Testcontainers가 제공하는 실제 MySQL 8.0에서 `*MySqlTest`만 실행한다. `mysql-test`는 대상 테스트가 0개이거나 하나라도 skip되면 실패한다. 로컬의 기존 `test` task는 전체 테스트를 실행하는 동작을 유지한다.
+JUnit은 CI에서 두 job으로 나눈다. `gradle-test`의 `standardTest`는 `*MySqlTest`를 제외한 테스트를 실행하고, `mysql-test`는 Testcontainers가 제공하는 실제 MySQL 8.4에서 `*MySqlTest`만 실행한다. `mysql-test`는 대상 테스트가 0개이거나 하나라도 skip되면 실패한다. 로컬의 기존 `test` task는 전체 테스트를 실행하는 동작을 유지한다.
 
 `docker-image`는 이미지를 build한 뒤 GitHub Actions의 임시 MySQL·Redis에 연결해 실제 컨테이너를 기동한다. 이어서 `/v3/api-docs`의 Time-Letters 경로, `/actuator/health`의 MySQL·Redis 상태, `/.well-known/assetlinks.json`, `/api/v1/app/version` 응답을 직접 확인한다. 이 단계에는 repository secret이나 외부 서비스 호출이 필요하지 않다.
 

@@ -7,6 +7,8 @@ import com.afternote.domain.auth.service.social.SocialLoginService;
 import com.afternote.domain.user.model.AuthProvider;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserStatus;
+import com.afternote.domain.user.model.UserProvider;
+import com.afternote.domain.user.repository.UserProviderRepository;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.domain.user.service.ActivityTouchService;
 import com.afternote.domain.user.service.WithdrawalCooldownService;
@@ -23,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AuthService {
     private final UserRepository userRepository;
+    private final UserProviderRepository userProviderRepository;
 
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
@@ -279,8 +282,24 @@ public class AuthService {
         SocialLoginService socialLoginService = socialLoginFactory.getService(request.getProvider());
         SocialUserInfo socialUserInfo = socialLoginService.getUserInfo(request.getAccessToken());
 
-        User user = userRepository.findByEmail(socialUserInfo.getEmail())
+        String providerId = socialUserInfo.getProviderId();
+        AuthProvider provider = socialUserInfo.getProvider();
+        if (provider == null || provider == AuthProvider.LOCAL
+                || providerId == null || providerId.isBlank()) {
+            throw new CustomException(ErrorCode.SOCIAL_LOGIN_FAILED);
+        }
+
+        // 이미 연결한 계정은 이메일 변경/제공 동의 철회 후에도 동일한 사용자다.
+        User user = userProviderRepository.findByProviderAndProviderId(provider, providerId)
+                .map(UserProvider::getUser)
                 .orElse(null);
+        if (user == null) {
+            String email = socialUserInfo.getEmail();
+            if (email == null || email.isBlank()) {
+                throw new CustomException(ErrorCode.SOCIAL_EMAIL_REQUIRED);
+            }
+            user = userRepository.findByEmail(email).orElse(null);
+        }
         boolean isNewUser = false;
         LoginResponse tokens;
 
@@ -292,10 +311,17 @@ public class AuthService {
                     .status(UserStatus.ACTIVE)
                     .provider(socialUserInfo.getProvider())
                     .build();
+            user.addProvider(provider, providerId);
             user = saveNewUser(user);
             isNewUser = true;
             tokens = createSessionTokens(user);
         } else {
+            user.getLinkedProviderId(provider).ifPresent(existingId -> {
+                if (!existingId.isBlank() && !existingId.equals(providerId)) {
+                    throw new CustomException(ErrorCode.PROVIDER_ALREADY_CONNECTED_OTHER_ACCOUNT);
+                }
+            });
+            user.addProvider(provider, providerId);
             tokens = issueTokens(user);
         }
 

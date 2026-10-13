@@ -12,6 +12,7 @@ import com.afternote.domain.user.model.AuthProvider;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserStatus;
 import com.afternote.domain.user.repository.UserRepository;
+import com.afternote.domain.user.repository.UserProviderRepository;
 import com.afternote.domain.user.service.ActivityTouchService;
 import com.afternote.domain.user.service.WithdrawalCooldownService;
 import com.afternote.global.jwt.JwtTokenProvider;
@@ -158,7 +159,7 @@ class SocialLoginSignupLockMySqlTest {
         given(socialLoginFactory.getService("KAKAO")).willReturn(kakao);
         given(kakao.getUserInfo(any())).willReturn(SocialUserInfo.builder()
                 .provider(AuthProvider.KAKAO)
-                .providerId("kakao-1")
+                .providerId("kakao-" + email)
                 .email(email)
                 .name("kakao")
                 .build());
@@ -257,6 +258,7 @@ class SocialLoginSignupLockMySqlTest {
         @Bean
         AuthService authService(
                 UserRepository userRepository,
+                UserProviderRepository userProviderRepository,
                 PasswordEncoder passwordEncoder,
                 JwtTokenProvider jwtTokenProvider,
                 TokenService tokenService,
@@ -267,6 +269,7 @@ class SocialLoginSignupLockMySqlTest {
         ) {
             return new AuthService(
                     userRepository,
+                    userProviderRepository,
                     passwordEncoder,
                     jwtTokenProvider,
                     tokenService,

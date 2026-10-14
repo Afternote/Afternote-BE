@@ -15,6 +15,11 @@ import java.util.Optional;
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
     
+    /** Serialize installation/token upserts on the owner before touching child rows. */
+    @org.springframework.data.jpa.repository.Lock(jakarta.persistence.LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT u FROM User u WHERE u.id = :id")
+    Optional<User> findByIdForPushUpdate(@Param("id") Long id);
+
     // 이메일로 사용자 조회
     Optional<User> findByEmail(String email);
     

@@ -183,9 +183,17 @@ public class UserController {
         );
     }
 
+    @Operation(summary = "설치별 알림 권한 보고", description = "FCM 토큰 없이도 권한 거부 상태를 보고합니다. 앱 실행과 권한 변경 시 호출합니다.")
+    @PutMapping("/push-installations")
+    public ApiResponse<com.afternote.domain.notification.dto.PushInstallationResponse> reportPushPermission(
+            @Parameter(hidden = true) @UserId Long userId,
+            @Valid @RequestBody com.afternote.domain.notification.dto.PushInstallationRequest request) {
+        return ApiResponse.success(userPushTokenService.reportPermission(userId, request));
+    }
+
     @Operation(
             summary = "FCM 기기 토큰 해제 API",
-            description = "로그아웃·알림 권한 철회 시 해당 기기 token을 서버에서 제거합니다. 없는 token도 200(멱등)입니다."
+            description = "로그아웃 시 해당 기기 token을 서버에서 제거합니다. 권한 철회는 push-installations API로 보고합니다. 없는 token도 200(멱등)입니다."
     )
     @DeleteMapping("/push-tokens")
     public ApiResponse<Void> deletePushToken(

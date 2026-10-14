@@ -1,6 +1,11 @@
 package com.afternote.domain.notification.service;
 
 import com.afternote.domain.notification.dto.DeletePushTokenRequest;
+import com.afternote.domain.notification.dto.PushInstallationRequest;
+import com.afternote.domain.notification.dto.PushInstallationResponse;
+import com.afternote.domain.notification.model.PushInstallation;
+import com.afternote.domain.notification.model.NotificationPermission;
+import com.afternote.domain.notification.repository.PushInstallationRepository;
 import com.afternote.domain.notification.dto.PushTokenResponse;
 import com.afternote.domain.notification.dto.RegisterPushTokenRequest;
 import com.afternote.domain.notification.model.PushPlatform;
@@ -21,6 +26,7 @@ import java.time.LocalDateTime;
 @Transactional(readOnly = true)
 public class UserPushTokenService {
 
+    private final PushInstallationRepository installationRepository;
     private final UserRepository userRepository;
     private final UserPushTokenRepository userPushTokenRepository;
 
@@ -39,6 +45,8 @@ public class UserPushTokenService {
                     .platform(platform)
                     .lastSeenAt(now)
                     .build();
+            created.updatePermission(request.notificationPermission());
+            bindInstallation(created, user, request);
             userPushTokenRepository.save(created);
             return PushTokenResponse.from(created);
         }
@@ -49,6 +57,8 @@ public class UserPushTokenService {
             existing.touch(platform, now);
         }
 
+        existing.updatePermission(request.notificationPermission());
+        bindInstallation(existing, user, request);
         return PushTokenResponse.from(existing);
     }
 
@@ -61,10 +71,33 @@ public class UserPushTokenService {
     @Transactional
     public void deleteAllForUser(Long userId) {
         userPushTokenRepository.deleteByUser_Id(userId);
+        installationRepository.deleteByUser_Id(userId);
+    }
+
+    @Transactional
+    public PushInstallationResponse reportPermission(Long userId, PushInstallationRequest request) {
+        User user = findUserById(userId);
+        PushInstallation installation = installationRepository
+                .findByUser_IdAndInstallationId(userId, request.installationId().toString())
+                .orElseGet(() -> installationRepository.save(new PushInstallation(
+                        user, request.installationId().toString(), request.permission())));
+        installation.updatePermission(request.permission());
+        return new PushInstallationResponse(installation.getInstallationId(), installation.getPermission(),
+                installation.getPermission() == NotificationPermission.DENIED);
+    }
+
+    private void bindInstallation(UserPushToken token, User user, RegisterPushTokenRequest request) {
+        if (request.installationId() == null) return;
+        PushInstallation installation = installationRepository
+                .findByUser_IdAndInstallationId(user.getId(), request.installationId().toString())
+                .orElseGet(() -> installationRepository.save(new PushInstallation(user,
+                        request.installationId().toString(), NotificationPermission.UNKNOWN)));
+        if (request.notificationPermission() != null) installation.updatePermission(request.notificationPermission());
+        token.bindInstallation(installation);
     }
 
     private User findUserById(Long userId) {
-        return userRepository.findById(userId)
+        return userRepository.findByIdForPushUpdate(userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.USER_NOT_FOUND));
     }
 }

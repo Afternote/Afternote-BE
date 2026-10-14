@@ -7,6 +7,11 @@ import com.afternote.domain.user.model.AuthProvider;
 import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.model.UserStatus;
 import com.afternote.domain.user.repository.UserRepository;
+import com.afternote.domain.user.repository.UserProviderRepository;
+import com.afternote.domain.user.model.UserProvider;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import com.afternote.domain.user.service.ActivityTouchService;
 import com.afternote.domain.user.service.WithdrawalCooldownService;
 import com.afternote.global.exception.CustomException;
@@ -40,6 +45,9 @@ class AuthServiceTest {
 
     @Mock
     private UserRepository userRepository;
+
+    @Mock
+    private UserProviderRepository userProviderRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;
@@ -407,6 +415,7 @@ class AuthServiceTest {
         ArgumentCaptor<User> saved = ArgumentCaptor.forClass(User.class);
         verify(userRepository).saveAndFlush(saved.capture());
         assertThat(saved.getValue().getLastActiveAt()).isNotNull();
+        assertThat(saved.getValue().getLinkedProviderId(AuthProvider.KAKAO)).contains("kakao-1");
         verify(activityTouchService, never()).touch(any());
         verify(tokenService).saveToken("social-refresh", 77L);
     }
@@ -449,6 +458,7 @@ class AuthServiceTest {
         assertThat(response.getExpiresIn()).isEqualTo(3600L);
         verify(userRepository, never()).save(any(User.class));
         verify(userRepository, never()).saveAndFlush(any(User.class));
+        assertThat(existingUser.getLinkedProviderId(AuthProvider.KAKAO)).contains("kakao-1");
         verify(activityTouchService).touch(88L);
         verify(tokenService).saveToken("existing-refresh", 88L);
     }
@@ -585,4 +595,82 @@ class AuthServiceTest {
                 .isInstanceOf(CustomException.class)
                 .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.SOCIAL_LOGIN_USER));
     }
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    void socialLogin_MissingEmail_RejectsBeforePersistence(String email) {
+        SocialLoginRequest request = socialRequest(email, "kakao-1");
+        assertThatThrownBy(() -> authService.socialLogin(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.SOCIAL_EMAIL_REQUIRED));
+        org.mockito.Mockito.verifyNoInteractions(userRepository, jwtTokenProvider, tokenService,
+                withdrawalCooldownService, activityTouchService);
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"changed@test.com"})
+    void socialLogin_LinkedIdentityTakesPrecedenceOverEmail(String email) {
+        SocialLoginRequest request = socialRequest(email, "kakao-1");
+        User owner = User.builder().email("original@test.com").name("owner")
+                .status(UserStatus.ACTIVE).provider(AuthProvider.LOCAL).build();
+        ReflectionTestUtils.setField(owner, "id", 42L);
+        owner.addProvider(AuthProvider.KAKAO, "kakao-1");
+        given(userProviderRepository.findByProviderAndProviderId(AuthProvider.KAKAO, "kakao-1"))
+                .willReturn(Optional.of(UserProvider.builder().user(owner)
+                        .provider(AuthProvider.KAKAO).providerId("kakao-1").build()));
+
+        assertThat(authService.socialLogin(request).isNewUser()).isFalse();
+        org.mockito.Mockito.verifyNoInteractions(userRepository);
+        verify(activityTouchService).touch(42L);
+        assertThat(owner.getEmail()).isEqualTo("original@test.com");
+        assertThat(owner.getProviders()).hasSize(2);
+    }
+
+    @Test
+    void socialLogin_EmailMatchPreservesExistingLoginMethods() {
+        SocialLoginRequest request = socialRequest("existing@test.com", "kakao-1");
+        User existing = User.builder().email("existing@test.com").password("encoded")
+                .name("owner").status(UserStatus.ACTIVE).provider(AuthProvider.LOCAL).build();
+        ReflectionTestUtils.setField(existing, "id", 43L);
+        existing.addProvider(AuthProvider.GOOGLE, "google-1");
+        given(userRepository.findByEmail("existing@test.com")).willReturn(Optional.of(existing));
+
+        authService.socialLogin(request);
+        authService.socialLogin(request);
+
+        assertThat(existing.getProviders()).hasSize(3);
+        assertThat(existing.getLinkedProviderId(AuthProvider.GOOGLE)).contains("google-1");
+        assertThat(existing.getLinkedProviderId(AuthProvider.KAKAO)).contains("kakao-1");
+        assertThat(existing.getPassword()).isEqualTo("encoded");
+        verify(userRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void socialLogin_ConflictingProviderIdDoesNotIssueTokensOrOverwriteIdentity() {
+        SocialLoginRequest request = socialRequest("existing@test.com", "kakao-new");
+        User existing = User.builder().email("existing@test.com").name("owner")
+                .status(UserStatus.ACTIVE).provider(AuthProvider.KAKAO).build();
+        existing.addProvider(AuthProvider.KAKAO, "kakao-original");
+        given(userRepository.findByEmail("existing@test.com")).willReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> authService.socialLogin(request))
+                .isInstanceOf(CustomException.class)
+                .satisfies(ex -> assertThat(((CustomException) ex).getErrorCode())
+                        .isEqualTo(ErrorCode.PROVIDER_ALREADY_CONNECTED_OTHER_ACCOUNT));
+        assertThat(existing.getLinkedProviderId(AuthProvider.KAKAO)).contains("kakao-original");
+        org.mockito.Mockito.verifyNoInteractions(jwtTokenProvider, tokenService, activityTouchService);
+    }
+
+    private SocialLoginRequest socialRequest(String email, String providerId) {
+        SocialLoginRequest request = org.mockito.Mockito.mock(SocialLoginRequest.class);
+        given(request.getProvider()).willReturn("KAKAO");
+        given(request.getAccessToken()).willReturn("kakao-token");
+        given(socialLoginFactory.getService("KAKAO")).willReturn(socialLoginService);
+        given(socialLoginService.getUserInfo("kakao-token")).willReturn(SocialUserInfo.builder()
+                .provider(AuthProvider.KAKAO).providerId(providerId).email(email).name("kakao").build());
+        return request;
+    }
+
 }

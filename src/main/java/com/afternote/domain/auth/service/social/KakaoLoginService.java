@@ -36,7 +36,6 @@ public class KakaoLoginService implements SocialLoginService {
     @Override
     public SocialUserInfo getUserInfo(String accessToken) {
         try {
-            log.debug("🔍 카카오 사용자 정보 조회 시작 - Token: {}...", accessToken.substring(0, Math.min(20, accessToken.length())));
             
             log.debug("📤 카카오 API 호출: {}", kakaoUserInfoUrl);
             Map<String, Object> responseBody = webClient.get()
@@ -47,14 +46,17 @@ public class KakaoLoginService implements SocialLoginService {
                     .bodyToMono(new ParameterizedTypeReference<Map<String, Object>>() {})
                     .block();
             
-            log.debug("📦 응답 Body: {}", responseBody);
             
             if (responseBody == null || responseBody.isEmpty()) {
                 log.error("❌ 카카오 API 응답이 비어있습니다");
                 throw new CustomException(ErrorCode.SOCIAL_LOGIN_FAILED);
             }
             
-            String providerId = String.valueOf(responseBody.get("id"));
+            Object id = responseBody.get("id");
+            if (id == null || String.valueOf(id).isBlank()) {
+                throw new CustomException(ErrorCode.SOCIAL_LOGIN_FAILED);
+            }
+            String providerId = String.valueOf(id);
             log.debug("👤 Provider ID: {}", providerId);
             
             // kakao_account 객체에서 이메일과 프로필 정보 추출
@@ -65,7 +67,12 @@ public class KakaoLoginService implements SocialLoginService {
             }
             
             String email = (String) kakaoAccount.get("email");
-            log.debug("📧 이메일: {}", email);
+            // 이메일로 기존 계정을 연결하므로 카카오가 검증한 이메일만 사용한다.
+            if (email != null && !email.isBlank()
+                    && (!Boolean.TRUE.equals(kakaoAccount.get("is_email_valid"))
+                    || !Boolean.TRUE.equals(kakaoAccount.get("is_email_verified")))) {
+                email = null;
+            }
             
             Map<String, Object> profile = (Map<String, Object>) kakaoAccount.get("profile");
             if (profile == null) {

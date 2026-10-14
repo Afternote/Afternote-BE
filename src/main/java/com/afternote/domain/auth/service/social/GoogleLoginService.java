@@ -63,7 +63,7 @@ public class GoogleLoginService implements SocialLoginService {
             }
 
             String email = payload.getEmail();
-            if (email == null || email.isBlank()) {
+            if (email == null || email.isBlank() || !Boolean.TRUE.equals(payload.getEmailVerified())) {
                 log.error("Google ID Token missing email (ensure email scope): {}", payload);
                 throw new CustomException(ErrorCode.SOCIAL_LOGIN_FAILED);
             }

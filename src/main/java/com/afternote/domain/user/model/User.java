@@ -220,6 +220,7 @@ public class User extends BaseEntity {
         return this.providers.stream()
                 .filter(p -> p.getProvider() == provider)
                 .map(UserProvider::getProviderId)
+                .filter(java.util.Objects::nonNull)
                 .findFirst();
     }
 

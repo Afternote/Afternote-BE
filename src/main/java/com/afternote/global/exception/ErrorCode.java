@@ -84,6 +84,8 @@ public enum ErrorCode {
     // 소셜 로그인 실패
     SOCIAL_LOGIN_FAILED(HttpStatus.BAD_REQUEST, 1208, "소셜 로그인에 실패했습니다."),
 
+    SOCIAL_EMAIL_REQUIRED(HttpStatus.BAD_REQUEST, 1222, "소셜 계정의 이메일 제공 동의가 필요합니다."),
+
     // 지원하지 않는 소셜 로그인 제공자
     UNSUPPORTED_SOCIAL_LOGIN(HttpStatus.BAD_REQUEST, 1209, "지원하지 않는 소셜 로그인 제공자입니다."),
 

@@ -4,6 +4,7 @@ import com.afternote.domain.notification.service.FcmPushSender;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -22,10 +23,11 @@ public class NotificationPolicyWorker {
     private final NotificationDispatchRepository repository;
     private final FcmPushSender sender;
     private final ObjectMapper objectMapper;
+    private final Clock clock;
 
     @Scheduled(fixedDelayString = "${notification.policy.poll-ms:30000}")
     public void poll() {
-        for (Long userId : repository.findDueUsers(LocalDateTime.now(NotificationTiming.ZONE), java.util.List.of(NotificationDispatch.Status.QUEUED, NotificationDispatch.Status.READY), PageRequest.of(0, 200))) {
+        for (Long userId : repository.findDueUsers(LocalDateTime.now(clock.withZone(NotificationTiming.ZONE)), java.util.List.of(NotificationDispatch.Status.QUEUED, NotificationDispatch.Status.READY), PageRequest.of(0, 200))) {
             try { process(userId); }
             catch (RuntimeException e) { log.warn("Notification policy processing failed for userId={}", userId, e); }
         }
@@ -35,8 +37,8 @@ public class NotificationPolicyWorker {
     public void onQueued(NotificationQueued event) { process(event.userId()); }
 
     public void process(Long userId) {
-        for (Long id : store.prepare(userId, LocalDateTime.now(NotificationTiming.ZONE))) {
-            store.claim(id, LocalDateTime.now(NotificationTiming.ZONE)).ifPresent(this::deliver);
+        for (Long id : store.prepare(userId, LocalDateTime.now(clock.withZone(NotificationTiming.ZONE)))) {
+            store.claim(id, LocalDateTime.now(clock.withZone(NotificationTiming.ZONE))).ifPresent(this::deliver);
         }
     }
 

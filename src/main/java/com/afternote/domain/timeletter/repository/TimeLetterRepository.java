@@ -14,6 +14,23 @@ import java.util.Optional;
 @Repository
 public interface TimeLetterRepository extends JpaRepository<TimeLetter, Long> {
 
+    /** Keyset scan prevents already-enqueued reminders from starving later letters. */
+    @Query("""
+            SELECT t.id FROM TimeLetter t
+            WHERE t.id > :afterId AND t.sendAt > :fromExclusive AND t.sendAt <= :toInclusive
+              AND t.status = com.afternote.domain.timeletter.model.TimeLetterStatus.SCHEDULED
+              AND t.deliveryMode = com.afternote.domain.timeletter.model.TimeLetterDeliveryMode.DATE
+              AND t.user.status = com.afternote.domain.user.model.UserStatus.ACTIVE
+              AND t.user.timeLetterPushEnabled = true
+            ORDER BY t.id
+            """)
+    List<Long> findReminderCandidateIds(@Param("fromExclusive") LocalDateTime fromExclusive,
+            @Param("toInclusive") LocalDateTime toInclusive, @Param("afterId") Long afterId,
+            org.springframework.data.domain.Pageable pageable);
+
+    @Query("SELECT t FROM TimeLetter t JOIN FETCH t.user WHERE t.id = :id")
+    Optional<TimeLetter> findReminderCandidate(@Param("id") Long id);
+
     @Query("SELECT t.id FROM TimeLetter t WHERE t.user.id = :userId")
     List<Long> findIdsByUserId(@Param("userId") Long userId);
 

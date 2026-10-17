@@ -124,7 +124,7 @@ class NotificationPolicyTest {
                 .thenReturn(new PushDeliveryResult(1, 0, false, true));
         // B is exempt from quiet hours, so this test is independent of execution clock.
         Long id=store.enqueue(userId, "live-event", NotificationCategory.B, NotificationEvent.ACCEPTANCE,
-                "title", "body", Map.of("destination", "HOME"), LocalDateTime.now(NotificationTiming.ZONE));
+                "title", "body", Map.of("destination", "HOME"), DAY);
         assertThat(repository.findById(id).orElseThrow().getStatus()).isEqualTo(NotificationDispatch.Status.PUSH_SENT);
         verify(sender, times(1)).sendToUserWithResult(anyLong(), anyString(), anyString(), anyMap());
     }
@@ -132,11 +132,29 @@ class NotificationPolicyTest {
         when(sender.sendToUserWithResult(anyLong(), anyString(), anyString(), anyMap()))
                 .thenReturn(new PushDeliveryResult(0, 0, true, true));
         Long id=store.enqueue(userId, "denied", NotificationCategory.B, NotificationEvent.SEND_FAILURE,
-                "title", "body", Map.of("destination", "HOME"), LocalDateTime.now(NotificationTiming.ZONE));
+                "title", "body", Map.of("destination", "HOME"), DAY);
         NotificationDispatch result=repository.findById(id).orElseThrow();
         assertThat(result.getStatus()).isEqualTo(NotificationDispatch.Status.ALIMTALK_PENDING);
         assertThat(result.getDeliveryReason()).isEqualTo("PERMISSION_DENIED");
     }
+    @Test void sourceCancellationReleasesDailySlotBeforeSend() {
+        Long cancelled = enqueue("cancel-before-send", NotificationCategory.A);
+        Long deliverable = enqueue("still-valid", NotificationCategory.E);
+        assertThat(store.prepare(userId, DAY)).containsExactly(deliverable);
+        assertThat(repository.findById(cancelled).orElseThrow().getStatus()).isEqualTo(NotificationDispatch.Status.CANCELLED);
+    }
+
+    @Test void cancelledReadyReservationDoesNotSuppressAnotherQueuedNotification() {
+        NotificationDispatch invalid=new NotificationDispatch(userId, "cancel-before-send", NotificationCategory.A,
+                NotificationEvent.SCHEDULED, "title", "body", "{}", DAY);
+        invalid.select(DAY);
+        repository.saveAndFlush(invalid);
+        Long valid=enqueue("valid-after-cancel", NotificationCategory.E);
+        assertThat(store.prepare(userId, DAY)).containsExactly(valid);
+        assertThat(repository.findById(invalid.getId()).orElseThrow().getStatus())
+                .isEqualTo(NotificationDispatch.Status.CANCELLED);
+    }
+
     @Configuration(proxyBeanMethods=false)
     @EnableTransactionManagement(proxyTargetClass=true)
     @EnableJpaAuditing
@@ -151,6 +169,8 @@ class NotificationPolicyTest {
         }
         @Bean EntityManager entityManager(EntityManagerFactory factory) { return SharedEntityManagerCreator.createSharedEntityManager(factory); }
         @Bean PlatformTransactionManager transactionManager(EntityManagerFactory factory) { return new JpaTransactionManager(factory); }
+        @Bean Clock clock() { return Clock.fixed(DAY.atZone(NotificationTiming.ZONE).toInstant(), NotificationTiming.ZONE); }
+        @Bean NotificationDispatchGuard deliveryGuard() { return (notification, now) -> !notification.getEventKey().equals("cancel-before-send"); }
         @Bean ObjectMapper objectMapper() { return new ObjectMapper(); }
         @Bean FcmPushSender sender() { return mock(FcmPushSender.class); }
     }

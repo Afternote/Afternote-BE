@@ -51,7 +51,11 @@ public class NotificationDispatch {
         if (!event.isImmediate()) selectedDate = now.toLocalDate();
     }
     public void inAppOnly(LocalDateTime now) { status = Status.IN_APP_ONLY; visibleAt = now; }
-    public void finish(Status status, String reason) { this.status = status; this.deliveryReason = reason; }
+    public void finish(Status status, String reason) {
+        this.status = status;
+        this.deliveryReason = reason;
+        if (status == Status.CANCELLED) selectedDate = null;
+    }
     public void defer(LocalDateTime next) { dueAt = next; }
     public void read(LocalDateTime now) { if (readAt == null) readAt = now; }
 }

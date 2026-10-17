@@ -10,6 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
+import java.util.HashMap;
+import com.afternote.domain.notification.dto.PushPayload;
 
 @Service
 @RequiredArgsConstructor
@@ -40,7 +42,12 @@ public class AdminPushTestService {
 
         String title = firstNonBlank(request != null ? request.title() : null, DEFAULT_TITLE);
         String body = firstNonBlank(request != null ? request.body() : null, DEFAULT_BODY);
-        fcmPushSender.sendToUser(targetUserId, title, body, Map.of("type", "TEST"));
+        Map<String, String> data = new HashMap<>();
+        if (request != null && request.data() != null) data.putAll(request.data());
+        data.putIfAbsent("type", "TEST");
+        try { PushPayload.create(title, body, data); }
+        catch (IllegalArgumentException e) { throw new CustomException(ErrorCode.INVALID_INPUT_VALUE); }
+        fcmPushSender.sendToUser(targetUserId, title, body, data);
 
         return AdminPushTestResponse.builder()
                 .targetUserId(targetUserId)

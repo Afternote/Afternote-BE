@@ -9,6 +9,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.LockModeType;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.Clock;
 import java.util.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,6 +25,8 @@ public class NotificationPolicyStore {
     private final EntityManager entityManager;
     private final ObjectMapper objectMapper;
     private final ApplicationEventPublisher events;
+    private final Clock clock;
+    private final List<NotificationDispatchGuard> deliveryGuards;
 
     /** Internal producer API. Event keys must identify a single domain event, not a delivery attempt. */
     @Transactional
@@ -48,7 +51,7 @@ public class NotificationPolicyStore {
         }
         Optional<NotificationDispatch> existing = repository.findByUserIdAndEventKey(userId, eventKey);
         if (existing.isPresent()) return existing.get().getId();
-        LocalDateTime now = LocalDateTime.now(NotificationTiming.ZONE);
+        LocalDateTime now = LocalDateTime.now(clock.withZone(NotificationTiming.ZONE));
         LocalDateTime due = NotificationTiming.allowedAt(category, requestedAt.isBefore(now) ? now : requestedAt);
         NotificationDispatch notification = repository.save(new NotificationDispatch(
                 userId, eventKey, category, event, title, body, json, due));
@@ -68,10 +71,15 @@ public class NotificationPolicyStore {
                     .forEach(n -> n.finish(NotificationDispatch.Status.CANCELLED, "RECIPIENT_INACTIVE"));
             return List.of();
         }
+        // Release reservations belonging to deleted/changed sources before applying today's cap.
+        repository.findByUserIdAndStatus(userId, NotificationDispatch.Status.READY)
+                .forEach(n -> eligible(n, now));
+        repository.flush();
         due.sort(Comparator.comparing(NotificationDispatch::getCategory)
                 .thenComparing(NotificationDispatch::getDueAt).thenComparing(NotificationDispatch::getId));
         boolean used = repository.existsByUserIdAndSelectedDate(userId, now.toLocalDate());
         for (NotificationDispatch n : due) {
+            if (!eligible(n, now)) continue;
             // Re-check current clock after outages; never deliver last night's overdue item at night.
             if (NotificationTiming.allowedAt(n.getCategory(), now).isAfter(now)) {
                 n.defer(NotificationTiming.allowedAt(n.getCategory(), now));
@@ -101,6 +109,7 @@ public class NotificationPolicyStore {
         if (user == null || user.getStatus() != UserStatus.ACTIVE) {
             n.finish(NotificationDispatch.Status.CANCELLED, "RECIPIENT_INACTIVE"); return Optional.empty();
         }
+        if (!eligible(n, now)) return Optional.empty();
         if (n.getDueAt().isAfter(now)) return Optional.empty();
         if (NotificationTiming.allowedAt(n.getCategory(), now).isAfter(now)) {
             n.defer(NotificationTiming.allowedAt(n.getCategory(), now));
@@ -120,6 +129,12 @@ public class NotificationPolicyStore {
     public void complete(Long id, NotificationDispatch.Status status, String reason) {
         NotificationDispatch n = entityManager.find(NotificationDispatch.class, id, LockModeType.PESSIMISTIC_WRITE);
         if (n != null && n.getStatus() == NotificationDispatch.Status.DISPATCHING) n.finish(status, reason);
+    }
+
+    private boolean eligible(NotificationDispatch n, LocalDateTime now) {
+        if (deliveryGuards.stream().allMatch(guard -> guard.allows(n, now))) return true;
+        n.finish(NotificationDispatch.Status.CANCELLED, "SOURCE_CHANGED_OR_DISABLED");
+        return false;
     }
 
     private User lockUser(Long userId) {

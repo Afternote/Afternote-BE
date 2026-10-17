@@ -32,6 +32,10 @@ public final class PushPayload {
                 payload.put(key, value);
             });
         }
+        if (payload.containsKey("action") && !Set.of("VIEW", "EDIT", "REINVITE", "DELETE", "RETRY",
+                "EDIT_CONTACT", "CANCEL_PROCEDURE", "WEEKLY_PROGRESS").contains(payload.get("action"))) {
+            throw new IllegalArgumentException("Unsupported push action");
+        }
         String destination = payload.getOrDefault("destination", "HOME");
         if (!DESTINATIONS.contains(destination)) {
             throw new IllegalArgumentException("Unsupported push destination");

@@ -87,4 +87,26 @@ class AdminPushTestServiceTest {
                 .extracting(ex -> ((CustomException) ex).getErrorCode())
                 .isEqualTo(ErrorCode.PUSH_TOKEN_NOT_FOUND);
     }
+    @Test
+    void sendsNavigationDataForRealDeviceRoutingCheck() {
+        given(fcmPushSender.isEnabled()).willReturn(true);
+        given(userPushTokenRepository.countByUser_Id(1L)).willReturn(1L);
+        var data=Map.of("destination", "TIME_LETTER_DETAIL", "timeLetterId", "123", "action", "EDIT");
+        adminPushTestService.sendTest(1L, new AdminPushTestRequest(null, "제목", "본문", data));
+        verify(fcmPushSender).sendToUser(eq(1L), eq("제목"), eq("본문"), eq(Map.of(
+                "type", "TEST", "destination", "TIME_LETTER_DETAIL", "timeLetterId", "123", "action", "EDIT")));
+    }
+
+    @Test
+    void rejectsBrokenDestinationBeforeSending() {
+        given(fcmPushSender.isEnabled()).willReturn(true);
+        given(userPushTokenRepository.countByUser_Id(1L)).willReturn(1L);
+        assertThatThrownBy(() -> adminPushTestService.sendTest(1L,
+                new AdminPushTestRequest(null, null, null, Map.of("destination", "TIME_LETTER_DETAIL"))))
+                .isInstanceOf(CustomException.class)
+                .extracting(ex -> ((CustomException) ex).getErrorCode()).isEqualTo(ErrorCode.INVALID_INPUT_VALUE);
+        org.mockito.Mockito.verify(fcmPushSender, org.mockito.Mockito.never())
+                .sendToUser(org.mockito.ArgumentMatchers.anyLong(), org.mockito.ArgumentMatchers.anyString(),
+                        org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.anyMap());
+    }
 }

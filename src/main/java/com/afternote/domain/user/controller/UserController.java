@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
 
 import java.util.List;
 
@@ -171,9 +172,17 @@ public class UserController {
             description = """
                     로그인한 사용자의 FCM registration token을 등록하거나 갱신합니다.
                     앱 최초 실행·로그인·onNewToken 시 호출합니다. 동일 token은 upsert(멱등)됩니다.
+                    installationId는 push-installations에 보고한 설치 UUID와 동일하게 보냅니다.
+                    notificationPermission 생략 시 기존 권한을 유지하며 새 토큰의 기본값은 UNKNOWN입니다.
+                    requiresReset=true이면 토큰 재설정 안내 대상입니다. 같은 토큰 재등록만으로 직전 무효 신호를 지우지 않으며 실제 FCM 발송 수락 후 지웁니다.
                     """
     )
-    @PutMapping("/push-tokens")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "토큰 등록·갱신 성공. requiresReset·직전 무효 이력·권한 상태 포함"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 UUID·플랫폼·권한·필수 입력 누락 (code: 1400)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 또는 사용자 없음")
+    })
+    @PutMapping(value = "/push-tokens", produces = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<PushTokenResponse> registerPushToken(
             @Parameter(hidden = true) @UserId Long userId,
             @Valid @RequestBody RegisterPushTokenRequest request
@@ -184,7 +193,12 @@ public class UserController {
     }
 
     @Operation(summary = "설치별 알림 권한 보고", description = "FCM 토큰 없이도 권한 거부 상태를 보고합니다. 앱 실행과 권한 변경 시 호출합니다.")
-    @PutMapping("/push-installations")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "설치별 권한 저장 성공. DENIED이면 showPermissionBanner=true"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "UUID 또는 permission 누락·잘못된 형식 (code: 1400)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 또는 사용자 없음")
+    })
+    @PutMapping(value = "/push-installations", produces = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<com.afternote.domain.notification.dto.PushInstallationResponse> reportPushPermission(
             @Parameter(hidden = true) @UserId Long userId,
             @Valid @RequestBody com.afternote.domain.notification.dto.PushInstallationRequest request) {
@@ -195,7 +209,12 @@ public class UserController {
             summary = "FCM 기기 토큰 해제 API",
             description = "로그아웃 시 해당 기기 token을 서버에서 제거합니다. 권한 철회는 push-installations API로 보고합니다. 없는 token도 200(멱등)입니다."
     )
-    @DeleteMapping("/push-tokens")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "해제 완료. 해당 사용자에게 없는 토큰도 200"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "토큰 누락·공백·잘못된 요청 (code: 1400)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청")
+    })
+    @DeleteMapping(value = "/push-tokens", produces = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<Void> deletePushToken(
             @Parameter(hidden = true) @UserId Long userId,
             @Valid @RequestBody DeletePushTokenRequest request

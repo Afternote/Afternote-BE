@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.http.MediaType;
 
 import java.util.List;
 
@@ -143,16 +144,20 @@ public class AdminController {
                     - `userId` 생략 시 관리자 본인에게 발송합니다.
                     - 운영에 `FIREBASE_SERVICE_ACCOUNT_JSON`이 없으면 HTTP 503, `code 2600`.
                     - 대상 사용자에게 등록된 토큰이 없으면 HTTP 404, `code 2601`.
+                    - 선택 `data`로 destination·항목 ID·action을 보낼 수 있습니다. 잘못된 값은 HTTP 400, `code 1400`.
+                    - Android data-only/HIGH 형식이며 앱이 알림을 표시합니다. 이 API는 공통 예약·하루 상한을 우회하는 진단용입니다.
+                    - HTTP 200은 발송 함수 호출 완료이며 FCM 수락·기기 도착을 보장하지 않습니다. tokenCount는 등록 토큰 수입니다.
                     """
     )
     @io.swagger.v3.oas.annotations.responses.ApiResponses(value = {
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "발송 시도 성공"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "발송 함수 호출 완료. 기기 수신 보장 아님"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청 (code: 1000)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "관리자 권한 필요 (code: 2005)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "404", description = "등록된 푸시 토큰 없음 (code: 2601)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "잘못된 목적지·필수 ID 누락·action·요청 형식 (code: 1400)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "503", description = "FCM 미설정 (code: 2600)")
     })
-    @PostMapping("/push-tokens/test")
+    @PostMapping(value = "/push-tokens/test", produces = MediaType.APPLICATION_JSON_VALUE)
     public ApiResponse<AdminPushTestResponse> sendTestPush(
             @Parameter(hidden = true) @UserId Long userId,
             @RequestBody(required = false) @Valid AdminPushTestRequest request

@@ -61,3 +61,14 @@
 ## PR 판단
 
 사용자의 조건은 “전체 반영·Swagger 일치·테스트 확인 후 완료됐으면 PR”이다. 전체 명세가 미완성이므로 완료 PR은 생성하지 않는다. 현재 구현 범위만 먼저 분리해 PR로 제출하려면 전체 완료와 다른 범위임을 명확히 해야 한다.
+
+
+## 2026-10-22 추가 검증 — 수신자 초대 상태·소유자 알림
+
+- 신규 기본 만료 14일, 기존 expires_at 유지, DECLINED/EXPIRED 상태와 로그인 거절 API, 소유자 조회 API, 기존 수신자 지정 초대를 추가했다.
+- 수락·거절·7일 미수락·만료를 공통 대기열로 연결했다. 원본이 삭제되거나 상태가 바뀌면 발송 전 검사에서 오래된 안내를 취소한다.
+- 소유자→초대 순서로 잠금을 통일하고 변경 트랜잭션의 READ_COMMITTED로 대기 전의 오래된 조회 결과가 계정 연결을 덮어쓰지 않도록 했다.
+- 검증 명령: Java 17 `./gradlew standardTest mysqlTest --console=plain`. 일반 505개, 실제 MySQL 35개, 실패/오류/건너뜀 모두 0.
+- 새 테스트 `ReceiverInvitationFlowTest` 및 동일 시나리오의 `ReceiverInvitationFlowMySqlTest`: 수락 멱등과 일일 상한 예외, 7일 안내 중복 및 수락 후 취소, 만료 경계, 거절 반복, 지정 수신자 기존 정보 보존, 타인 소유 조회/지정 거부, 휴면 발신자 중단, 동시 스케줄러, 동시 지정 초대 수락 충돌을 확인했다.
+- `ReceiverInvitationOpenApiGeneratedDocsTest`: 생성된 `/v3/api-docs`에서 상태 enum, nullable receiverId, 거절의 400/401/404/409/410, 빈 성공/오류 envelope를 확인했다. Controller 테스트는 실제 UserIdArgumentResolver와 오류 처리기로 로그인 누락 및 410 오류 응답을 검증했다.
+- 이번 검증은 공급자의 실제 알림톡 전송이나 앱의 INVITATION_DETAIL 화면 적용을 포함하지 않는다. 수동 SQL의 운영 DB 적용도 수행하지 않았다. 관계·이메일 수정 인앱, 전달 완료 알림톡 및 A/B/C/나머지 E는 아직 구현 대상이다.

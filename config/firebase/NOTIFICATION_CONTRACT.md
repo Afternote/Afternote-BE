@@ -1,6 +1,6 @@
 # Firebase 알림 계약 (G·H·공통)
 
-이 문서는 서버가 제공하는 계약이다. 앱의 실제 화면 전환·배너·삭제 토스트·설치 후 목적지 복원과 알림톡 발송은 별도 클라이언트/공급자 연동이 필요하다. 타임레터 30일·7일 전 알림 생성이 연결되어 있다. 나머지 A~F 이벤트 생성은 후속 작업이다.
+이 문서는 서버가 제공하는 계약이다. 앱의 실제 화면 전환·배너·삭제 토스트·설치 후 목적지 복원과 알림톡 발송은 별도 클라이언트/공급자 연동이 필요하다. 타임레터 30일·7일 전과 수신자 초대 수락·거절·7일 미수락·만료 알림 생성이 연결되어 있다. 나머지 비결제 이벤트 생성은 후속 작업이며 결제 F는 이번 구현 범위에서 제외한다.
 
 ## FCM payload
 
@@ -22,6 +22,7 @@ Android는 notification 블록 없이 data-only, Android priority HIGH로 보낸
 | 타임레터 작성·수신자 미리 채움 | TIME_LETTER_COMPOSE | receiverId (양의 Long 문자열) |
 | 초대 랜딩 | INVITATION | linkId (서버 발급 불투명 식별자) |
 | 수신자 상세 | RECEIVER_DETAIL | receiverId (양의 Long 문자열) |
+| 발신자용 초대 상세 (수신자 ID 없는 공유 초대) | INVITATION_DETAIL | invitationId (양의 Long 문자열) |
 | 받은 기록 홈 | RECEIVER_HOME | — |
 | 편지 상세 | TIME_LETTER_DETAIL | timeLetterId (양의 Long 문자열) |
 | 요금제 메인 | PLAN | — |
@@ -63,7 +64,7 @@ PUT `/api/v1/users/push-installations`
 
 ## G 공통 발송 창구
 
-서비스 이벤트 생성자는 `NotificationPolicyStore.enqueue(userId, eventKey, category, event, title, body, data, requestedAt)`를 호출한다. `eventKey`는 사용자별 동일 사건을 식별하며 재요청은 같은 행을 반환한다. 타임레터 30일·7일 전 이벤트는 연결되어 있으며 나머지 실제 이벤트 생성 호출은 후속 기능에서 연결한다. 관리자 테스트 푸시는 진단 목적이며 이 발송 정책을 우회한다.
+서비스 이벤트 생성자는 `NotificationPolicyStore.enqueue(userId, eventKey, category, event, title, body, data, requestedAt)`를 호출한다. `eventKey`는 사용자별 동일 사건을 식별하며 재요청은 같은 행을 반환한다. 타임레터 30일·7일 전과 수신자 초대 상태 알림은 연결되어 있으며 나머지 실제 이벤트 생성 호출은 후속 기능에서 연결한다. 관리자 테스트 푸시는 진단 목적이며 이 발송 정책을 우회한다.
 
 - DB에 QUEUED → READY → DISPATCHING → 결과 상태를 저장하고 30초 간격으로 처리한다. 사건 발생형은 enqueue 트랜잭션 커밋 직후에도 처리한다.
 - Asia/Seoul 기준 22:00~08:00은 다음 08:00으로 이월한다. B는 요청한 시간을 유지한다. 사건 발생형도 야간 이월을 적용한다.
@@ -100,3 +101,25 @@ PUT `/api/v1/users/push-installations`
 앱은 `destination`과 ID로 편지 상세를 열고, `action=EDIT`이면 수정 동작을 강조한다. 현재 상태와 수정 가능 여부는 상세 API에서 다시 확인한다. `action`은 선택 값이므로 기존 앱은 무시할 수 있다. 실제 앱 라우팅 적용 여부는 이 서버 저장소에서 검증하지 않았다.
 
 관리자 테스트 요청에도 선택 `data`를 추가해 동일한 목적지 연결을 실기기에서 확인할 수 있다. 기존 userId/title/body 요청도 그대로 유지한다. `data` 예: `{"destination":"TIME_LETTER_DETAIL","timeLetterId":"123","action":"EDIT"}`. 유효하지 않은 목적지·필수 ID 누락은 400으로 거부한다. 테스트 알림은 공통 하루 상한과 예약을 우회하는 진단용이다.
+
+## A 대리인 확인 후 처리 — 2026-10-22 확정
+
+대리인이 확인을 접수하면 본인에게 7일간 안내 알림만 보낸다. 7일 경과 시 해당 반복 안내를 종료하고 기존 전달 설정을 유지한다. 대리인 접수·7일 경과 자체를 새로운 자동 전달/기록 공개 조건으로 사용하지 않는다. 기존 전달 설정에 따른 판정은 그대로 적용한다. 이 절차의 알림 생성 코드는 아직 구현되지 않았으며 위 내용은 확정된 구현 계약이다.
+
+## 수신자 초대 상태·안내 (2026-10-22)
+
+기존 공유 초대 생성·조회·수락 API를 유지한다. 신규 초대의 기본 만료는 14일이다. `RECEIVER_INVITATION_EXPIRATION_DAYS`를 명시한 운영 환경은 해당 값을 14로 맞춰야 한다. 이미 발급된 링크의 저장된 만료 시각은 변경하지 않는다. 예전 7일 만료 링크도 기존 시각에 만료된다.
+
+- `POST /api/v1/receiver-invitations/receivers/{receiverId}`: 본인 소유의 아직 계정 미연결 수신자를 지정해 초대 링크 생성. 수락 시 그 수신자의 연락처·관계·메시지를 보존하고 계정을 연결한다. 기존 UserReceiver 관계를 중복 생성하지 않는다.
+- `POST /api/v1/receiver-invitations/{token}/decline`: 로그인한 사용자의 거절. 동일 사용자의 거절 반복은 성공하되 추가 알림을 만들지 않는다. 거절 후 수락은 409/code=1910, 만료된 대기 초대의 거절은 410/code=1906이다. 이미 등록된 수신자는 기존 409/code=1909를 유지한다.
+- `GET /api/v1/receiver-invitations/owned/{invitationId}`: 발신자 전용 초대 상태 조회. 다른 소유자 또는 없는 초대는 모두 404/code=1905. 비밀 공유 토큰/해시는 반환하지 않는다.
+- 초대 상태는 PENDING / ACCEPTED / DECLINED / EXPIRED. 공개·소유자 조회는 스케줄러가 아직 실행되지 않았어도 기한이 지난 PENDING을 EXPIRED로 응답한다.
+- 1분 주기 작업이 PENDING 초대를 ID 기준으로 200개씩 확인한다. 생성 7일 경과 후 만료 전이면 PENDING_7D 안내 한 건을 저장한다. 만료가 우선하며 이미 만료된 초대에 7일 안내를 추가하지 않는다.
+- 수락은 `NotificationEvent.ACCEPTANCE`로 하루 일반 알림 상한에서 제외하되 야간 이월은 적용한다. 거절·7일 미수락·만료는 일반 D 알림이다. 이벤트 키는 `INVITATION:{invitationId}:{kind}`로 재시작·동시 실행 시에도 중복을 막는다.
+- 알림 전송 전 원본 초대와 수신자의 현재 상태/소유자를 재확인한다. 그 사이 수락·거절·만료된 초대의 오래된 미수락 안내, 삭제된 초대·수신자의 대기 알림은 취소한다.
+- 지정 초대와 수락 완료는 RECEIVER_DETAIL + receiverId를 전달한다. 기존 공유 초대는 수락 전 수신자 행이 없으므로 **INVITATION_DETAIL + invitationId**를 전달하며 위 소유자 조회로 상세 상태를 확인한다. 이는 앱에서 적용·검증할 신규 목적지다. 공개 초대 랜딩의 비밀 토큰과 invitationId는 서로 대체할 수 없다.
+- type은 `RECEIVER_INVITATION_ACCEPTED`, `RECEIVER_INVITATION_DECLINED`, `RECEIVER_INVITATION_PENDING_7D`, `RECEIVER_INVITATION_EXPIRED`다. 거절·7일 미수락은 `action=REINVITE`, 수락·만료는 `action=VIEW`다. 지정 수신자가 있는 안내는 이름을 표시할 수 있으며 대상 없는 기존 공유 초대 안내는 일반 문구를 사용한다.
+
+**이번 단계에서 미완료:** 초대 수신자에게 자동 알림톡 발송, 실제 기록 전달 완료 알림톡, 관계·이메일 수정 인앱 알림, 앱의 신규 목적지 적용·실기기 검증. 초대 링크 생성은 자동 알림톡 발송을 의미하지 않는다. 본 변경은 기존 전달 설정/기록 공개 조건을 변경하지 않는다.
+
+수동 스키마 관리 환경은 `deploy/sql/20261022_receiver_invitation_lifecycle.sql`을 한 번 적용한다. ddl-auto=update와 기존 MySQL 호환 마이그레이터를 사용하는 환경에서는 nullable declined_user_id 추가와 enum 호환 보정을 자동 처리한다. 자동 변경된 DB에 수동 스크립트를 중복 실행하지 않는다.

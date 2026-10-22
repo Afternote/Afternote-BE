@@ -10,7 +10,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class ReceiverInvitationProperties {
 
     private String baseUrl = "https://afternote.kro.kr/invitations";
-    private long expirationDays = 7;
+    private long expirationDays = 14;
 
     public String normalizedBaseUrl() {
         if (baseUrl == null || baseUrl.isBlank()) {

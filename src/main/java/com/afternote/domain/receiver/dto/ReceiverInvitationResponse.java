@@ -27,7 +27,8 @@ public record ReceiverInvitationResponse(
     ) {
         return new ReceiverInvitationResponse(
                 inviter.getName(),
-                invitation.getStatus(),
+                invitation.getStatus() == ReceiverInvitationStatus.PENDING && invitation.isExpired(now)
+                        ? ReceiverInvitationStatus.EXPIRED : invitation.getStatus(),
                 invitation.isExpired(now),
                 invitation.getExpiresAt()
         );

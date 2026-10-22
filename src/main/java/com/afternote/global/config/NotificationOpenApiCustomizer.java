@@ -18,12 +18,13 @@ public class NotificationOpenApiCustomizer implements OpenApiCustomizer {
         api.getComponents().addSchemas("NotificationErrorResponse", envelope("오류 응답. data는 항상 null"));
         api.getComponents().addSchemas("NotificationEmptyResponse", envelope("성공 응답. status/code=200, data=null"));
         api.getPaths().forEach((path, item) -> {
-            if (!PATHS.contains(path)) return;
+            if (!PATHS.contains(path) && !path.startsWith("/api/v1/receiver-invitations")) return;
             item.readOperationsMap().forEach((method, operation) -> {
                 if (operation.getResponses() == null) return;
                 operation.getResponses().forEach((code, response) -> {
                     if (code.matches("[45]\\d\\d")) setSchema(response, "NotificationErrorResponse");
                     if (code.equals("200") && (path.equals("/api/v1/users/notifications/{id}/read")
+                            || path.equals("/api/v1/receiver-invitations/{token}/decline")
                             || (path.equals("/api/v1/users/push-tokens") && method.name().equals("DELETE")))) {
                         setSchema(response, "NotificationEmptyResponse");
                     }

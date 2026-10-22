@@ -48,6 +48,7 @@ class ReceiverInvitationServiceTest {
     @Mock private UserRepository userRepository;
     @Mock private ReceiverInvitationProperties properties;
     @Mock private Clock clock;
+    @Mock private com.afternote.domain.notification.policy.NotificationPolicyStore notifications;
 
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
     private static final Instant NOW = Instant.parse("2026-09-06T06:00:00Z");
@@ -56,13 +57,16 @@ class ReceiverInvitationServiceTest {
     void setUp() {
         given(clock.instant()).willReturn(NOW);
         given(clock.getZone()).willReturn(SEOUL);
+        org.mockito.Mockito.lenient().when(receiverInvitationRepository.findInviterIdByTokenHash(any()))
+                .thenReturn(Optional.of(1L));
+        org.mockito.Mockito.lenient().when(userRepository.findByIdForPushUpdate(1L))
+                .thenReturn(Optional.of(user(1L, "sender@test.com", "발신자", null)));
     }
 
     @Test
     @DisplayName("초대 생성 시 원문 토큰이 포함된 URL을 반환하고 DB에는 해시만 저장한다")
     void createInvitation_success() {
         User inviter = user(1L, "sender@test.com", "발신자", null);
-        given(userRepository.findById(1L)).willReturn(Optional.of(inviter));
         given(properties.getExpirationDays()).willReturn(7L);
         given(properties.normalizedBaseUrl()).willReturn("https://afternote.kro.kr/invitations");
         given(receiverInvitationRepository.save(any())).willAnswer(invocation -> {
@@ -148,7 +152,9 @@ class ReceiverInvitationServiceTest {
     }
 
     private static ReceiverInvitation invitation(Long inviterId, LocalDateTime expiresAt) {
-        return new ReceiverInvitation(inviterId, "a".repeat(64), expiresAt);
+        ReceiverInvitation invitation = new ReceiverInvitation(inviterId, "a".repeat(64), expiresAt);
+        ReflectionTestUtils.setField(invitation, "id", 10L);
+        return invitation;
     }
 
     private static LocalDateTime now() {

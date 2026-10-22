@@ -199,6 +199,7 @@ public enum ErrorCode {
     RECEIVER_INVITATION_NOT_FOUND(HttpStatus.NOT_FOUND, 1905, "수신자 초대를 찾을 수 없습니다."),
     RECEIVER_INVITATION_EXPIRED(HttpStatus.GONE, 1906, "만료된 수신자 초대입니다."),
     RECEIVER_INVITATION_ALREADY_ACCEPTED(HttpStatus.CONFLICT, 1907, "이미 다른 사용자가 수락한 초대입니다."),
+    RECEIVER_INVITATION_CLOSED(HttpStatus.CONFLICT, 1910, "이미 종료된 수신자 초대입니다."),
     RECEIVER_INVITATION_SELF_ACCEPT(HttpStatus.BAD_REQUEST, 1908, "본인이 만든 수신자 초대는 수락할 수 없습니다."),
     RECEIVER_ALREADY_REGISTERED(HttpStatus.CONFLICT, 1909, "이미 등록된 수신자입니다."),
 

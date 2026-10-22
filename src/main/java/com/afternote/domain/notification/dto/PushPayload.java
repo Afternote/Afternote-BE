@@ -9,11 +9,11 @@ public final class PushPayload {
     private static final Set<String> DESTINATIONS = Set.of(
             "HOME", "AGENT_CONFIRMATION", "INVITATION", "RECORD_LIST", "RECORD_DETAIL", "AGENT_SETTINGS", "RETENTION_CONFIRMATION",
             "DAILY_QUESTION", "WEEKLY_REPORT", "EASY_QUESTIONS", "TIME_LETTER_COMPOSE",
-            "RECEIVER_DETAIL", "RECEIVER_HOME", "TIME_LETTER_DETAIL", "PLAN", "SUBSCRIPTION_MANAGEMENT");
+            "RECEIVER_DETAIL", "INVITATION_DETAIL", "RECEIVER_HOME", "TIME_LETTER_DETAIL", "PLAN", "SUBSCRIPTION_MANAGEMENT");
     private static final Map<String, String> REQUIRED_IDS = Map.of(
             "RECORD_DETAIL", "recordId", "DAILY_QUESTION", "questionId",
             "RECEIVER_DETAIL", "receiverId", "TIME_LETTER_DETAIL", "timeLetterId",
-            "TIME_LETTER_COMPOSE", "receiverId");
+            "TIME_LETTER_COMPOSE", "receiverId", "INVITATION_DETAIL", "invitationId");
 
     private PushPayload() { }
 

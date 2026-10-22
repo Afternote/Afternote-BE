@@ -78,6 +78,13 @@ public class Receiver extends BaseEntity {
         return receiver;
     }
 
+    public void connectAcceptedUser(Long acceptedUserId) {
+        if (this.acceptedUserId != null && !this.acceptedUserId.equals(acceptedUserId)) {
+            throw new IllegalStateException("Receiver is already connected");
+        }
+        this.acceptedUserId = acceptedUserId;
+    }
+
     public void updateMessage(String message) {
         this.message = message;
     }

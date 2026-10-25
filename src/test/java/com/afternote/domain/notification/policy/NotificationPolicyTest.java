@@ -155,6 +155,17 @@ class NotificationPolicyTest {
                 .isEqualTo(NotificationDispatch.Status.CANCELLED);
     }
 
+    @Test void startupKeepsQueuedSendsUntilDataUpgradeHasCompleted() {
+        var readiness=new NotificationReadiness();
+        var worker=context.getBean(NotificationPolicyWorker.class);
+        org.springframework.test.util.ReflectionTestUtils.setField(worker,"readiness",readiness);
+        when(sender.sendToUserWithResult(anyLong(),anyString(),anyString(),anyMap())).thenReturn(new PushDeliveryResult(1,0,false,true));
+        Long id=enqueue("startup-gated",NotificationCategory.E);worker.poll();
+        assertThat(repository.findById(id).orElseThrow().getStatus()).isEqualTo(NotificationDispatch.Status.QUEUED);
+        verifyNoInteractions(sender);
+        readiness.onReady(null);worker.poll();
+        assertThat(repository.findById(id).orElseThrow().getStatus()).isEqualTo(NotificationDispatch.Status.PUSH_SENT);
+    }
     @Configuration(proxyBeanMethods=false)
     @EnableTransactionManagement(proxyTargetClass=true)
     @EnableJpaAuditing

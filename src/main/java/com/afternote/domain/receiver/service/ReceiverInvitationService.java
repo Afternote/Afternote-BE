@@ -82,7 +82,15 @@ public class ReceiverInvitationService {
                 new ReceiverInvitation(inviterUserId, hashToken(rawToken), expiresAt)
         );
 
-        if (receiverId != null) invitation.target(receiverId);
+        if (receiverId != null) {
+            invitation.target(receiverId);
+            Receiver target = receiverRepository.findById(receiverId).orElseThrow();
+            notifications.enqueueWithChannels(inviterUserId, "INVITATION:" + invitation.getId() + ":SENT",
+                    NotificationCategory.D, NotificationEvent.SCHEDULED, owner.getName() + "님이 당신을 수신자로 등록했어요",
+                    java.util.Map.of("type", "RECEIVER_INVITATION_SENT", "destination", "INVITATION", "invitationId", invitation.getId().toString(),
+                            "receiverId", receiverId.toString(), "linkId", rawToken, "action", "VIEW"), now(),
+                    com.afternote.domain.notification.policy.NotificationChannel.ALIMTALK, target.getPhone(), target.getAcceptedUserId(), true);
+        }
         return new ReceiverInvitationCreateResponse(
                 invitation.getId(),
                 rawToken,
@@ -215,6 +223,7 @@ public class ReceiverInvitationService {
         data.put("destination", i.getReceiverId() == null ? "INVITATION_DETAIL" : "RECEIVER_DETAIL");
         if (i.getReceiverId() != null) data.put("receiverId", i.getReceiverId().toString());
         data.put("action", Set.of("PENDING_7D", "DECLINED").contains(kind) ? "REINVITE" : "VIEW");
+        if (kind.equals("DECLINED")) data.put("secondaryAction", "DELETE");
         notifications.enqueue(i.getInviterUserId(), "INVITATION:" + i.getId() + ":" + kind,
                 NotificationCategory.D,
                 kind.equals("ACCEPTED") ? NotificationEvent.ACCEPTANCE

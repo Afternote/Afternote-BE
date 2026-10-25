@@ -55,8 +55,22 @@ public class NotificationPolicyStore {
         LocalDateTime due = NotificationTiming.allowedAt(category, requestedAt.isBefore(now) ? now : requestedAt);
         NotificationDispatch notification = repository.save(new NotificationDispatch(
                 userId, eventKey, category, event, title, body, json, due));
+        notification.channels(NotificationChannel.PUSH, user.getPhone(), userId, false);
         if (event.isImmediate()) events.publishEvent(new NotificationQueued(userId));
         return notification.getId();
+    }
+
+    @Transactional
+    public Long enqueueWithChannels(Long userId, String key, NotificationCategory category, NotificationEvent event,
+            String body, Map<String, String> data, LocalDateTime due, NotificationChannel channel,
+            String phone, Long pushRecipient, boolean external) {
+        Long id = enqueue(userId, key, category, event, "AfterNote", body, data, due);
+        NotificationDispatch n = repository.findById(id).orElseThrow();
+        if (n.getStatus() == NotificationDispatch.Status.QUEUED) {
+            n.channels(channel, phone, pushRecipient, external);
+            if (channel == NotificationChannel.IN_APP) n.inAppOnly(LocalDateTime.now(clock.withZone(NotificationTiming.ZONE)));
+        }
+        return id;
     }
 
     /** One DB lock serializes daily selection across scheduler instances and concurrent producers. */
@@ -85,7 +99,17 @@ public class NotificationPolicyStore {
                 n.defer(NotificationTiming.allowedAt(n.getCategory(), now));
                 continue;
             }
-            if (n.getEvent().isImmediate()) n.select(now);
+            // Known later higher-priority candidates (notably C at 18:00 versus morning B)
+            // reserve the day before the lower-priority push is sent. Re-evaluate sources each poll.
+            var future = repository.findByUserIdAndStatus(userId, NotificationDispatch.Status.QUEUED).stream()
+                    .filter(f -> !f.getId().equals(n.getId()) && f.getDueAt().isAfter(now)
+                            && f.getDueAt().toLocalDate().equals(now.toLocalDate())
+                            && f.getCategory().compareTo(n.getCategory()) < 0 && f.reservesDailyPush())
+                    .filter(f -> eligible(f, now)).min(Comparator.comparing(NotificationDispatch::getDueAt));
+            if (n.reservesDailyPush() && !used && future.isPresent()) {
+                n.defer(future.get().getDueAt()); continue;
+            }
+            if (!n.reservesDailyPush()) n.select(now);
             else if (!used) { n.select(now); used = true; }
             else n.inAppOnly(now);
         }
@@ -115,7 +139,7 @@ public class NotificationPolicyStore {
             n.defer(NotificationTiming.allowedAt(n.getCategory(), now));
             return Optional.empty();
         }
-        if (!n.getEvent().isImmediate() && !now.toLocalDate().equals(n.getSelectedDate())) {
+        if (n.reservesDailyPush() && !now.toLocalDate().equals(n.getSelectedDate())) {
             if (repository.existsByUserIdAndSelectedDate(n.getUserId(), now.toLocalDate())) {
                 n.inAppOnly(now); return Optional.empty();
             }

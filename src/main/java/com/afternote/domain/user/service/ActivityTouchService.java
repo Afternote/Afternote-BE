@@ -19,6 +19,9 @@ import java.time.LocalDateTime;
 public class ActivityTouchService {
 
     private final UserRepository userRepository;
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.afternote.domain.notification.engagement.NotificationActivityService notificationActivity;
+
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void touch(Long userId) {
@@ -26,7 +29,8 @@ public class ActivityTouchService {
             return;
         }
         try {
-            LocalDateTime now = LocalDateTime.now();
+            LocalDateTime now = LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
+            if (notificationActivity != null) notificationActivity.capture(userId, now);
             int updated = userRepository.updateLastActiveAt(userId, now);
             if (updated == 0) {
                 log.debug("Activity touch skipped — user not found: {}", userId);

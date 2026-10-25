@@ -18,7 +18,11 @@ public interface NotificationDispatchRepository extends JpaRepository<Notificati
             + "n.status in :statuses and n.dueAt <= :now")
     List<Long> findDueUsers(@Param("now") LocalDateTime now, @Param("statuses") List<NotificationDispatch.Status> statuses, Pageable pageable);
     List<NotificationDispatch> findByUserIdAndStatus(Long userId, NotificationDispatch.Status status);
+    @Query("select n from NotificationDispatch n where n.userId = :userId and n.externalRecipient = false "
+            + "and n.visibleAt is not null and n.status <> :excluded order by n.id desc")
     List<NotificationDispatch> findByUserIdAndVisibleAtIsNotNullAndStatusNotOrderByIdDesc(Long userId, NotificationDispatch.Status excluded, Pageable pageable);
+    @Query("select count(n) from NotificationDispatch n where n.userId = :userId and n.externalRecipient = false "
+            + "and n.visibleAt is not null and n.readAt is null and n.status <> :excluded")
     long countByUserIdAndVisibleAtIsNotNullAndReadAtIsNullAndStatusNot(Long userId, NotificationDispatch.Status excluded);
     Optional<NotificationDispatch> findByIdAndUserId(Long id, Long userId);
 }

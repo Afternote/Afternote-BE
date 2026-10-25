@@ -190,7 +190,7 @@ class ReceiverInvitationFlowTest {
                     .isIn(recipient.getId(), other.getId());
             assertThat(invitations.findAll()).extracting(ReceiverInvitation::getStatus)
                     .containsExactlyInAnyOrder(ReceiverInvitationStatus.ACCEPTED, ReceiverInvitationStatus.PENDING);
-            assertThat(dispatches.count()).isEqualTo(1);
+            assertThat(dispatches.findAll()).filteredOn(n -> !n.isExternalRecipient()).hasSize(1);
         } finally { pool.shutdownNow(); }
     }
     private int tryAccept(Long userId, String token) {

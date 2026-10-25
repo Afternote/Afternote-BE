@@ -35,7 +35,7 @@ public class NotificationInboxController {
             @Schema(description = "알림 본문", requiredMode = Schema.RequiredMode.REQUIRED) String body,
             @Schema(description = "화면 이동 데이터. destination, timeLetterId 등 문자열 맵", requiredMode = Schema.RequiredMode.REQUIRED)
             Map<String, String> data,
-            @Schema(description = "서버 처리 상태. PUSH_SENT는 FCM 수락이며 기기 수신·읽음을 의미하지 않음. ALIMTALK_PENDING은 알림톡 미발송 대기",
+            @Schema(description = "서버 처리 상태. PUSH_SENT는 FCM 수락이며 기기 수신·읽음을 의미하지 않음. ALIMTALK_PENDING은 알림톡 미발송 대기, ALIMTALK_SENT도 공급자 접수이며 실제 수신 보장은 아님",
                     requiredMode = Schema.RequiredMode.REQUIRED) NotificationDispatch.Status status,
             @Schema(description = "처리 사유. 정상 FCM 수락 등 사유가 없으면 null", nullable = true) String deliveryReason,
             @Schema(description = "읽음 시각. 읽기 전에는 null", nullable = true) LocalDateTime readAt
@@ -79,7 +79,7 @@ public class NotificationInboxController {
     public ApiResponse<Void> read(@Parameter(hidden = true) @UserId Long userId,
             @Parameter(description = "읽음 처리할 알림 ID") @PathVariable Long id) {
         NotificationDispatch n = repository.findByIdAndUserId(id, userId)
-                .filter(item -> item.getVisibleAt() != null && item.getStatus() != NotificationDispatch.Status.CANCELLED)
+                .filter(item -> !item.isExternalRecipient() && item.getVisibleAt() != null && item.getStatus() != NotificationDispatch.Status.CANCELLED)
                 .orElseThrow(() -> new CustomException(ErrorCode.RESOURCE_ALREADY_DELETED));
         n.read(LocalDateTime.now(NotificationTiming.ZONE));
         return ApiResponse.success(null);

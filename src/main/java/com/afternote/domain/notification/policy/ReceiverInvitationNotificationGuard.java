@@ -29,9 +29,11 @@ public class ReceiverInvitationNotificationGuard implements NotificationDispatch
                 var receiver = receivers.findById(i.getReceiverId())
                         .filter(r -> r.getUserId().equals(notification.getUserId())).orElse(null);
                 if (receiver == null) return false;
+                if (notification.isExternalRecipient() && !java.util.Objects.equals(receiver.getPhone(), notification.getRecipientPhone())) return false;
                 if (type.equals("RECEIVER_INVITATION_PENDING_7D") && receiver.getAcceptedUserId() != null) return false;
             }
             return switch (type) {
+                case "RECEIVER_INVITATION_SENT" -> i.getStatus() == ReceiverInvitationStatus.PENDING && !i.isExpired(now);
                 case "RECEIVER_INVITATION_PENDING_7D" -> i.getStatus() == ReceiverInvitationStatus.PENDING
                         && !i.isExpired(now) && i.getCreatedAt() != null && !now.isBefore(i.getCreatedAt().plusDays(7));
                 case "RECEIVER_INVITATION_ACCEPTED" -> i.getStatus() == ReceiverInvitationStatus.ACCEPTED;

@@ -14,12 +14,16 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 @Slf4j
 public class ReceiverInvitationScheduler {
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.afternote.domain.notification.policy.NotificationReadiness readiness;
+
     private final ReceiverInvitationRepository invitations;
     private final ReceiverInvitationService service;
     private final Clock clock;
 
     @Scheduled(fixedDelayString = "${notification.invitation.poll-ms:60000}")
     public void poll() {
+        if (readiness != null && !readiness.isReady()) return;
         LocalDateTime now = LocalDateTime.now(clock.withZone(NotificationTiming.ZONE));
         long afterId = 0;
         while (true) {

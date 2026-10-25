@@ -1,0 +1,11 @@
+<!doctype html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>애프터노트 보관 확인</title>
+<style>body{margin:0;background:#f6f4ef;color:#242721;font:17px/1.7 system-ui,sans-serif}main{max-width:480px;margin:10vh auto;padding:28px;background:white;border-radius:20px}h1{font-size:25px}button{width:100%;padding:15px;border:0;border-radius:10px;background:#435643;color:white;font:inherit}p{color:#4b5149}</style></head>
+<body><main>
+<h1 th:text="${agent} ? '대리인 확인' : '기록 보관 확인'">기록 보관 확인</h1>
+<div th:if="${agent and !confirmed}"><p>연락이 닿으셨다면 확인을 접수해 주세요. 접수 후 본인에게 7일간 안내를 보내요.</p><p>이 확인만으로 기록이 전달되거나 공개되지는 않아요.</p>
+<form method="post" th:action="@{/notification-confirmations/{token}/confirm(token=${token})}"><button type="submit">확인 접수하기</button></form></div>
+<p th:if="${agent and confirmed}">확인이 접수됐어요. 본인이 앱을 열면 진행 중인 알림 절차가 취소돼요.</p>
+<div th:unless="${agent}"><p>기록을 계속 보관할지 확인해 주세요. 본인이 앱을 열면 진행 중인 알림 절차가 취소돼요.</p><p>기존에 정하신 기록 전달 설정은 유지돼요.</p><p>웹에서 보관 확인을 마치려면 본인 로그인이 필요해요.</p></div>
+</main></body></html>

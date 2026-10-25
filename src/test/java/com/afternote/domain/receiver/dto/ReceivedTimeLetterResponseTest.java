@@ -68,6 +68,12 @@ class ReceivedTimeLetterResponseTest {
         assertThat(response.getSendAt()).isNull();
     }
 
+    @org.junit.jupiter.api.Test void dateLetterWithNoActualDeliveryDoesNotRevealContentEvenAfterScheduledTime() {
+        var letter=timeLetter(TimeLetterDeliveryMode.DATE,TimeLetterStatus.SCHEDULED,LocalDateTime.now().minusDays(1));
+        var link=receiverOf(letter);link.pendingDelivery();
+        var response=ReceivedTimeLetterResponse.from(link);
+        assertThat(response.getTitle()).isNull();assertThat(response.getBlocks()).isEmpty();assertThat(response.getDeliveredAt()).isNull();
+    }
     private static TimeLetter timeLetter(
             TimeLetterDeliveryMode mode,
             TimeLetterStatus status,

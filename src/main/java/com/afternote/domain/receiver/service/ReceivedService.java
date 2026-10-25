@@ -107,7 +107,7 @@ public class ReceivedService {
             // 사후 전달 타임레터는 전달 조건이 충족되어야 열람 가능
             deliveryConditionService.requireFulfilled(receiverId, DeliveryContentType.TIME_LETTER);
             timeLetterReceiver.markAsRead();
-        } else if (timeLetter.getSendAt() != null
+        } else if (timeLetter.getSendAt() != null && timeLetterReceiver.getDeliveredAt() != null
                 && !timeLetter.getSendAt().isAfter(LocalDateTime.now())) {
             // 발송 예정 시간이 지났을 때만 읽음 처리
             timeLetterReceiver.markAsRead();
@@ -230,7 +230,7 @@ public class ReceivedService {
                 .map(receiver -> TimeLetterReceiver.builder()
                         .timeLetter(timeLetter)
                         .receiver(receiver)
-                        .deliveredAt(effectiveDeliveredAt)
+                        .deliveredAt(null)
                         .build())
                 .toList();
 
@@ -275,7 +275,7 @@ public class ReceivedService {
                 .map(receiver -> TimeLetterReceiver.builder()
                         .timeLetter(timeLetter)
                         .receiver(receiver)
-                        .deliveredAt(effectiveDeliveredAt)
+                        .deliveredAt(null)
                         .build())
                 .toList();
 

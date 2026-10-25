@@ -291,7 +291,8 @@ class OpenApiContractAnnotationTest {
         }
         Schema title = ReceivedTimeLetterResponse.class.getDeclaredMethod("title").getAnnotation(Schema.class);
         assertThat(title.nullable()).isTrue();
-        assertThat(title.description()).contains("sendAt이 지나기 전이면 null");
+        assertThat(title.description()).contains("실제 전달 전이면 null");
+        assertThat(ReceivedTimeLetterResponse.class.getDeclaredMethod("deliveredAt").getAnnotation(Schema.class).nullable()).isTrue();
 
         Schema message = ReceiverMessageResponse.class.getDeclaredMethod("message").getAnnotation(Schema.class);
         assertThat(message.nullable()).isTrue();

@@ -57,18 +57,20 @@ public class FcmPushSender {
 
         int sent = 0;
         int failed = 0;
+        var failure = com.afternote.domain.notification.dto.PushDeliveryResult.Failure.NO_TOKEN;
         for (UserPushToken pushToken : tokens) {
             if (pushToken.effectivePermission() == NotificationPermission.DENIED) {
                 denied = true;
             } else if (pushToken.isPushEnabled()) {
-                if (sendOne(firebaseMessaging, userId, pushToken, payload)) sent++;
-                else failed++;
+                var outcome = sendOne(firebaseMessaging, userId, pushToken, payload);
+                if (outcome == com.afternote.domain.notification.dto.PushDeliveryResult.Failure.NONE) sent++;
+                else { failed++; failure = outcome; }
             }
         }
-        return new PushDeliveryResult(sent, failed, denied, true);
+        return new PushDeliveryResult(sent, failed, denied, true, sent > 0 ? PushDeliveryResult.Failure.NONE : failure);
     }
 
-    private boolean sendOne(
+    private PushDeliveryResult.Failure sendOne(
             FirebaseMessaging firebaseMessaging,
             Long userId,
             UserPushToken pushToken,
@@ -83,18 +85,25 @@ public class FcmPushSender {
         try {
             firebaseMessaging.send(message);
             userPushTokenRepository.clearInvalidation(pushToken.getId(), userId);
-            return true;
+            return PushDeliveryResult.Failure.NONE;
         } catch (FirebaseMessagingException e) {
             if (isUnregistered(e)) {
                 userPushTokenRepository.markInvalid(pushToken.getId(), userId, LocalDateTime.now());
                 log.info("Marked FCM token invalid. userId={}, tokenId={}", userId, pushToken.getId());
-                return false;
+                return PushDeliveryResult.Failure.UNREGISTERED;
             }
             log.warn("FCM send failed. userId={}, tokenId={}, code={}",
                     userId,
                     pushToken.getId(),
                     e.getMessagingErrorCode());
-            return false;
+            MessagingErrorCode code = e.getMessagingErrorCode();
+            if (code == null) return PushDeliveryResult.Failure.UNKNOWN;
+            return switch (code) {
+                case INVALID_ARGUMENT -> PushDeliveryResult.Failure.INVALID_MESSAGE;
+                case SENDER_ID_MISMATCH, THIRD_PARTY_AUTH_ERROR -> PushDeliveryResult.Failure.CONFIGURATION;
+                case QUOTA_EXCEEDED, INTERNAL, UNAVAILABLE -> PushDeliveryResult.Failure.TEMPORARY_REJECTION;
+                default -> PushDeliveryResult.Failure.UNKNOWN;
+            };
         }
     }
 

@@ -1,3 +1,5 @@
+> 최신 서버 검증은 아래 2026-10-25 절을 따른다. 전체 실서비스 완료 여부와 외부 연동 대기는 NOTIFICATION_CODE_GUIDE.md / NOTIFICATION_COVERAGE.md에 구분했다.
+
 # 알림 명세 반영 점검 — 2026-10-21
 
 대상: `codex/firebase-notifications`, `47af0c1`까지의 구현과 이번 Swagger/HTTP 계약 보완. 이 문서는 요구사항과 구현·테스트의 차이를 기록한다. **A~H 전체 구현 완료 상태가 아니다.** 테스트 통과는 현재 구현의 회귀 검증이며 미구현 기능을 검증했다는 뜻이 아니다.
@@ -72,3 +74,17 @@
 - 새 테스트 `ReceiverInvitationFlowTest` 및 동일 시나리오의 `ReceiverInvitationFlowMySqlTest`: 수락 멱등과 일일 상한 예외, 7일 안내 중복 및 수락 후 취소, 만료 경계, 거절 반복, 지정 수신자 기존 정보 보존, 타인 소유 조회/지정 거부, 휴면 발신자 중단, 동시 스케줄러, 동시 지정 초대 수락 충돌을 확인했다.
 - `ReceiverInvitationOpenApiGeneratedDocsTest`: 생성된 `/v3/api-docs`에서 상태 enum, nullable receiverId, 거절의 400/401/404/409/410, 빈 성공/오류 envelope를 확인했다. Controller 테스트는 실제 UserIdArgumentResolver와 오류 처리기로 로그인 누락 및 410 오류 응답을 검증했다.
 - 이번 검증은 공급자의 실제 알림톡 전송이나 앱의 INVITATION_DETAIL 화면 적용을 포함하지 않는다. 수동 SQL의 운영 DB 적용도 수행하지 않았다. 관계·이메일 수정 인앱, 전달 완료 알림톡 및 A/B/C/나머지 E는 아직 구현 대상이다.
+
+
+## 2026-10-25 추가 검증 — 비결제 A~E/G/H 서버 연결
+
+- Java 17에서 `./gradlew standardTest mysqlTest --console=plain` 최종 실행 성공. 일반 **539개**, 실제 MySQL **65개**, 실패/오류/건너뜀 모두 **0**.
+- A 달력 미접속·대리인 링크/접수·첫 발송 가능일부터 일일 7회·활동 복귀 취소를 구현했다. 야간 접수는 다음 날 아침부터 7회다. 이 생성기는 기존 전달 조건/설정을 수정하거나 새 공개 조건을 만들지 않는다.
+- B 시간/요일/주 3회 목표·첫 기록 다음 날·금요일 안내/4주·14일 하향/21일 중단·사용자 OFF 유지와 C 18시/월 2회·기록/개수/대리인/기념일을 연결했다. 실제 최종 작성 시각과 앱 방문 시각을 분리했다.
+- D 지정 초대의 외부 연락처 알림톡 대기, 관계/이메일 수정 인앱, 실제 전달 완료 채널을 추가했다. E 3일 미수락·수신자별 실제 전달·부분 결과·실패 재시도와 deliveredAt 전 본문 비공개를 연결했다.
+- G 채널별 이력·명시적 거절만 제한 재시도·불명 결과 자동 재전송 차단, 기동 데이터 보정 후 알림 실행을 검증했다. 미래 C 후보가 오전 B를 먼저 보내지 않도록 한다.
+- H 실제 답변 상세/삭제된 대상 목록·토스트/HOME 뒤로가기 계약과 현재 상태 목적지 확인 API를 제공한다. 대리인 확인 웹 화면은 GET으로 접수하지 않고 명시적인 POST로만 처리한다.
+- `NonBillingNotificationFlowTest`와 MySQL 대응 클래스, `NonBillingNotificationApiTest`, 기존 Policy/Invitation/Reminder/DTO/생성 OpenAPI 테스트가 정상·실패·경계·동시 처리·회귀를 검증했다.
+- `manualUpgradePreservesExistingNotificationAndBackfillsOnlyFinalRecords`는 기존 enum/기존 알림 보존·최종 기록만 백필·새 enum 상태를, `automaticDataMigrationIsVersionedAndPreservesAlreadyPublishedTimestamps`는 일회성 자동 보정과 기존 published_at 보존을 검증한다.
+- 과거 첫 최종 저장 시각은 기존 DB에 없었으므로 created_at 근사값을 사용한다. 이후 새 작성/임시저장 최종화/단순 수정은 실제 first-publication 시각을 분리해서 검증했다.
+- **미검증/미완료 연동:** 실제 알림톡 공급자 어댑터·계정/승인 템플릿/버튼·콜백/조회, 앱 적용·실기기 종료/로그인/배너/뒤로가기/설치 후 복원, 보관 확인 웹의 본인 로그인 UI. 공급자 테스트는 모의 응답이며 실수신 성공으로 간주하지 않는다. 운영 DB/배포는 수행하지 않았다.

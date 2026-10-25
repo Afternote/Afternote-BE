@@ -47,6 +47,7 @@ public class DailyQuestionService {
 
     @Transactional
     public DailyQuestionTodayResponse getTodayQuestion(Long userId) {
+        userRepository.findByIdForPushUpdate(userId);
         LocalDate today = LocalDate.now();
 
         Optional<UserDailyQuestion> optionalTodayQuestion =
@@ -94,6 +95,7 @@ public class DailyQuestionService {
 
     @Transactional
     public DailyQuestionAnswerResponse createAnswer(Long userId, DailyQuestionAnswerRequest request) {
+        userRepository.findByIdForPushUpdate(userId);
         LocalDate today = LocalDate.now();
         UserDailyQuestion userDailyQuestion = userDailyQuestionRepository.findById(request.getQuestionId())
                 .orElseThrow(() -> new CustomException(ErrorCode.DAILY_QUESTION_NOT_FOUND));

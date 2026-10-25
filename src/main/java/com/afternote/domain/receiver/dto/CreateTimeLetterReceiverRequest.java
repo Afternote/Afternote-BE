@@ -20,7 +20,7 @@ public record CreateTimeLetterReceiverRequest(
         @Getter
         List<Long> receiverIds,
 
-        @Schema(description = "배달 예정 시간", example = "2025-12-31T23:59:59")
+        @Schema(description = "호환용 입력. 예약은 타임레터 sendAt을 사용하고 실제 전달 시각은 서버가 판정하므로 이 값은 전달 결과로 저장하지 않습니다.", deprecated = true, example = "2025-12-31T23:59:59")
         @Getter
         LocalDateTime deliveredAt
 ) {

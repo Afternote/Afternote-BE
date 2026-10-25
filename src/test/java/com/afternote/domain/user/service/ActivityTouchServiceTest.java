@@ -28,16 +28,24 @@ class ActivityTouchServiceTest {
     @Mock
     private UserRepository userRepository;
 
-    @Test
-    @DisplayName("touch — last_active_at 벌크 갱신")
-    void touch_UpdatesLastActiveAt() {
-        given(userRepository.updateLastActiveAt(eq(7L), any(LocalDateTime.class))).willReturn(1);
-
-        activityTouchService.touch(7L);
-
-        ArgumentCaptor<LocalDateTime> at = ArgumentCaptor.forClass(LocalDateTime.class);
-        verify(userRepository).updateLastActiveAt(eq(7L), at.capture());
-        assertThat(at.getValue()).isBeforeOrEqualTo(LocalDateTime.now().plusSeconds(1));
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"UTC", "Asia/Seoul"})
+    @DisplayName("touch — JVM 시간대와 관계없이 한국 시각으로 last_active_at 갱신")
+    void touch_UpdatesLastActiveAt(String defaultZone) {
+        java.util.TimeZone original = java.util.TimeZone.getDefault();
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone(defaultZone));
+            var zone = java.time.ZoneId.of("Asia/Seoul");
+            var before = LocalDateTime.now(zone);
+            given(userRepository.updateLastActiveAt(eq(7L), any(LocalDateTime.class))).willReturn(1);
+            activityTouchService.touch(7L);
+            var after = LocalDateTime.now(zone);
+            ArgumentCaptor<LocalDateTime> at = ArgumentCaptor.forClass(LocalDateTime.class);
+            verify(userRepository).updateLastActiveAt(eq(7L), at.capture());
+            assertThat(at.getValue()).isBetween(before, after);
+        } finally {
+            java.util.TimeZone.setDefault(original);
+        }
     }
 
     @Test

@@ -80,7 +80,7 @@ logging:
 app:
   receiver-invitation:
     base-url: ${RECEIVER_INVITATION_BASE_URL:https://afternote.kro.kr/invitations}
-    expiration-days: ${RECEIVER_INVITATION_EXPIRATION_DAYS:7}
+    expiration-days: ${RECEIVER_INVITATION_EXPIRATION_DAYS:14}
   version:
     seed:
       android:

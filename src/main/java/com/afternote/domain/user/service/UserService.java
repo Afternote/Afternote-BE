@@ -219,11 +219,14 @@ public class UserService {
 
     @Transactional
     public void updateReceiverRelation(Long userId, Long receiverId, UserUpdateReceiverRelationRequest request) {
+        if (receiverNotifications != null) receiverNotifications.lockOwner(userId);
         User user = findUserById(userId);
         UserReceiver userReceiver = userReceiverRepository.findByUserAndReceiverId(user, receiverId)
                 .orElseThrow(() -> new CustomException(ErrorCode.RECEIVER_NOT_FOUND));
 
+        boolean changed = !Objects.equals(userReceiver.getReceiver().getRelation(), request.relation());
         userReceiver.getReceiver().updateRelation(request.relation());
+        if (changed && receiverNotifications != null) receiverNotifications.changed(userId, receiverId);
     }
 
     @Transactional
@@ -235,6 +238,9 @@ public class UserService {
     public void deleteReceiver(Long userId, Long receiverId) {
         receiverDeletionService.deleteReceiver(userId, receiverId);
     }
+
+    @org.springframework.beans.factory.annotation.Autowired(required = false)
+    private com.afternote.domain.notification.engagement.ReceiverChangeNotifications receiverNotifications;
 
     private User findUserById(Long userId) {
         return userRepository.findById(userId)
@@ -274,7 +280,7 @@ public class UserService {
 
     @Transactional
     public UserPatchReceiverResponse updateReceiver(Long userId, Long receiverId, UserPatchReceiverRequest request) {
-
+        if (receiverNotifications != null) receiverNotifications.lockOwner(userId);
         User user = findUserById(userId);
         UserReceiver userReceiver =
                 userReceiverRepository.findByUserAndReceiverId(user, receiverId)
@@ -285,6 +291,7 @@ public class UserService {
         PhoneNumbers.validateRequired(request.getPhone());
         ensureUniqueReceiverPhone(user.getId(), request.getPhone(), receiver.getId());
 
+        boolean notifyChange = !Objects.equals(receiver.getEmail(), request.getEmail()) || !Objects.equals(receiver.getRelation(), request.getRelation());
         receiver.updateInfo(
                 request.getName(),
                 request.getRelation(),
@@ -292,6 +299,7 @@ public class UserService {
                 request.getEmail()
         );
 
+        if (notifyChange && receiverNotifications != null) receiverNotifications.changed(userId, receiverId);
         return UserPatchReceiverResponse.from(receiver);
     }
 

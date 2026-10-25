@@ -28,7 +28,7 @@ public class TimeLetterReceiver extends CreatedAtEntity {
     @JoinColumn(name = "receiver_id", nullable = false)
     private Receiver receiver;
 
-    @Column(name = "delivered_at", nullable = false)
+    @Column(name = "delivered_at", nullable = true)
     private LocalDateTime deliveredAt;
 
     @Column(name = "read_at")
@@ -40,6 +40,9 @@ public class TimeLetterReceiver extends CreatedAtEntity {
         this.receiver = receiver;
         this.deliveredAt = deliveredAt;
     }
+
+    public void delivered(LocalDateTime at) { if (deliveredAt == null) deliveredAt = at; }
+    public void pendingDelivery() { deliveredAt = null; }
 
     /**
      * 읽음 처리 (멱등성 보장: readAt이 null일 때만 설정)

@@ -15,6 +15,19 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class UserDailyQuestion extends BaseEntity {
 
+    @Column(name = "published_at")
+    private java.time.LocalDateTime publishedAt;
+
+    @PrePersist
+    @PreUpdate
+    private void captureFirstPublication() {
+        if (publishedAt == null && isAnswered && !isDraft) {
+            // Existing final records retain their historical created_at on their first subsequent edit.
+            publishedAt = getCreatedAt() != null && getId() != null
+                    ? getCreatedAt() : java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
+        }
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -60,6 +73,9 @@ public class UserDailyQuestion extends BaseEntity {
     }
 
     public void updateAnswer(String content, boolean isDraft) {
+        if (!isDraft && !this.isAnswered && publishedAt == null) {
+            publishedAt = java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
+        }
         this.content = content;
         this.isDraft = isDraft;
         this.isAnswered = !isDraft;

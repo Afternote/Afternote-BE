@@ -53,11 +53,29 @@ public class ReceiverInvitation extends BaseEntity {
         this.status = ReceiverInvitationStatus.PENDING;
     }
 
+    @Column(name = "declined_user_id")
+    private Long declinedUserId;
+
+    public void decline(Long userId) {
+        if (status != ReceiverInvitationStatus.PENDING) throw new IllegalStateException("Invitation is closed");
+        declinedUserId = userId;
+        status = ReceiverInvitationStatus.DECLINED;
+    }
+
+    public void expire() {
+        if (status == ReceiverInvitationStatus.PENDING) status = ReceiverInvitationStatus.EXPIRED;
+    }
+
+    public void target(Long receiverId) { this.receiverId = receiverId; }
+
     public boolean isExpired(LocalDateTime now) {
         return !expiresAt.isAfter(now);
     }
 
     public void accept(Long userId, Long receiverId, LocalDateTime acceptedAt) {
+        if (status != ReceiverInvitationStatus.PENDING || isExpired(acceptedAt)) {
+            throw new IllegalStateException("Invitation is closed");
+        }
         this.acceptedUserId = userId;
         this.receiverId = receiverId;
         this.acceptedAt = acceptedAt;

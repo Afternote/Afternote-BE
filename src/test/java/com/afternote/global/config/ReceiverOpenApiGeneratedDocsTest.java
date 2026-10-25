@@ -103,6 +103,7 @@ class ReceiverOpenApiGeneratedDocsTest {
         assertThat(timeLetter.at("/properties/sendAt/format").asText())
                 .isEqualTo(ReceivedRecordBoxResponse.LOCAL_DATE_TIME_FORMAT);
 
+        assertThat(timeLetter.at("/properties/deliveredAt/nullable").asBoolean()).isTrue();
         JsonNode message = schemas.get("ReceiverMessageResponse");
         assertThat(textValues(message.path("required"))).contains("senderName", "createdAt");
         assertThat(message.at("/properties/message/nullable").asBoolean()).isTrue();

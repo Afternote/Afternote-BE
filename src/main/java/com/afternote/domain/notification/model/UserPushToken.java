@@ -45,8 +45,35 @@ public class UserPushToken extends BaseEntity {
     @Column(nullable = false, length = 16)
     private PushPlatform platform;
 
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "installation_id")
+    private PushInstallation installation;
+
+    public void bindInstallation(PushInstallation installation) { this.installation = installation; }
+
+    public NotificationPermission effectivePermission() {
+        return installation == null ? notificationPermission : installation.getPermission();
+    }
+
     @Column(name = "last_seen_at", nullable = false)
     private LocalDateTime lastSeenAt;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "notification_permission", nullable = false, length = 16, columnDefinition = "varchar(16) default 'UNKNOWN'")
+    private NotificationPermission notificationPermission = NotificationPermission.UNKNOWN;
+
+    public void updatePermission(NotificationPermission permission) {
+        if (permission != null) this.notificationPermission = permission;
+    }
+
+    @Column(name = "invalidated_at")
+    private LocalDateTime invalidatedAt;
+
+    @Column(name = "invalidation_reason", length = 32)
+    private String invalidationReason;
+
+    @Column(name = "push_enabled", nullable = false, columnDefinition = "bit default 1")
+    private boolean pushEnabled = true;
 
     @Builder
     public UserPushToken(User user, String token, PushPlatform platform, LocalDateTime lastSeenAt) {
@@ -57,12 +84,18 @@ public class UserPushToken extends BaseEntity {
     }
 
     public void reassignTo(User user, PushPlatform platform, LocalDateTime lastSeenAt) {
+        this.installation = null;
+        this.notificationPermission = NotificationPermission.UNKNOWN;
+        this.invalidatedAt = null;
+        this.invalidationReason = null;
+        this.pushEnabled = true;
         this.user = user;
         this.platform = platform;
         this.lastSeenAt = lastSeenAt;
     }
 
     public void touch(PushPlatform platform, LocalDateTime lastSeenAt) {
+        this.pushEnabled = true;
         this.platform = platform;
         this.lastSeenAt = lastSeenAt;
     }

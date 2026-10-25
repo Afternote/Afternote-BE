@@ -61,7 +61,8 @@ public record ReceivedTimeLetterResponse(
         String senderName,
 
         @Schema(
-                description = "배달 시간. 오프셋 없는 ISO-8601 로컬 시각(Asia/Seoul)",
+                description = "실제 전달 시각. 전달 전에는 null. 오프셋 없는 ISO-8601 로컬 시각(Asia/Seoul)",
+                nullable = true,
                 example = ReceivedRecordBoxResponse.LOCAL_DATE_TIME_EXAMPLE,
                 type = "string",
                 format = ReceivedRecordBoxResponse.LOCAL_DATE_TIME_FORMAT,
@@ -90,15 +91,15 @@ public record ReceivedTimeLetterResponse(
         Boolean isRead
 ) {
     public static final String TITLE_DESCRIPTION =
-            "제목. DATE 타임레터는 sendAt이 지나기 전이면 null. POST_DEATH는 수신 경로에 올리면 공개";
+            "제목. DATE 타임레터는 실제 전달 전이면 null. POST_DEATH는 수신 경로에 올리면 공개";
     public static final String SEND_AT_DESCRIPTION =
             "발송 예정 시간. POST_DEATH이거나 미설정이면 null. 오프셋 없는 ISO-8601 로컬 시각(Asia/Seoul)";
     public static final String SENDER_NAME_DESCRIPTION =
-            "발신자 이름. DATE 타임레터는 sendAt이 지나기 전이면 null";
+            "발신자 이름. DATE 타임레터는 실제 전달 전이면 null";
     public static final String CREATED_AT_DESCRIPTION =
-            "작성 시간. DATE 타임레터는 sendAt이 지나기 전이면 null. 오프셋 없는 ISO-8601 로컬 시각(Asia/Seoul)";
+            "작성 시간. DATE 타임레터는 실제 전달 전이면 null. 오프셋 없는 ISO-8601 로컬 시각(Asia/Seoul)";
     public static final String IS_READ_DESCRIPTION =
-            "읽음 여부. DATE 타임레터는 sendAt이 지나기 전이면 null";
+            "읽음 여부. DATE 타임레터는 실제 전달 전이면 null";
 
     public static ReceivedTimeLetterResponse from(TimeLetterReceiver timeLetterReceiver) {
         return from(timeLetterReceiver, null);
@@ -110,10 +111,11 @@ public record ReceivedTimeLetterResponse(
     ) {
         TimeLetter timeLetter = timeLetterReceiver.getTimeLetter();
 
-        // DATE: sendAt이 지난 뒤에만 본문 공개. POST_DEATH: 수신 경로에 올렸으면 조건 충족과 같으므로 공개.
+        // DATE: 예약 시각이 지나고 실제 전달된 뒤에만 본문 공개. POST_DEATH: 수신 경로에 올렸으면 조건 충족과 같으므로 공개.
         boolean isAvailable = timeLetter.isPostDeath()
                 || (timeLetter.getSendAt() != null
-                && !timeLetter.getSendAt().isAfter(LocalDateTime.now()));
+                && !timeLetter.getSendAt().isAfter(LocalDateTime.now())
+                && timeLetterReceiver.getDeliveredAt() != null);
 
         List<TimeLetterBlockResponse> blockResponses = isAvailable
                 ? timeLetter.getBlocks().stream()

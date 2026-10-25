@@ -17,6 +17,19 @@ import java.time.LocalDate;
 @NoArgsConstructor
 public class Diary extends BaseEntity {
 
+    @Column(name = "published_at")
+    private java.time.LocalDateTime publishedAt;
+
+    @PrePersist
+    @PreUpdate
+    private void captureFirstPublication() {
+        if (publishedAt == null && !Boolean.TRUE.equals(isDraft)) {
+            // Existing final records retain their historical created_at on their first subsequent edit.
+            publishedAt = getCreatedAt() != null && getId() != null
+                    ? getCreatedAt() : java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
+        }
+    }
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -73,6 +86,9 @@ public class Diary extends BaseEntity {
         }
         if (content != null) {
             this.content = content;
+        }
+        if (Boolean.TRUE.equals(this.isDraft) && Boolean.FALSE.equals(isDraft) && publishedAt == null) {
+            publishedAt = java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Seoul"));
         }
         if (isDraft != null) {
             this.isDraft = isDraft;

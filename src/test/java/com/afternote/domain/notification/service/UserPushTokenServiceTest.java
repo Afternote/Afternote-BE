@@ -32,6 +32,9 @@ class UserPushTokenServiceTest {
     private UserPushTokenService userPushTokenService;
 
     @Mock
+    private com.afternote.domain.notification.repository.PushInstallationRepository installationRepository;
+
+    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -41,7 +44,7 @@ class UserPushTokenServiceTest {
     @DisplayName("새 FCM token을 등록한다")
     void registerOrRefresh_CreatesNewToken() {
         User user = user(1L);
-        given(userRepository.findById(1L)).willReturn(Optional.of(user));
+        given(userRepository.findByIdForPushUpdate(1L)).willReturn(Optional.of(user));
         given(userPushTokenRepository.findByToken("token-a")).willReturn(Optional.empty());
         given(userPushTokenRepository.save(any(UserPushToken.class))).willAnswer(invocation -> invocation.getArgument(0));
 
@@ -71,7 +74,7 @@ class UserPushTokenServiceTest {
                 .lastSeenAt(java.time.LocalDateTime.now().minusDays(1))
                 .build();
 
-        given(userRepository.findById(2L)).willReturn(Optional.of(currentUser));
+        given(userRepository.findByIdForPushUpdate(2L)).willReturn(Optional.of(currentUser));
         given(userPushTokenRepository.findByToken("token-a")).willReturn(Optional.of(existing));
 
         var response = userPushTokenService.registerOrRefresh(
@@ -89,6 +92,40 @@ class UserPushTokenServiceTest {
     void unregister_DeletesByUserAndToken() {
         userPushTokenService.unregister(1L, new DeletePushTokenRequest("token-a"));
         verify(userPushTokenRepository).deleteByUser_IdAndToken(1L, "token-a");
+    }
+
+    @Test
+    void reregisterRetainsDeviceInvalidationUntilDelivery() {
+        User user = user(1L);
+        UserPushToken token = UserPushToken.builder().user(user).token("token-a")
+                .platform(PushPlatform.ANDROID).build();
+        java.time.LocalDateTime invalidatedAt = java.time.LocalDateTime.now().minusDays(1);
+        org.springframework.test.util.ReflectionTestUtils.setField(token, "invalidatedAt", invalidatedAt);
+        org.springframework.test.util.ReflectionTestUtils.setField(token, "invalidationReason", "UNREGISTERED");
+        org.springframework.test.util.ReflectionTestUtils.setField(token, "pushEnabled", false);
+        given(userRepository.findByIdForPushUpdate(1L)).willReturn(Optional.of(user));
+        given(userPushTokenRepository.findByToken("token-a")).willReturn(Optional.of(token));
+        var response = userPushTokenService.registerOrRefresh(1L,
+                new RegisterPushTokenRequest("token-a", PushPlatform.ANDROID));
+        assertThat(response.requiresReset()).isTrue();
+        assertThat(response.invalidatedAt()).isEqualTo(invalidatedAt);
+        assertThat(response.invalidationReason()).isEqualTo("UNREGISTERED");
+        assertThat(token.isPushEnabled()).isTrue();
+    }
+
+    @Test
+    void permissionCanBeReportedBeforeFcmTokenExists() {
+        User user = user(1L);
+        java.util.UUID installationId = java.util.UUID.randomUUID();
+        given(userRepository.findByIdForPushUpdate(1L)).willReturn(Optional.of(user));
+        given(installationRepository.findByUser_IdAndInstallationId(1L, installationId.toString()))
+                .willReturn(Optional.empty());
+        given(installationRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
+        var response = userPushTokenService.reportPermission(1L,
+                new com.afternote.domain.notification.dto.PushInstallationRequest(installationId,
+                        com.afternote.domain.notification.model.NotificationPermission.DENIED));
+        assertThat(response.showPermissionBanner()).isTrue();
+        verify(userPushTokenRepository, never()).save(any());
     }
 
     private static User user(long id) {

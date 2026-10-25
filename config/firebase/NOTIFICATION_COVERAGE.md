@@ -1,6 +1,6 @@
 # A~H 서버 반영표 (결제 F 제외)
 
-2026-10-25. 최종 로컬 검증: 일반 539개 / MySQL 65개, 실패·오류·건너뜀 0. 아래의 구현은 서버 코드 기준이다. 실제 공급자/앱/웹 본인 로그인 연동은 별도 확인 대상으로 남긴다. 핵심 DB 흐름은 `NonBillingNotificationFlowTest` 및 동일 시나리오의 `NonBillingNotificationFlowMySqlTest`가 검증한다.
+2026-10-25. 최종 로컬 검증: 일반 540개 / MySQL 65개, 실패·오류·건너뜀 0. 아래의 구현은 서버 코드 기준이다. 실제 공급자/앱/웹 본인 로그인 연동은 별도 확인 대상으로 남긴다. 핵심 DB 흐름은 `NonBillingNotificationFlowTest` 및 동일 시나리오의 `NonBillingNotificationFlowMySqlTest`가 검증한다.
 
 | 명세 | 구현 위치 | 검증/상태 |
 |---|---|---|

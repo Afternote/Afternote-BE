@@ -78,7 +78,7 @@
 
 ## 2026-10-25 추가 검증 — 비결제 A~E/G/H 서버 연결
 
-- Java 17에서 `./gradlew standardTest mysqlTest --console=plain` 최종 실행 성공. 일반 **539개**, 실제 MySQL **65개**, 실패/오류/건너뜀 모두 **0**.
+- Java 17에서 전체 일반/MySQL 검증 및 `TZ=UTC ... ./gradlew standardTest --console=plain` 재검증 성공. 일반 **540개**, 실제 MySQL **65개**, 실패/오류/건너뜀 모두 **0**.
 - A 달력 미접속·대리인 링크/접수·첫 발송 가능일부터 일일 7회·활동 복귀 취소를 구현했다. 야간 접수는 다음 날 아침부터 7회다. 이 생성기는 기존 전달 조건/설정을 수정하거나 새 공개 조건을 만들지 않는다.
 - B 시간/요일/주 3회 목표·첫 기록 다음 날·금요일 안내/4주·14일 하향/21일 중단·사용자 OFF 유지와 C 18시/월 2회·기록/개수/대리인/기념일을 연결했다. 실제 최종 작성 시각과 앱 방문 시각을 분리했다.
 - D 지정 초대의 외부 연락처 알림톡 대기, 관계/이메일 수정 인앱, 실제 전달 완료 채널을 추가했다. E 3일 미수락·수신자별 실제 전달·부분 결과·실패 재시도와 deliveredAt 전 본문 비공개를 연결했다.
@@ -88,3 +88,8 @@
 - `manualUpgradePreservesExistingNotificationAndBackfillsOnlyFinalRecords`는 기존 enum/기존 알림 보존·최종 기록만 백필·새 enum 상태를, `automaticDataMigrationIsVersionedAndPreservesAlreadyPublishedTimestamps`는 일회성 자동 보정과 기존 published_at 보존을 검증한다.
 - 과거 첫 최종 저장 시각은 기존 DB에 없었으므로 created_at 근사값을 사용한다. 이후 새 작성/임시저장 최종화/단순 수정은 실제 first-publication 시각을 분리해서 검증했다.
 - **미검증/미완료 연동:** 실제 알림톡 공급자 어댑터·계정/승인 템플릿/버튼·콜백/조회, 앱 적용·실기기 종료/로그인/배너/뒤로가기/설치 후 복원, 보관 확인 웹의 본인 로그인 UI. 공급자 테스트는 모의 응답이며 실수신 성공으로 간주하지 않는다. 운영 DB/배포는 수행하지 않았다.
+
+
+### CI 시간대 회귀 보완
+
+CI의 UTC 기본 시간대에서 기존 ActivityTouchServiceTest가 한국 시각을 시스템 로컬 시각과 비교해 실패했다. 서비스의 한국 시간 처리는 유지하고 UTC/Asia-Seoul 두 기본 시간대에서 호출 전후의 한국 시각 범위를 확인하도록 테스트를 강화했다. UTC 환경에서 일반 540개가 모두 통과했다. 서버 이미지 기동·MySQL·CodeQL·품질 검사는 첫 PR 실행에서도 통과했으며, 테스트 보완 커밋에서 CI를 다시 실행한다.

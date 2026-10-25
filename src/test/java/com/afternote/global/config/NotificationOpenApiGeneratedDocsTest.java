@@ -114,6 +114,7 @@ class NotificationOpenApiGeneratedDocsTest {
         for (JsonNode parameter:list.path("parameters")) if (parameter.path("name").asText().equals("page")) page=parameter;
         assertThat(page).isNotNull();
         assertThat(page.at("/schema/minimum").asInt()).isZero();
+        assertThat(page.at("/schema/maximum").asInt()).isEqualTo(Integer.MAX_VALUE / 50);
         assertThat(page.at("/schema/type").asText()).isEqualTo("integer");
         assertThat(page.at("/schema/default").asInt()).isZero();
         JsonNode inbox=responseData(docs,list);

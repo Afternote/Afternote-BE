@@ -26,6 +26,9 @@ import org.springframework.http.MediaType;
 @RequiredArgsConstructor
 @RequestMapping("/api/v1/users/notifications")
 public class NotificationInboxController {
+    private static final int PAGE_SIZE = 50;
+    private static final int MAX_PAGE = Integer.MAX_VALUE / PAGE_SIZE;
+
     private final NotificationDispatchRepository repository;
     private final ObjectMapper objectMapper;
     @Schema(name = "NotificationInboxItem")
@@ -51,19 +54,19 @@ public class NotificationInboxController {
     @Operation(summary = "내 인앱 알림 조회", description = "본인 알림을 ID 내림차순으로 조회합니다. page는 0부터 시작하며 페이지 크기는 50입니다. 전체 unreadCount를 함께 반환합니다. CANCELLED 알림은 제외합니다.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "미읽음 수와 알림 목록"),
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "page가 음수이거나 정수 형식이 아님 (code: 1400)"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400", description = "page가 허용 범위(0~42949672)를 벗어나거나 정수 형식이 아님 (code: 1400)"),
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "401", description = "인증되지 않은 요청")
     })
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     @Transactional(readOnly = true)
     public ApiResponse<Inbox> list(@Parameter(hidden = true) @UserId Long userId,
-            @Parameter(description = "0부터 시작하는 페이지 번호", schema = @Schema(type = "integer", format = "int32", minimum = "0", defaultValue = "0"))
+            @Parameter(description = "0부터 시작하는 페이지 번호 (최대 42949672)", schema = @Schema(type = "integer", format = "int32", minimum = "0", maximum = "42949672", defaultValue = "0"))
             @RequestParam(defaultValue = "0") int page) {
-        if (page < 0) throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
+        if (page < 0 || page > MAX_PAGE) throw new CustomException(ErrorCode.INVALID_INPUT_VALUE);
         return ApiResponse.success(new Inbox(repository.countByUserIdAndVisibleAtIsNotNullAndReadAtIsNullAndStatusNot(
                 userId, NotificationDispatch.Status.CANCELLED),
                 repository.findByUserIdAndVisibleAtIsNotNullAndStatusNotOrderByIdDesc(
-                        userId, NotificationDispatch.Status.CANCELLED, PageRequest.of(page, 50))
+                        userId, NotificationDispatch.Status.CANCELLED, PageRequest.of(page, PAGE_SIZE))
                         .stream().map(this::item).toList()));
     }
 

@@ -27,6 +27,24 @@ class NotificationInboxControllerTest {
     @Test void invalidPageReturns400ThroughGlobalAdvice() throws Exception {
         mvc.perform(get("/api/v1/users/notifications").param("page", "-1")).andExpect(status().isBadRequest());
     }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(strings = {"-1", "42949673", "677841162", "2147483647", "2147483648", "abc"})
+    void invalidOrOverflowingPageNeverQueriesRepository(String page) throws Exception {
+        mvc.perform(get("/api/v1/users/notifications").param("page", page))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value(1400));
+        verifyNoInteractions(repository);
+    }
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.ValueSource(ints = {0, 42949672})
+    void validPageIncludingLargestSupportedOffsetIsAccepted(int page) throws Exception {
+        when(repository.findByUserIdAndVisibleAtIsNotNullAndStatusNotOrderByIdDesc(
+                eq(7L), eq(NotificationDispatch.Status.CANCELLED), any())).thenReturn(List.of());
+        mvc.perform(get("/api/v1/users/notifications").param("page", Integer.toString(page)))
+                .andExpect(status().isOk());
+        verify(repository).findByUserIdAndVisibleAtIsNotNullAndStatusNotOrderByIdDesc(
+                7L, NotificationDispatch.Status.CANCELLED, org.springframework.data.domain.PageRequest.of(page, 50));
+    }
     @Test void otherUsersOrMissingNotificationReturns404() throws Exception {
         when(repository.findByIdAndUserId(9L, 7L)).thenReturn(Optional.empty());
         mvc.perform(patch("/api/v1/users/notifications/9/read")).andExpect(status().isNotFound());

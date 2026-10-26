@@ -22,14 +22,32 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import io.sentry.Sentry;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.mockStatic;
 
 class GlobalExceptionHandlerTest {
 
     private final GlobalExceptionHandler handler = new GlobalExceptionHandler();
+
+    @Test
+    @DisplayName("용량 초과는 413/1009 JSON을 반환하고 Sentry에 보고하지 않는다")
+    void uploadSizeExceeded() {
+        try (var sentry = mockStatic(Sentry.class)) {
+            var response = handler.handleUploadSizeExceeded(new MaxUploadSizeExceededException(-1));
+            assertThat(response.getStatusCode().value()).isEqualTo(413);
+            assertThat(response.getHeaders().getContentType()).isEqualTo(MediaType.APPLICATION_JSON);
+            assertThat(response.getBody()).isNotNull();
+            assertThat(response.getBody().getStatus()).isEqualTo(413);
+            assertThat(response.getBody().getCode()).isEqualTo(1009);
+            assertThat(response.getBody().getMessage()).isEqualTo("업로드 허용 용량을 초과했습니다.");
+            sentry.verifyNoInteractions();
+        }
+    }
 
     @Test
     @DisplayName("@Valid 실패는 HTTP 400 / code 1400")

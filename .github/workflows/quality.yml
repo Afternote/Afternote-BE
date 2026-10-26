@@ -66,6 +66,16 @@ jobs:
           bash deploy/scripts/tls-lib-test.sh
           bash deploy/scripts/patch-certbot-webroot-test.sh
 
+      - name: Set up Python for contract runner regression
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Contract runner regression tests
+        env:
+          CONTRACT_VENV_DIR: ${{ runner.temp }}/contract-venv
+        run: python3 scripts/contract-test-test.py
+
       - name: Reject unresolved merge markers
         run: |
           if git grep -nI -E '^(<{7}|={7}|>{7})( .*)?$' -- .; then

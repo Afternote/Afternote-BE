@@ -25,12 +25,22 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    // 용량 제한 거절은 클라이언트 오류이며 500/Sentry 대상으로 보내지 않는다.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUploadSizeExceeded(MaxUploadSizeExceededException e) {
+        return ResponseEntity
+                .status(ErrorCode.UPLOAD_SIZE_EXCEEDED.getHttpStatus())
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ApiResponse.error(ErrorCode.UPLOAD_SIZE_EXCEEDED));
+    }
 
     // 1. CustomException 처리
     @ExceptionHandler(CustomException.class)

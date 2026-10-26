@@ -29,7 +29,7 @@ EXCLUDE_PATH_REGEX="${CONTRACT_EXCLUDE_PATH_REGEX:-/api/v1/admin|/api/v1/receive
 MAX_EXAMPLES="${CONTRACT_MAX_EXAMPLES:-5}"
 
 ROOT_DIR="$(cd "$(dirname "$0")/.." && pwd)"
-VENV_DIR="${ROOT_DIR}/.contract-venv"
+VENV_DIR="${CONTRACT_VENV_DIR:-${ROOT_DIR}/.contract-venv}"
 
 echo "Contract test target: ${BASE_URL}"
 echo "Exclude path regex: ${EXCLUDE_PATH_REGEX}"
@@ -38,7 +38,7 @@ python3 -m venv "${VENV_DIR}"
 # shellcheck disable=SC1091
 source "${VENV_DIR}/bin/activate"
 python -m pip install --upgrade pip
-python -m pip install 'schemathesis>=3.39,<4'
+python -m pip install -r "${ROOT_DIR}/scripts/contract-requirements.txt"
 
 echo "Logging in as ${CONTRACT_TEST_EMAIL} ..."
 LOGIN_HTTP="$(

@@ -84,6 +84,12 @@ jobs:
       - name: Build and test
         run: ./gradlew clean standardTest --no-daemon
 
+      - name: Validate afternote response schemas
+        run: |
+          python3 -m venv "$RUNNER_TEMP/afternote-contract-validation"
+          "$RUNNER_TEMP/afternote-contract-validation/bin/python" -m pip install -r scripts/afternote-contract-requirements.txt
+          "$RUNNER_TEMP/afternote-contract-validation/bin/python" scripts/validate-afternote-detail-contract.py
+
       - name: Upload test report
         if: failure()
         uses: actions/upload-artifact@v7
@@ -92,6 +98,7 @@ jobs:
           path: |
             build/reports/tests/standardTest/
             build/test-results/standardTest/
+            build/reports/afternote-contract/
           retention-days: 7
 
   mysql_test:

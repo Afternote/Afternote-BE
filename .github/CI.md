@@ -33,3 +33,5 @@ CI는 작성하지 않은 테스트를 발견할 수 없다. PR CI를 실행하�
 합의되지 않았거나 아직 존재하지 않는 job은 성공 처리용 `skip` 또는 빈 placeholder로 만들지 않는다. PR-local HTTP baseline은 실제 `Dockerfile`과 임시 MySQL·Redis의 통합만 확인한다. 인증 계정이 필요한 전체 API 실측, 실제 EC2·RDS, Sentry 전송, 외부 API, 부하·race 검증을 기본 CI 통과로 검증됐다고 간주하지 않는다.
 
 `CI / build`에 어떤 검증을 언제 연결할지는 #198이 관리한다. 대상 목록과 보류 사유는 이 문서에 복사하지 않는다.
+
+애프터노트 상세 계약은 `OpenApiGeneratedDocsTest`가 생성한 OpenAPI와 실제 MockMvc 응답을 `build/reports/afternote-contract/`에 내보내고, `gradle-test` job의 OpenAPI 3.0 검증기가 종류·상태별 정상 응답 및 필수값 누락 등 변형 응답을 대조한다. 검증기는 별도 임시 Python 환경에 설치하며 운영 서버나 계정은 사용하지 않는다.

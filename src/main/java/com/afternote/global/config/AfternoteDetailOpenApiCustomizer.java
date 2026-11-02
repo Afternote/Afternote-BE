@@ -88,6 +88,7 @@ public class AfternoteDetailOpenApiCustomizer implements OpenApiCustomizer {
 
         replaceUnionSchema(schemas);
         ensureAlwaysRequired(schemas);
+        AfternoteDetailVariants.apply(schemas);
     }
 
     /**

@@ -62,8 +62,9 @@ public class AfternoteController {
     @Operation(
             summary = "애프터노트 상세 목록 조회 API",
             description = "애프터노트 상세목록을 가져옵니다. path variable로 afternote_id를 보내주시면 됩니다. "
-                    + "임시저장과 발행 완료(일반/PLAYLIST) 스키마가 다르며, "
-                    + "발행 완료 PLAYLIST는 playlist와 곡 목록이 필수이다."
+                    + "category와 isDraft로 계정형(SOCIAL/BUSINESS)·GALLERY·PLAYLIST의 임시저장/발행 스키마를 구분합니다. "
+                    + "발행 계정형은 credentials와 id/password가 필수이고, 발행 PLAYLIST는 playlist와 최소 1곡이 필수입니다. "
+                    + "임시저장은 계정·플레이리스트 미작성을 허용하며 해당 종류에 적용되지 않는 필드는 null입니다."
     )
     @ApiResponses(value = {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "애프터노트 상세 조회 성공"),

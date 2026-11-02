@@ -19,6 +19,15 @@ import org.springframework.context.annotation.FilterType;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import com.afternote.domain.afternote.model.AfternoteCategoryType;
+import com.afternote.domain.afternote.dto.AfternotedetailResponse;
+import com.afternote.domain.afternote.dto.AfternoteCreateRequest.CredentialsRequest;
+import com.afternote.domain.afternote.dto.AfternoteCreateRequest.PlaylistRequest;
+import com.afternote.domain.afternote.dto.AfternoteCreateRequest.SongRequest;
+import java.time.LocalDateTime;
+import org.mockito.ArgumentMatchers;
+import org.mockito.BDDMockito;
+
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -56,20 +65,20 @@ class OpenApiGeneratedDocsTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
-    @DisplayName("생성 OpenAPI에서 credentials·playlist는 $ref 형제 속성이 아니라 allOf로 nullable·설명이 남는다")
+    @DisplayName("생성 OpenAPI에서 임시저장 객체는 anyOf로 nullable을, 발행 계정 정보는 필수 참조를 표현한다")
     void generatedOpenApi_PreservesNullableObjectFields() throws Exception {
         JsonNode schemas = fetchSchemas();
 
-        JsonNode draftCredentials = schemas.at("/AfternoteDraftDetailResponse/properties/credentials");
+        JsonNode draftCredentials = schemas.at("/AfternoteDraftAccountDetailResponse/properties/credentials");
         assertNullableObjectField(draftCredentials, "SOCIAL/BUSINESS");
 
-        JsonNode draftPlaylist = schemas.at("/AfternoteDraftDetailResponse/properties/playlist");
+        JsonNode draftPlaylist = schemas.at("/AfternoteDraftPlaylistDetailResponse/properties/playlist");
         assertNullableObjectField(draftPlaylist, "PLAYLIST");
 
-        JsonNode publishedCredentials = schemas.at("/AfternotePublishedDetailResponse/properties/credentials");
-        assertNullableObjectField(publishedCredentials, "SOCIAL/BUSINESS");
+        JsonNode publishedCredentials = schemas.at("/AfternotePublishedAccountDetailResponse/properties/credentials");
+        assertThat(publishedCredentials.path("$ref").asText()).isEqualTo("#/components/schemas/AfternotePublishedCredentialsResponse");
 
-        JsonNode actions = schemas.at("/AfternoteDraftDetailResponse/properties/actions");
+        JsonNode actions = schemas.at("/AfternoteDraftAccountDetailResponse/properties/actions");
         assertThat(actions.path("nullable").asBoolean()).isTrue();
         assertThat(actions.path("description").asText()).contains("SOCIAL/BUSINESS/GALLERY");
     }
@@ -84,12 +93,12 @@ class OpenApiGeneratedDocsTest {
         assertThat(union).isNotNull();
         assertThat(union.has("oneOf")).isTrue();
         assertThat(refs(union.get("oneOf"))).contains(
-                "#/components/schemas/AfternoteDraftDetailResponse",
-                "#/components/schemas/AfternotePublishedDetailResponse",
+                "#/components/schemas/AfternoteDraftAccountDetailResponse",
+                "#/components/schemas/AfternotePublishedAccountDetailResponse",
                 "#/components/schemas/AfternotePublishedPlaylistDetailResponse"
         );
 
-        JsonNode draftRequired = schemas.at("/AfternoteDraftDetailResponse/required");
+        JsonNode draftRequired = schemas.at("/AfternoteDraftAccountDetailResponse/required");
         assertThat(textValues(draftRequired)).contains(
                 "afternoteId", "category", "title", "isDraft", "receivers", "updatedAt"
         );
@@ -100,9 +109,7 @@ class OpenApiGeneratedDocsTest {
 
         JsonNode playlistField = schemas.at("/AfternotePublishedPlaylistDetailResponse/properties/playlist");
         assertThat(playlistField.path("nullable").asBoolean(false)).isFalse();
-        assertThat(playlistField.path("description").asText()).contains("필수");
-        assertThat(playlistField.has("$ref")).isFalse();
-        assertThat(playlistField.has("allOf")).isTrue();
+        assertThat(playlistField.path("$ref").asText()).isEqualTo("#/components/schemas/AfternotePublishedPlaylistResponse");
 
         JsonNode songsRequired = schemas.at("/AfternotePublishedPlaylistResponse/required");
         assertThat(textValues(songsRequired))
@@ -127,11 +134,11 @@ class OpenApiGeneratedDocsTest {
                 "afternoteId", "category", "title", "isDraft",
                 "actions", "leaveMessage", "credentials", "receivers", "playlist", "updatedAt"
         );
-        assertThat(propertyNames(schemas.get("AfternoteDraftDetailResponse"))).containsExactlyInAnyOrderElementsOf(detailFields);
-        assertThat(propertyNames(schemas.get("AfternotePublishedDetailResponse"))).containsExactlyInAnyOrderElementsOf(detailFields);
+        assertThat(propertyNames(schemas.get("AfternoteDraftAccountDetailResponse"))).containsExactlyInAnyOrderElementsOf(detailFields);
+        assertThat(propertyNames(schemas.get("AfternotePublishedAccountDetailResponse"))).containsExactlyInAnyOrderElementsOf(detailFields);
         assertThat(propertyNames(schemas.get("AfternotePublishedPlaylistDetailResponse"))).containsExactlyInAnyOrderElementsOf(detailFields);
 
-        JsonNode leaveMessage = schemas.at("/AfternoteDraftDetailResponse/properties/leaveMessage");
+        JsonNode leaveMessage = schemas.at("/AfternoteDraftAccountDetailResponse/properties/leaveMessage");
         assertThat(leaveMessage.path("nullable").asBoolean()).isTrue();
         assertThat(leaveMessage.path("description").asText()).contains("남기실 말씀");
 
@@ -222,6 +229,87 @@ class OpenApiGeneratedDocsTest {
         assertThat(updatePlaylist.path("description").asText()).contains("JSON null").contains("삭제");
     }
 
+    @Test
+    @DisplayName("8개 종류/상태의 실제 HTTP JSON과 스키마 분기가 일치하고 nullable·필수값을 구분한다")
+    void categoryStateContractsMatchActualHttpJson() throws Exception {
+        JsonNode docs = fetchDocs();
+        JsonNode schemas = docs.at("/components/schemas");
+        var examples = objectMapper.createArrayNode();
+        var categories = AfternoteCategoryType.values();
+        for (var category : categories) {
+            for (boolean draft : java.util.List.of(true, false)) {
+                boolean account = category.name().equals("SOCIAL") || category.name().equals("BUSINESS");
+                boolean playlist = category.name().equals("PLAYLIST");
+                var credentials = account && !draft
+                        ? new CredentialsRequest("dummy-id", "dummy-password") : null;
+                var music = playlist && !draft
+                        ? new PlaylistRequest(
+                                "차분하게", null, java.util.List.of(new SongRequest("곡", "가수", null)), null, null) : null;
+                var dto = AfternotedetailResponse.of(
+                        1L, category, "테스트", draft, playlist ? null : java.util.List.of("정리"),
+                        java.util.List.of(), credentials, java.util.List.of(), music, LocalDateTime.of(2026, 10, 29, 12, 0));
+                BDDMockito.given(afternoteService.getDetailAfternote(ArgumentMatchers.any(), ArgumentMatchers.eq(1L))).willReturn(dto);
+                var result = mockMvc.perform(get("/api/v1/afternotes/1").requestAttr("userId", 1L))
+                        .andExpect(status().isOk()).andReturn();
+                JsonNode payload = objectMapper.readTree(result.getResponse().getContentAsByteArray()).path("data");
+                String name = "Afternote" + (draft ? "Draft" : "Published")
+                        + (account ? "Account" : playlist ? "Playlist" : "Gallery") + "DetailResponse";
+                JsonNode schema = schemas.path(name);
+                assertThat(propertyNames(schema)).containsExactlyInAnyOrderElementsOf(propertyNamesOfObject(payload));
+                assertThat(schema.at("/properties/isDraft/enum/0").asBoolean()).isEqualTo(draft);
+                assertThat(textValues(schema.at("/properties/category/enum"))).contains(category.name());
+                long matches = refs(schemas.at("/AfternotedetailResponse/oneOf")).stream()
+                        .map(ref -> schemas.path(ref.substring(ref.lastIndexOf('/') + 1)))
+                        .filter(candidate -> textValues(candidate.at("/properties/category/enum")).contains(category.name())
+                                && candidate.at("/properties/isDraft/enum/0").asBoolean() == draft).count();
+                assertThat(matches).isEqualTo(1);
+                assertThat(textValues(schema.path("required"))).contains("category", "isDraft");
+                if (account && !draft) {
+                    assertThat(textValues(schema.path("required"))).contains("credentials");
+                    assertThat(payload.at("/credentials/id").asText()).isEqualTo("dummy-id");
+                    assertThat(payload.at("/credentials/password").asText()).isEqualTo("dummy-password");
+                } else assertThat(payload.path("credentials").isNull()).isTrue();
+                if (!playlist || draft) assertThat(payload.path("playlist").isNull()).isTrue();
+                if (!account) assertThat(schema.at("/properties/credentials/enum/0").isNull()).isTrue();
+                if (!playlist) assertThat(schema.at("/properties/playlist/enum/0").isNull()).isTrue();
+                if (playlist && !draft) assertThat(textValues(schema.path("required"))).contains("playlist");
+                examples.addObject().put("schema", name).set("payload", payload);
+            }
+        }
+        for (var category : java.util.List.of(AfternoteCategoryType.SOCIAL, AfternoteCategoryType.BUSINESS, AfternoteCategoryType.PLAYLIST)) {
+            boolean music = category == AfternoteCategoryType.PLAYLIST;
+            var dto = AfternotedetailResponse.of(1L, category, "부분 작성", true,
+                    null, null, music ? null : new CredentialsRequest("dummy-id", null), java.util.List.of(),
+                    music ? new PlaylistRequest(null, null, java.util.List.of(), null, null) : null,
+                    LocalDateTime.of(2026, 10, 29, 12, 0));
+            BDDMockito.given(afternoteService.getDetailAfternote(ArgumentMatchers.any(), ArgumentMatchers.eq(1L))).willReturn(dto);
+            var result = mockMvc.perform(get("/api/v1/afternotes/1").requestAttr("userId", 1L))
+                    .andExpect(status().isOk()).andReturn();
+            JsonNode payload = objectMapper.readTree(result.getResponse().getContentAsByteArray()).path("data");
+            if (music) assertThat(payload.at("/playlist/songs").size()).isZero();
+            else assertThat(payload.at("/credentials/password").isNull()).isTrue();
+            examples.addObject().put("schema", "partial-draft-" + category).set("payload", payload);
+        }
+        JsonNode requiredCredentials = schemas.path("AfternotePublishedCredentialsResponse");
+        assertThat(textValues(requiredCredentials.path("required"))).containsExactlyInAnyOrder("id", "password");
+        for (String field : java.util.List.of("id", "password")) {
+            assertThat(requiredCredentials.at("/properties/" + field + "/nullable").asBoolean()).isFalse();
+            assertThat(requiredCredentials.at("/properties/" + field + "/minLength").asInt()).isEqualTo(1);
+            assertThat(schemas.at("/AfternoteDraftCredentialsResponse/properties/" + field + "/nullable").asBoolean()).isTrue();
+        }
+        // Export the generated document and synthetic HTTP responses for independent OpenAPI validation.
+        var directory = java.nio.file.Path.of("build/reports/afternote-contract");
+        java.nio.file.Files.createDirectories(directory);
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(directory.resolve("openapi.json").toFile(), docs);
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(directory.resolve("responses.json").toFile(), examples);
+    }
+
+    private static java.util.List<String> propertyNamesOfObject(JsonNode value) {
+        var names = new java.util.ArrayList<String>();
+        value.fieldNames().forEachRemaining(names::add);
+        return names;
+    }
+
     private JsonNode fetchDocs() throws Exception {
         MvcResult result = mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
@@ -240,10 +328,10 @@ class OpenApiGeneratedDocsTest {
                 .isFalse();
         assertThat(field.path("nullable").asBoolean()).isTrue();
         assertThat(field.path("description").asText()).contains(descriptionFragment);
-        assertThat(field.has("allOf")).isTrue();
-        assertThat(field.get("allOf").isArray()).isTrue();
-        assertThat(field.get("allOf").size()).isGreaterThanOrEqualTo(1);
-        assertThat(field.get("allOf").get(0).has("$ref")).isTrue();
+        assertThat(field.has("anyOf")).isTrue();
+        assertThat(field.get("anyOf").isArray()).isTrue();
+        assertThat(field.get("anyOf").size()).isGreaterThanOrEqualTo(1);
+        assertThat(field.get("anyOf").get(0).has("$ref")).isTrue();
     }
 
     private static java.util.List<String> refs(JsonNode oneOf) {

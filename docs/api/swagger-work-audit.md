@@ -10,7 +10,7 @@
 | #96 승인 시각 | 생성 Swagger에서 createdAt 필수, approvedAt nullable·로컬 시각 형식을 확인한다. |
 | #304 푸시 토큰 무효화 | 정상/무효 토큰 HTTP 응답과 무효 시각·사유·requiresReset 필드를 검증한다. |
 | #272 Android 패스키 origin | 신뢰 origin의 서버 설정 변경으로 요청·응답 구조 변경이 없다. |
-| #298 배포 이미지 SHA 고정 | API 요청·응답 변경이 없어 Swagger 변경 대상이 아니다. |
+| #298 배포·TLS 워크플로 Actions SHA 고정 | API 요청·응답 변경이 없어 Swagger 변경 대상이 아니다. |
 
 #190의 409 응답은 springdoc가 메서드의 성공 반환형을 재사용하여 `data`를 숫자 배열로 생성하고 있었다. 실제 공통 오류 응답은 `status: 409`, `code: 1909`, `data: null`이다. 전용 `TimeLetterReceiverConflictResponse`로 보정하고 필수 필드 및 잘못된 값 거부를 검증한다.
 

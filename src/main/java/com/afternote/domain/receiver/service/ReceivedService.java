@@ -3,6 +3,7 @@ package com.afternote.domain.receiver.service;
 import com.afternote.domain.afternote.model.Afternote;
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import com.afternote.domain.afternote.model.AfternoteReceiver;
+import com.afternote.domain.afternote.service.relation.EncryptedKey;
 import com.afternote.domain.dailyquestion.dto.DailyQuestionListResponse;
 import com.afternote.domain.dailyquestion.model.UserDailyQuestion;
 import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
@@ -26,6 +27,7 @@ import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
+import com.afternote.global.util.ChaChaEncryptionUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +58,7 @@ public class ReceivedService {
     private final S3Service s3Service;
     private final MindRecordReceiverService mindRecordReceiverService;
     private final DeliveryConditionService deliveryConditionService;
+    private final ChaChaEncryptionUtil chaChaEncryptionUtil;
 
     private static final DateTimeFormatter KOREAN_DATE_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN);
@@ -172,12 +175,28 @@ public class ReceivedService {
         return responseFactory.apply(afternote);
     }
 
+    // Only called after delivery gating and the published note/receiver association lookup.
+    private ReceivedAfternoteDetailResponse.CredentialsInfo readCredentials(Afternote afternote) {
+        String accountId = readSecureValue(afternote, EncryptedKey.ACCOUNT_ID);
+        String password = readSecureValue(afternote, EncryptedKey.ACCOUNT_PASSWORD);
+        return accountId == null && password == null ? null
+                : new ReceivedAfternoteDetailResponse.CredentialsInfo(accountId, password);
+    }
+
+    private String readSecureValue(Afternote afternote, EncryptedKey key) {
+        return afternote.getSecureContents().stream()
+                .filter(content -> key.matches(content.getKeyName()))
+                .findFirst()
+                .map(content -> chaChaEncryptionUtil.decrypt(content.getEncryptedValue()))
+                .orElse(null);
+    }
+
     private Map<AfternoteCategoryType, Function<Afternote, ReceivedAfternoteDetailResponse>>
     receivedAfternoteDetailFactories(String senderName) {
         Map<AfternoteCategoryType, Function<Afternote, ReceivedAfternoteDetailResponse>>
                 factories = new EnumMap<>(AfternoteCategoryType.class);
         Function<Afternote, ReceivedAfternoteDetailResponse> socialDetail =
-                afternote -> ReceivedAfternoteDetailResponse.fromSocial(afternote, senderName);
+                afternote -> ReceivedAfternoteDetailResponse.fromSocial(afternote, senderName, readCredentials(afternote));
 
         factories.put(AfternoteCategoryType.SOCIAL, socialDetail);
         factories.put(AfternoteCategoryType.BUSINESS, socialDetail);

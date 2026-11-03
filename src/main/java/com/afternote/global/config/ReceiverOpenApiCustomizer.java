@@ -37,6 +37,18 @@ public class ReceiverOpenApiCustomizer implements OpenApiCustomizer {
                 "추모 영상. 없으면 null"
         );
 
+        // A null alternative keeps OpenAPI 3.0 validators consistent with the JSON response.
+        Schema<?> detail = schemas.get("ReceivedAfternoteDetailResponse");
+        if (detail != null && detail.getProperties() != null) {
+            Schema<Object> empty = new Schema<>().type("object").nullable(true);
+            empty.setEnum(java.util.Collections.singletonList(null));
+            ComposedSchema credentials = new ComposedSchema();
+            credentials.setDescription(ReceivedAfternoteDetailResponse.CREDENTIALS_DESCRIPTION);
+            credentials.setNullable(true);
+            credentials.addAnyOfItem(new Schema<>().$ref("#/components/schemas/ReceivedCredentialsInfo"));
+            credentials.addAnyOfItem(empty);
+            detail.getProperties().put("credentials", credentials);
+        }
         rewriteLocalDateTimeFormats(schemas);
     }
 

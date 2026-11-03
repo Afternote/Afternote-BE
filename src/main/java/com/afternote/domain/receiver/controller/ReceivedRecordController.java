@@ -70,7 +70,10 @@ public class ReceivedRecordController {
         return ApiResponse.success(receivedRecordService.getAfternotes(userId, receiverId));
     }
 
-    @Operation(summary = "받은 애프터노트 상세 조회")
+    @Operation(summary = "받은 애프터노트 상세 조회",
+            description = "로그인한 수신자의 연결·전달 조건·발행 여부를 확인합니다. actions는 계정 처리 방법이며, "
+                    + "SOCIAL/BUSINESS의 credentials는 복호화한 id/password입니다. "
+                    + "GALLERY/PLAYLIST 또는 저장된 계정 정보가 없는 경우 credentials는 null입니다.")
     @GetMapping("/{receiverId}/after-notes/{afternoteId}")
     public ApiResponse<ReceivedAfternoteDetailResponse> getAfternote(
             @Parameter(hidden = true) @UserId Long userId,

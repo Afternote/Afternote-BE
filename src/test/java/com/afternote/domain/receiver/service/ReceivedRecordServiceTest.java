@@ -84,6 +84,14 @@ class ReceivedRecordServiceTest {
                 .isEqualTo(ErrorCode.RECEIVER_NOT_FOUND);
     }
 
+    @Test
+    void afternoteDetailRejectsAnotherUsersReceiverBeforeReadingContent() {
+        given(receiverRepository.findByIdAndAcceptedUserId(RECEIVER_ID, USER_ID)).willReturn(Optional.empty());
+        assertThatThrownBy(() -> receivedRecordService.getAfternote(USER_ID, RECEIVER_ID, 40L))
+                .isInstanceOf(CustomException.class).extracting("errorCode").isEqualTo(ErrorCode.RECEIVER_NOT_FOUND);
+        org.mockito.Mockito.verifyNoInteractions(receivedService);
+    }
+
     private Receiver acceptedReceiver() {
         User receiverUser = User.builder()
                 .email("receiver@test.com")

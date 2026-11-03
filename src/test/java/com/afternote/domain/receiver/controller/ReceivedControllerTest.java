@@ -46,6 +46,7 @@ class ReceivedControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(receivedController)
                 .setCustomArgumentResolvers(new UserIdTestArgumentResolver())
+                .setControllerAdvice(new com.afternote.global.exception.GlobalExceptionHandler())
                 .build();
     }
 
@@ -61,6 +62,20 @@ class ReceivedControllerTest {
                 .andExpect(status().isOk());
 
         verify(receivedService).createTimeLetterReceivers(eq(USER_ID), any());
+    }
+
+    @Test
+    void duplicateRelationConstraintReturns409() throws Exception {
+        given(receivedService.createTimeLetterReceivers(eq(USER_ID), any()))
+                .willThrow(new org.springframework.dao.DataIntegrityViolationException("insert failed",
+                        new java.sql.SQLIntegrityConstraintViolationException(
+                                "Duplicate entry for key 'uk_time_letter_receiver_pair'")));
+        mockMvc.perform(post("/api/v1/received/time-letters")
+                        .requestAttr(UserIdArgumentResolver.USER_ID_ATTRIBUTE, USER_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"timeLetterID\":1,\"receiverIds\":[1]}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value(1909));
     }
 
     @Test

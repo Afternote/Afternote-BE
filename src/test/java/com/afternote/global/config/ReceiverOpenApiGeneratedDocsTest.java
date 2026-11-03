@@ -127,6 +127,31 @@ class ReceiverOpenApiGeneratedDocsTest {
         assertThat(playlist.has("allOf")).isTrue();
     }
 
+    @Test
+    void credentialsAreDocumentedAndSerializedWithActions() throws Exception {
+        JsonNode schemas = fetchSchemas();
+        JsonNode field = schemas.at("/ReceivedAfternoteDetailResponse/properties/credentials");
+        assertThat(field.path("nullable").asBoolean()).isTrue();
+        assertThat(field.path("description").asText()).contains("SOCIAL/BUSINESS").contains("열람 권한");
+        assertThat(field.at("/anyOf/0/$ref").asText()).isEqualTo("#/components/schemas/ReceivedCredentialsInfo");
+        assertThat(field.at("/anyOf/1/enum/0").isNull()).isTrue();
+        assertThat(schemas.at("/ReceivedCredentialsInfo/properties/id/nullable").asBoolean()).isTrue();
+        assertThat(schemas.at("/ReceivedCredentialsInfo/properties/password/nullable").asBoolean()).isTrue();
+        var response = com.afternote.domain.receiver.dto.ReceivedAfternoteDetailResponse.builder()
+                .id(10L).category(com.afternote.domain.afternote.model.AfternoteCategoryType.SOCIAL)
+                .title("계정 정리").actions(java.util.List.of("계정 삭제"))
+                .credentials(new com.afternote.domain.receiver.dto.ReceivedAfternoteDetailResponse.CredentialsInfo("dummy-id", "dummy-password"))
+                .senderName("작성자").build();
+        org.mockito.BDDMockito.given(receivedRecordService.getAfternote(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.eq(10L))).willReturn(response);
+        var result = mockMvc.perform(get("/api/v1/received-records/7/after-notes/10").requestAttr("userId", 20L))
+                .andExpect(status().isOk()).andReturn();
+        JsonNode payload = objectMapper.readTree(result.getResponse().getContentAsByteArray()).path("data");
+        assertThat(payload.at("/actions/0").asText()).isEqualTo("계정 삭제");
+        assertThat(payload.at("/credentials/id").asText()).isEqualTo("dummy-id");
+        assertThat(payload.at("/credentials/password").asText()).isEqualTo("dummy-password");
+    }
+
     private JsonNode fetchSchemas() throws Exception {
         MvcResult result = mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())

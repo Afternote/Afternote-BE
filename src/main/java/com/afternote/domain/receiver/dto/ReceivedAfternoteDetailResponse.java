@@ -33,6 +33,11 @@ public record ReceivedAfternoteDetailResponse(
         @Getter
         List<String> actions,
 
+        @Schema(description = CREDENTIALS_DESCRIPTION, nullable = true,
+                requiredMode = Schema.RequiredMode.NOT_REQUIRED)
+        @Getter
+        CredentialsInfo credentials,
+
         @Schema(
                 description = LEAVE_MESSAGE_DESCRIPTION,
                 nullable = true,
@@ -64,6 +69,19 @@ public record ReceivedAfternoteDetailResponse(
         @Getter
         PlaylistInfo playlist
 ) {
+    public static final String CREDENTIALS_DESCRIPTION =
+            "계정 정보 (SOCIAL/BUSINESS 전용). 열람 권한·전달 조건을 확인한 상세 조회에서만 제공. "
+                    + "GALLERY/PLAYLIST 또는 저장된 계정 정보가 없으면 null";
+
+    @Schema(name = "ReceivedCredentialsInfo", description = "수신자에게 전달하는 계정 정보")
+    public record CredentialsInfo(
+            @Schema(description = "계정 아이디. 기존 데이터에 없으면 null", nullable = true)
+            @Getter String id,
+            @Schema(description = "계정 비밀번호. 기존 데이터에 없으면 null", nullable = true)
+            @Getter String password
+    ) {
+    }
+
     public static final String ACTIONS_DESCRIPTION =
             "체크리스트 (SOCIAL/BUSINESS/GALLERY 전용). PLAYLIST는 null";
     public static final String LEAVE_MESSAGE_DESCRIPTION =
@@ -155,12 +173,13 @@ public record ReceivedAfternoteDetailResponse(
     ) {
     }
 
-    public static ReceivedAfternoteDetailResponse fromSocial(Afternote afternote, String senderName) {
+    public static ReceivedAfternoteDetailResponse fromSocial(Afternote afternote, String senderName, CredentialsInfo credentials) {
         return ReceivedAfternoteDetailResponse.builder()
                 .id(afternote.getId())
                 .category(afternote.getCategoryType())
                 .title(afternote.getTitle())
                 .actions(afternote.getActions())
+                .credentials(credentials)
                 .leaveMessage(afternote.getLeaveMessage())
                 .senderName(senderName)
                 .createdAt(afternote.getCreatedAt())

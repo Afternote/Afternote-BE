@@ -3,6 +3,7 @@ package com.afternote.domain.receiver.service;
 import com.afternote.domain.afternote.model.Afternote;
 import com.afternote.domain.afternote.model.AfternoteCategoryType;
 import com.afternote.domain.afternote.model.AfternoteReceiver;
+import com.afternote.domain.afternote.service.relation.EncryptedKey;
 import com.afternote.domain.dailyquestion.dto.DailyQuestionListResponse;
 import com.afternote.domain.dailyquestion.model.UserDailyQuestion;
 import com.afternote.domain.dailyquestion.repository.UserDailyQuestionRepository;
@@ -26,6 +27,7 @@ import com.afternote.domain.user.model.User;
 import com.afternote.domain.user.repository.UserRepository;
 import com.afternote.global.exception.CustomException;
 import com.afternote.global.exception.ErrorCode;
+import com.afternote.global.util.ChaChaEncryptionUtil;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -56,6 +58,7 @@ public class ReceivedService {
     private final S3Service s3Service;
     private final MindRecordReceiverService mindRecordReceiverService;
     private final DeliveryConditionService deliveryConditionService;
+    private final ChaChaEncryptionUtil chaChaEncryptionUtil;
 
     private static final DateTimeFormatter KOREAN_DATE_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy.MM.dd E", Locale.KOREAN);
@@ -172,12 +175,28 @@ public class ReceivedService {
         return responseFactory.apply(afternote);
     }
 
+    // Only called after delivery gating and the published note/receiver association lookup.
+    private ReceivedAfternoteDetailResponse.CredentialsInfo readCredentials(Afternote afternote) {
+        String accountId = readSecureValue(afternote, EncryptedKey.ACCOUNT_ID);
+        String password = readSecureValue(afternote, EncryptedKey.ACCOUNT_PASSWORD);
+        return accountId == null && password == null ? null
+                : new ReceivedAfternoteDetailResponse.CredentialsInfo(accountId, password);
+    }
+
+    private String readSecureValue(Afternote afternote, EncryptedKey key) {
+        return afternote.getSecureContents().stream()
+                .filter(content -> key.matches(content.getKeyName()))
+                .findFirst()
+                .map(content -> chaChaEncryptionUtil.decrypt(content.getEncryptedValue()))
+                .orElse(null);
+    }
+
     private Map<AfternoteCategoryType, Function<Afternote, ReceivedAfternoteDetailResponse>>
     receivedAfternoteDetailFactories(String senderName) {
         Map<AfternoteCategoryType, Function<Afternote, ReceivedAfternoteDetailResponse>>
                 factories = new EnumMap<>(AfternoteCategoryType.class);
         Function<Afternote, ReceivedAfternoteDetailResponse> socialDetail =
-                afternote -> ReceivedAfternoteDetailResponse.fromSocial(afternote, senderName);
+                afternote -> ReceivedAfternoteDetailResponse.fromSocial(afternote, senderName, readCredentials(afternote));
 
         factories.put(AfternoteCategoryType.SOCIAL, socialDetail);
         factories.put(AfternoteCategoryType.BUSINESS, socialDetail);
@@ -200,11 +219,12 @@ public class ReceivedService {
      * 타임레터에 수신자 등록
      * - 별도 수신자 등록 API에서 사용한다.
      * - timeLetterId 기준으로 타임레터 소유권을 검증한다.
-     * - receiverIds의 존재 여부와 소유권을 검증한 뒤 TimeLetterReceiver를 생성한다.
+     * - 타임레터 행을 잠근 뒤 기존 연결을 재사용하고 없는 연결만 생성한다.
+     * - 재요청은 기존 전달·읽음 상태를 유지한다.
      */
     @Transactional
     public List<Long> createTimeLetterReceivers(Long userId, CreateTimeLetterReceiverRequest request) {
-        TimeLetter timeLetter = timeLetterRepository.findByIdAndUserId(request.getTimeLetterID(), userId)
+        TimeLetter timeLetter = timeLetterRepository.findByIdAndUserIdForUpdate(request.getTimeLetterID(), userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TIME_LETTER_NOT_FOUND));
 
         List<Long> uniqueReceiverIds = normalizeReceiverIds(request.getReceiverIds());
@@ -226,17 +246,20 @@ public class ReceivedService {
             throw new CustomException(ErrorCode.TIME_LETTER_REQUIRED_FIELDS);
         }
 
-        List<TimeLetterReceiver> timeLetterReceivers = receivers.stream()
-                .map(receiver -> TimeLetterReceiver.builder()
-                        .timeLetter(timeLetter)
-                        .receiver(receiver)
-                        .deliveredAt(null)
-                        .build())
-                .toList();
-
-        return timeLetterReceiverRepository.saveAll(timeLetterReceivers).stream()
-                .map(TimeLetterReceiver::getId)
-                .toList();
+        Map<Long, TimeLetterReceiver> existing = timeLetterReceiverRepository.findByTimeLetterId(timeLetter.getId())
+                .stream().collect(Collectors.toMap(link -> link.getReceiver().getId(), Function.identity()));
+        Map<Long, Receiver> byId = receivers.stream()
+                .collect(Collectors.toMap(Receiver::getId, Function.identity()));
+        List<Long> result = new ArrayList<>();
+        for (Long receiverId : uniqueReceiverIds) {
+            TimeLetterReceiver link = existing.get(receiverId);
+            if (link == null) {
+                link = timeLetterReceiverRepository.save(TimeLetterReceiver.builder()
+                        .timeLetter(timeLetter).receiver(byId.get(receiverId)).deliveredAt(null).build());
+            }
+            result.add(link.getId());
+        }
+        return result;
     }
 
     /**

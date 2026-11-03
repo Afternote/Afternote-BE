@@ -219,11 +219,12 @@ public class ReceivedService {
      * 타임레터에 수신자 등록
      * - 별도 수신자 등록 API에서 사용한다.
      * - timeLetterId 기준으로 타임레터 소유권을 검증한다.
-     * - receiverIds의 존재 여부와 소유권을 검증한 뒤 TimeLetterReceiver를 생성한다.
+     * - 타임레터 행을 잠근 뒤 기존 연결을 재사용하고 없는 연결만 생성한다.
+     * - 재요청은 기존 전달·읽음 상태를 유지한다.
      */
     @Transactional
     public List<Long> createTimeLetterReceivers(Long userId, CreateTimeLetterReceiverRequest request) {
-        TimeLetter timeLetter = timeLetterRepository.findByIdAndUserId(request.getTimeLetterID(), userId)
+        TimeLetter timeLetter = timeLetterRepository.findByIdAndUserIdForUpdate(request.getTimeLetterID(), userId)
                 .orElseThrow(() -> new CustomException(ErrorCode.TIME_LETTER_NOT_FOUND));
 
         List<Long> uniqueReceiverIds = normalizeReceiverIds(request.getReceiverIds());
@@ -245,17 +246,20 @@ public class ReceivedService {
             throw new CustomException(ErrorCode.TIME_LETTER_REQUIRED_FIELDS);
         }
 
-        List<TimeLetterReceiver> timeLetterReceivers = receivers.stream()
-                .map(receiver -> TimeLetterReceiver.builder()
-                        .timeLetter(timeLetter)
-                        .receiver(receiver)
-                        .deliveredAt(null)
-                        .build())
-                .toList();
-
-        return timeLetterReceiverRepository.saveAll(timeLetterReceivers).stream()
-                .map(TimeLetterReceiver::getId)
-                .toList();
+        Map<Long, TimeLetterReceiver> existing = timeLetterReceiverRepository.findByTimeLetterId(timeLetter.getId())
+                .stream().collect(Collectors.toMap(link -> link.getReceiver().getId(), Function.identity()));
+        Map<Long, Receiver> byId = receivers.stream()
+                .collect(Collectors.toMap(Receiver::getId, Function.identity()));
+        List<Long> result = new ArrayList<>();
+        for (Long receiverId : uniqueReceiverIds) {
+            TimeLetterReceiver link = existing.get(receiverId);
+            if (link == null) {
+                link = timeLetterReceiverRepository.save(TimeLetterReceiver.builder()
+                        .timeLetter(timeLetter).receiver(byId.get(receiverId)).deliveredAt(null).build());
+            }
+            result.add(link.getId());
+        }
+        return result;
     }
 
     /**

@@ -161,6 +161,10 @@ public class GlobalExceptionHandler {
      */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException e) {
+        if (rootMessage(e).toLowerCase(java.util.Locale.ROOT).contains("uk_time_letter_receiver_pair")) {
+            ErrorCode errorCode = ErrorCode.RECEIVER_ALREADY_REGISTERED;
+            return ResponseEntity.status(errorCode.getHttpStatus()).body(ApiResponse.error(errorCode));
+        }
         if (looksLikeDuplicateEmail(e)) {
             log.info("Duplicate email constraint: {}", rootMessage(e));
             ErrorCode errorCode = ErrorCode.DUPLICATE_EMAIL;

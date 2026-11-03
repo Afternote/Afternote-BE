@@ -23,8 +23,10 @@ public class ReceivedController {
 
     @Operation(
             summary = "타임레터 수신자 등록",
-            description = "타임레터에 수신자를 등록합니다. 여러 수신자를 한 번에 등록할 수 있습니다."
+            description = "타임레터에 수신자를 등록합니다. 반복·동시 요청은 기존 연결을 재사용하여 200과 연결 ID 목록을 반환합니다. 입력 ID의 첫 등장 순서를 유지하고 중복을 제거합니다. 기존 전달·읽음 상태는 변경하지 않습니다. DB 중복 충돌은 409(RECEIVER_ALREADY_REGISTERED)이며 재요청할 수 있습니다."
     )
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200", description = "기존 또는 신규 연결 ID 목록")
+    @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409", description = "수신자 연결 중복 충돌 (code: 1909). 재요청 가능")
     @PostMapping("/time-letters")
     public ApiResponse<List<Long>> createTimeLetterReceivers(
             @Parameter(hidden = true) @UserId Long userId,

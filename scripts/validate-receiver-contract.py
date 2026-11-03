@@ -2,12 +2,13 @@
 """Validate generated receiver OpenAPI against MockMvc response samples."""
 import copy
 import json
+import sys
 from pathlib import Path
 from openapi_schema_validator import OAS30Validator
 from referencing import Registry, Resource
 from referencing.jsonschema import DRAFT4
 
-folder = Path('build/reports/receiver-contract')
+folder = Path(sys.argv[1] if len(sys.argv) > 1 else 'build/reports/receiver-contract')
 document = json.loads((folder / 'openapi.json').read_text())
 samples = json.loads((folder / 'responses.json').read_text())
 registry = Registry().with_resource('urn:receiver', Resource.from_contents(document, default_specification=DRAFT4))
@@ -25,6 +26,8 @@ for sample in samples:
         invalid['data'] = [1]
     elif sample['method'] == 'post':
         invalid['data'] = ['not-a-link-id']
+    elif sample['method'] == 'put':
+        invalid['data']['requiresReset'] = 'yes'
     else:
         invalid['data']['credentials'] = {'id': 123, 'password': False}
     assert not validator.is_valid(invalid), 'Wrong data type accepted'
@@ -42,5 +45,5 @@ for sample in samples:
     failures.extend(f"{sample['path']} {sample['status']} {list(e.path)}: {e.message}" for e in errors)
 if failures:
     raise AssertionError('\n'.join(failures))
-assert len(samples) >= 10
-print(f'Receiver OpenAPI validation: {len(samples)} HTTP responses accepted; {rejected} invalid variants rejected')
+assert len(samples) >= (2 if folder.name == 'push-token-contract' else 10)
+print(f'{folder.name} OpenAPI validation: {len(samples)} HTTP responses accepted; {rejected} invalid variants rejected')

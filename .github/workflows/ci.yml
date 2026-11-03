@@ -90,6 +90,7 @@ jobs:
           "$RUNNER_TEMP/afternote-contract-validation/bin/python" -m pip install -r scripts/afternote-contract-requirements.txt
           "$RUNNER_TEMP/afternote-contract-validation/bin/python" scripts/validate-afternote-detail-contract.py
           "$RUNNER_TEMP/afternote-contract-validation/bin/python" scripts/validate-receiver-contract.py
+          "$RUNNER_TEMP/afternote-contract-validation/bin/python" scripts/validate-receiver-contract.py build/reports/push-token-contract
 
       - name: Upload test report
         if: failure()

@@ -47,6 +47,30 @@ class NotificationOpenApiGeneratedDocsTest {
     @MockBean AdminPushTestService pushTests;
     @MockBean NotificationDispatchRepository notifications;
 
+    @Test void pushTokenHttpDatesMatchGeneratedSchema() throws Exception {
+        JsonNode document = docs();
+        assertThat(document.at("/components/schemas/PushTokenResponse/properties/lastSeenAt/format").asText()).isEqualTo("local-date-time");
+        assertThat(document.at("/components/schemas/PushTokenResponse/properties/invalidatedAt/format").asText()).isEqualTo("local-date-time");
+        var samples = objectMapper.createArrayNode();
+        for (boolean invalid : List.of(false, true)) {
+            var now = java.time.LocalDateTime.of(2026, 11, 4, 0, 0);
+            var dto = new com.afternote.domain.notification.dto.PushTokenResponse("dummy",
+                    com.afternote.domain.notification.model.PushPlatform.ANDROID, now,
+                    invalid ? now.minusDays(1) : null, invalid ? "UNREGISTERED" : null, invalid,
+                    com.afternote.domain.notification.model.NotificationPermission.UNKNOWN);
+            org.mockito.BDDMockito.given(tokens.registerOrRefresh(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any())).willReturn(dto);
+            var response = mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put("/api/v1/users/push-tokens")
+                    .requestAttr("userId", 7L).contentType("application/json").content("{\"token\":\"dummy\",\"platform\":\"ANDROID\"}"))
+                    .andExpect(status().isOk()).andReturn();
+            samples.addObject().put("path", "/api/v1/users/push-tokens").put("method", "put").put("status", "200")
+                    .set("payload", objectMapper.readTree(response.getResponse().getContentAsByteArray()));
+        }
+        var folder = java.nio.file.Path.of("build/reports/push-token-contract");
+        java.nio.file.Files.createDirectories(folder);
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(folder.resolve("openapi.json").toFile(), document);
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(folder.resolve("responses.json").toFile(), samples);
+    }
+
     private JsonNode docs() throws Exception {
         return objectMapper.readTree(mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsByteArray());

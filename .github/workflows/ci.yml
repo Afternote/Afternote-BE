@@ -84,11 +84,12 @@ jobs:
       - name: Build and test
         run: ./gradlew clean standardTest --no-daemon
 
-      - name: Validate afternote response schemas
+      - name: Validate afternote and receiver response schemas
         run: |
           python3 -m venv "$RUNNER_TEMP/afternote-contract-validation"
           "$RUNNER_TEMP/afternote-contract-validation/bin/python" -m pip install -r scripts/afternote-contract-requirements.txt
           "$RUNNER_TEMP/afternote-contract-validation/bin/python" scripts/validate-afternote-detail-contract.py
+          "$RUNNER_TEMP/afternote-contract-validation/bin/python" scripts/validate-receiver-contract.py
 
       - name: Upload test report
         if: failure()

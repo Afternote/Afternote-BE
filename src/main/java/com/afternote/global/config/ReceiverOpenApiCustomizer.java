@@ -49,7 +49,33 @@ public class ReceiverOpenApiCustomizer implements OpenApiCustomizer {
             credentials.addAnyOfItem(empty);
             detail.getProperties().put("credentials", credentials);
         }
+        documentRegistrationConflict(openApi);
         rewriteLocalDateTimeFormats(schemas);
+    }
+
+    private static void documentRegistrationConflict(OpenAPI openApi) {
+        if (openApi.getPaths() == null) return;
+        var path = openApi.getPaths().get("/api/v1/received/time-letters");
+        if (path == null || path.getPost() == null || path.getPost().getResponses() == null) return;
+        var response = path.getPost().getResponses().get("409");
+        if (response == null) return;
+        var error = com.afternote.global.exception.ErrorCode.RECEIVER_ALREADY_REGISTERED;
+        Schema<Object> nullData = new Schema<>().type("object").nullable(true);
+        nullData.setEnum(java.util.Collections.singletonList(null));
+        var status = new io.swagger.v3.oas.models.media.IntegerSchema();
+        status.setEnum(java.util.List.of(error.getHttpStatus().value()));
+        var code = new io.swagger.v3.oas.models.media.IntegerSchema();
+        code.setEnum(java.util.List.of(error.getCode()));
+        var envelope = new io.swagger.v3.oas.models.media.ObjectSchema();
+        envelope.addProperty("status", status);
+        envelope.addProperty("code", code);
+        envelope.addProperty("message", new io.swagger.v3.oas.models.media.StringSchema().example(error.getMessage()));
+        envelope.addProperty("data", nullData);
+        envelope.setRequired(java.util.List.of("status", "code", "message", "data"));
+        openApi.getComponents().addSchemas("TimeLetterReceiverConflictResponse", envelope);
+        response.setContent(new io.swagger.v3.oas.models.media.Content().addMediaType("application/json",
+                new io.swagger.v3.oas.models.media.MediaType().schema(
+                        new Schema<>().$ref("#/components/schemas/TimeLetterReceiverConflictResponse"))));
     }
 
     @SuppressWarnings("rawtypes")

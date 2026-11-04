@@ -16,10 +16,10 @@ public record PushTokenResponse(
         @Schema(description = "기기 플랫폼")
         PushPlatform platform,
 
-        @Schema(description = "마지막 등록(갱신) 시각")
+        @Schema(description = "마지막 등록(갱신) 시각. 오프셋 없는 ISO-8601 로컬 시각(Asia/Seoul)")
         LocalDateTime lastSeenAt,
 
-        @Schema(description = "이 토큰의 직전 UNREGISTERED 판정 시각. 실제 발송 성공 전까지 유지", nullable = true)
+        @Schema(description = "이 토큰의 직전 UNREGISTERED 판정 시각. 실제 발송 성공 전까지 유지. 오프셋 없는 ISO-8601 로컬 시각(Asia/Seoul)", nullable = true)
         LocalDateTime invalidatedAt,
 
         @Schema(description = "직전 토큰 무효 사유. 현재는 UNREGISTERED만 사용", nullable = true)

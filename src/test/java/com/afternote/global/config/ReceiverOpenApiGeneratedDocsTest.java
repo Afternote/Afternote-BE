@@ -29,7 +29,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * #269: 수신자 응답의 required·nullable이 생성 OpenAPI에 실제로 남는지 고정한다.
  */
 @WebMvcTest(
-        controllers = ReceivedRecordController.class,
+        controllers = {ReceivedRecordController.class, com.afternote.domain.receiver.controller.ReceivedController.class},
         excludeAutoConfiguration = {
                 SecurityAutoConfiguration.class,
                 SecurityFilterAutoConfiguration.class
@@ -53,6 +53,9 @@ class ReceiverOpenApiGeneratedDocsTest {
 
     @MockBean
     private ReceivedRecordService receivedRecordService;
+
+    @MockBean
+    private com.afternote.domain.receiver.service.ReceivedService receivedService;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
@@ -150,6 +153,55 @@ class ReceiverOpenApiGeneratedDocsTest {
         assertThat(payload.at("/actions/0").asText()).isEqualTo("계정 삭제");
         assertThat(payload.at("/credentials/id").asText()).isEqualTo("dummy-id");
         assertThat(payload.at("/credentials/password").asText()).isEqualTo("dummy-password");
+    }
+
+    @Test
+    void exportReceiverAndRegistrationHttpContracts() throws Exception {
+        JsonNode docs = objectMapper.readTree(mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk()).andReturn().getResponse().getContentAsByteArray());
+        var samples = objectMapper.createArrayNode();
+        String detailPath = "/api/v1/received-records/{receiverId}/after-notes/{afternoteId}";
+        String registrationPath = "/api/v1/received/time-letters";
+        for (var category : com.afternote.domain.afternote.model.AfternoteCategoryType.values()) {
+            for (boolean populated : java.util.List.of(false, true)) {
+                boolean account = category.name().equals("SOCIAL") || category.name().equals("BUSINESS");
+                boolean music = category.name().equals("PLAYLIST");
+                var dto = com.afternote.domain.receiver.dto.ReceivedAfternoteDetailResponse.builder()
+                        .id(10L).category(category).title("기록").senderName("작성자")
+                        .createdAt(java.time.LocalDateTime.of(2026, 11, 4, 0, 0))
+                        .actions(music ? null : java.util.List.of("삭제"))
+                        .credentials(account && populated
+                                ? new com.afternote.domain.receiver.dto.ReceivedAfternoteDetailResponse.CredentialsInfo("dummy", "dummy") : null)
+                        .playlist(music ? new com.afternote.domain.receiver.dto.ReceivedAfternoteDetailResponse.PlaylistInfo(
+                                null, null, java.util.List.of(new com.afternote.domain.receiver.dto.ReceivedAfternoteDetailResponse.SongInfo("곡", "가수", null)),
+                                populated ? new com.afternote.domain.receiver.dto.ReceivedAfternoteDetailResponse.MemorialVideoInfo("https://example.test/video", null) : null,
+                                null) : null).build();
+                org.mockito.BDDMockito.given(receivedRecordService.getAfternote(org.mockito.ArgumentMatchers.any(),
+                        org.mockito.ArgumentMatchers.eq(7L), org.mockito.ArgumentMatchers.eq(10L))).willReturn(dto);
+                var result = mockMvc.perform(get("/api/v1/received-records/7/after-notes/10").requestAttr("userId", 20L))
+                        .andExpect(status().isOk()).andReturn();
+                samples.addObject().put("path", detailPath).put("method", "get").put("status", "200")
+                        .set("payload", objectMapper.readTree(result.getResponse().getContentAsByteArray()));
+            }
+        }
+        org.mockito.BDDMockito.given(receivedService.createTimeLetterReceivers(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .willReturn(java.util.List.of(100L, 101L));
+        var success = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(registrationPath)
+                .requestAttr("userId", 20L).contentType("application/json").content("{\"timeLetterID\":1,\"receiverIds\":[7,8]}"))
+                .andExpect(status().isOk()).andReturn();
+        samples.addObject().put("path", registrationPath).put("method", "post").put("status", "200")
+                .set("payload", objectMapper.readTree(success.getResponse().getContentAsByteArray()));
+        org.mockito.BDDMockito.given(receivedService.createTimeLetterReceivers(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any()))
+                .willThrow(new org.springframework.dao.DataIntegrityViolationException("Duplicate uk_time_letter_receiver_pair"));
+        var conflict = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(registrationPath)
+                .requestAttr("userId", 20L).contentType("application/json").content("{\"timeLetterID\":1,\"receiverIds\":[7]}"))
+                .andExpect(status().isConflict()).andReturn();
+        samples.addObject().put("path", registrationPath).put("method", "post").put("status", "409")
+                .set("payload", objectMapper.readTree(conflict.getResponse().getContentAsByteArray()));
+        var directory = java.nio.file.Path.of("build/reports/receiver-contract");
+        java.nio.file.Files.createDirectories(directory);
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(directory.resolve("openapi.json").toFile(), docs);
+        objectMapper.writerWithDefaultPrettyPrinter().writeValue(directory.resolve("responses.json").toFile(), samples);
     }
 
     private JsonNode fetchSchemas() throws Exception {

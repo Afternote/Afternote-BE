@@ -247,16 +247,17 @@ docker compose --env-file .env.production up -d
 
 #### 3) AWS 그린필드 + off-hours 스케줄 (Terraform)
 
-VPC/EC2/RDS/EIP와 개발 off-hours(03:00~12:00 KST) Stop/Start를 Terraform으로 생성합니다.
+PM AWS 계정의 VPC/EC2/RDS/EIP, S3/CloudFront와 off-hours(03:00~12:00 KST) Stop/Start를 Terraform으로 관리합니다.
 
-**설정·컷오버·구 리소스 폐기**: [`infra/terraform/README.md`](infra/terraform/README.md)
+**현재 운영 설정**: [`infra/terraform-pm/README.md`](infra/terraform-pm/README.md). `infra/terraform`은 이전 계정 정리용 레거시 구성입니다.
 
 ```bash
-cd infra/terraform
-cp terraform.tfvars.example terraform.tfvars   # key pair, ssh CIDR, db_password, alert_email
-terraform init && terraform apply
+cd infra/terraform-pm
+# 기존 운영 환경에서는 보관 중인 state와 terraform.tfvars를 그대로 사용합니다.
+terraform init
+terraform plan
 terraform output elastic_ip      # DNS A + GitHub EC2_HOST
-terraform output jdbc_url_hint   # .env.production DB_URL
+terraform output jdbc_url_hint   # deploy/production.env의 DB_URL
 ```
 
 ### 실행 방법

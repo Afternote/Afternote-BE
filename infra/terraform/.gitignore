@@ -6,6 +6,7 @@ terraform.tfvars
 *.zip
 .build/
 crash.log
+.retirement-backups/
 override.tf
 override.tf.json
 *_override.tf

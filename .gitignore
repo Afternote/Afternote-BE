@@ -60,10 +60,12 @@ data/
 
 ### Local QA notes (개인용, 커밋하지 않음)
 docs/QA-회귀-체크리스트.md
-.cursor/rules/qa-regression-checklist.mdc
 
 # Deploy env (secrets). Synced via GitHub Secret DEPLOY_PRODUCTION_ENV
 deploy/production.env
 
 # Firebase client config / service account (FE google-services.json 참고용, 키는 env만)
 config/firebase/*.json
+
+# Private SBOM planning notes (local only)
+/docs/SBOM-private.md

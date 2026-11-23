@@ -2,7 +2,7 @@
 
 | 구성 | 실행 시점 | 책임 |
 | --- | --- | --- |
-| `ci.yml` | `main` 대상 PR·push | PR dependency graph 제출 후 review, 일반 JUnit, MySQL 통합 테스트, 현재 `Dockerfile` 이미지의 기동·HTTP baseline을 검증하고 `CI / build`에서 집계 |
+| `ci.yml` | `main` 대상 PR | PR dependency graph 제출 후 review, 일반 JUnit, MySQL 통합 테스트, 현재 `Dockerfile` 이미지의 기동·HTTP baseline을 검증하고 `CI / build`에서 집계 |
 | `quality.yml` | `main` 대상 PR·push, 수동 실행 | Actionlint, ShellCheck, 미해결 merge marker 검사 |
 | `terraform.yml` | PM Terraform 또는 해당 workflow 변경 PR·push, 수동 실행 | Terraform 1.14.8에서 fmt·잠금 파일 기준 provider 초기화·validate. AWS backend 접속이나 apply 없이 실행 |
 | `codeql.yml` | `main` 대상 PR·push, 주 1회, 수동 실행 | Java CodeQL 보안 분석 |
@@ -11,7 +11,9 @@
 | `tls-expiry.yml` | 매일 13:00 KST (04:00 UTC), 수동 실행 | 공개 HTTPS 인증서 잔여 일수가 21일 이하이면 실패 (#188) |
 | `dependabot.yml` | 매주 월요일 | Gradle, GitHub Actions, Docker 업데이트 PR을 `main` 대상으로 생성 |
 
-기본 PR 필수 검사는 이름이 고정된 `CI / build`로 설정한다. 동일 저장소 PR에서는 `contents: write`를 해당 job에만 부여해 `dependency-submission`을 완료한 뒤 `dependency-review`를 실행하고, snapshot 반영을 최대 10분 기다린다. 외부 fork PR에는 write 토큰을 부여하지 않는다. `gradle-test`, `mysql-test`, `docker-image`는 이 흐름과 병렬로 실행하며, 집계 job은 네 검증 결과를 모두 요구한다. `main` push에서는 이벤트 특성상 실행되지 않는 dependency review만 `skipped`로 허용하고 나머지 실패·취소는 실패로 처리한다.
+기본 PR 필수 검사는 이름이 고정된 `CI / build`로 설정한다. 동일 저장소 PR에서는 `contents: write`를 해당 job에만 부여해 `dependency-submission`을 완료한 뒤 `dependency-review`를 실행하고, snapshot 반영을 최대 10분 기다린다. 외부 fork PR에는 write 토큰을 부여하지 않는다. `gradle-test`, `mysql-test`, `docker-image`는 이 흐름과 병렬로 실행하며, 집계 job은 네 검증 결과를 모두 요구한다.
+
+일반적인 PR 머지에서는 PR의 CI를 한 번 실행하고, main push의 `deploy.yml`로 배포를 한 번 실행한다. `ci.yml`은 main push에서 반복 실행하지 않는다. main 직접 push에는 이 CI가 실행되지 않으므로 PR 검증 성공 후 머지하는 절차를 따른다. 별도 quality·CodeQL·의존성 제출 workflow의 실행 조건은 유지한다. PR에 후속 커밋을 올리면 변경 결과를 검증하기 위해 CI가 다시 실행된다.
 
 JUnit은 CI에서 두 job으로 나눈다. `gradle-test`의 `standardTest`는 `*MySqlTest`를 제외한 테스트를 실행하고, `mysql-test`는 Testcontainers가 제공하는 실제 MySQL 8.4에서 `*MySqlTest`만 실행한다. `mysql-test`는 대상 테스트가 0개이거나 하나라도 skip되면 실패한다. 로컬의 기존 `test` task는 전체 테스트를 실행하는 동작을 유지한다.
 

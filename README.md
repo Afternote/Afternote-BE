@@ -253,7 +253,8 @@ PM AWS 계정의 VPC/EC2/RDS/EIP, S3/CloudFront와 off-hours(03:00~12:00 KST) St
 
 ```bash
 cd infra/terraform-pm
-# 기존 운영 환경에서는 보관 중인 state와 terraform.tfvars를 그대로 사용합니다.
+# Terraform 1.10+ / afternote-pm 프로필과 운영 terraform.tfvars가 필요합니다.
+# init은 PM 계정의 비공개 S3에서 운영 state를 읽습니다.
 terraform init
 terraform plan
 terraform output elastic_ip      # DNS A + GitHub EC2_HOST

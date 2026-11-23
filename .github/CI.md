@@ -4,6 +4,7 @@
 | --- | --- | --- |
 | `ci.yml` | `main` 대상 PR·push | PR dependency graph 제출 후 review, 일반 JUnit, MySQL 통합 테스트, 현재 `Dockerfile` 이미지의 기동·HTTP baseline을 검증하고 `CI / build`에서 집계 |
 | `quality.yml` | `main` 대상 PR·push, 수동 실행 | Actionlint, ShellCheck, 미해결 merge marker 검사 |
+| `terraform.yml` | PM Terraform 또는 해당 workflow 변경 PR·push, 수동 실행 | Terraform 1.14.8에서 fmt·잠금 파일 기준 provider 초기화·validate. AWS backend 접속이나 apply 없이 실행 |
 | `codeql.yml` | `main` 대상 PR·push, 주 1회, 수동 실행 | Java CodeQL 보안 분석 |
 | `dependency-submission.yml` | `main` push, 수동 실행 | Gradle 의존성 그래프 제출 |
 | `deploy.yml` | `main` push, 수동 실행 | 기존 DockerHub·EC2·Nginx/TLS·smoke·contract 배포 흐름 |

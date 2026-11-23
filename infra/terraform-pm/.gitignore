@@ -1,4 +1,5 @@
 .terraform/
+.state-migration-backups/
 *.tfstate
 *.tfstate.*
 terraform.tfvars

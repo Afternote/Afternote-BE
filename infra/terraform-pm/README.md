@@ -5,14 +5,14 @@
 이전 계정의 `../terraform`과 state를 섞지 않습니다.
 
 2026-11-22 이전과 구 계정의 AfterNote 리소스 정리를 완료했습니다.
-PM 관리 리소스는 51개이며, 이전 계정의 `clog`와 개인 IAM 사용자는 보존했습니다.
+운영 리소스 51개와 state 버킷 설정 6개를 관리하며, 이전 계정의 `clog`와 개인 IAM 사용자는 보존했습니다.
 배포·스모크·계약 테스트는 [GitHub Actions 실행 결과](https://github.com/Afternote/Afternote-BE/actions/runs/44992845669)에서 확인할 수 있습니다.
 구 리소스 삭제 후에도 HTTPS, DB/Redis/SMTP 연결, 로그인, 오늘의 질문 API를 검증했습니다.
 
 ## 운영 명령
 
-저장소 루트에서 실행합니다. 기존 환경을 관리할 때는 운영 중인 state와
-`terraform.tfvars`를 보관한 디렉터리를 사용합니다.
+Terraform 1.10 이상에서 저장소 루트 기준으로 실행합니다.
+`afternote-pm` 프로필과 Git에서 제외된 운영 `terraform.tfvars`를 준비합니다.
 
 ```bash
 aws sts get-caller-identity --profile afternote-pm
@@ -22,9 +22,31 @@ terraform -chdir=infra/terraform-pm validate
 terraform -chdir=infra/terraform-pm plan
 ```
 
-새로 clone한 뒤 빈 state로 apply하면 기존 리소스를 자동으로 인계하지 않습니다.
-현재 backend는 로컬이므로 작업 PC를 옮기기 전에 state와 변수 파일을 안전하게
-이관하거나 별도 작업으로 원격 backend를 구성해야 합니다.
+`init`은 PM 계정의 비공개 S3에서 기존 운영 state를 읽습니다.
+새 PC에서는 로컬 state를 복사하지 않습니다. 운영 변수 파일은 별도로 안전하게 전달합니다.
+
+## S3 원격 state
+
+- 버킷: `afternote-terraform-state-079477842373-ap-northeast-2`
+- state 키: `prod/terraform.tfstate`
+- 잠금 키: `prod/terraform.tfstate.tflock` (`use_lockfile = true`)
+- PM 계정만 허용하며, 공개 접근 차단·버킷 소유자 강제·AES256 암호화·버전 관리·HTTPS 강제를 적용합니다.
+- state 버킷도 이 루트에서 관리하며 `prevent_destroy = true`로 실수에 의한 삭제를 막습니다.
+- 2026-11-23 현재 PM state를 이전했습니다. 이전 계정의 폐기된 state는 원격 backend에 넣지 않았습니다.
+
+운영자는 기존 인프라 권한 외에 state 버킷의 `s3:ListBucket`, state 객체의
+`s3:GetObject`/`s3:PutObject`, 잠금 객체의 `s3:GetObject`/`s3:PutObject`/`s3:DeleteObject`
+권한이 필요합니다. 앱의 업로드 전용 IAM 사용자는 state 버킷 권한을 갖지 않습니다.
+동시에 실행된 Terraform 작업은 잠금으로 차단됩니다. 실행 중인 작업이 있다면
+잠금 객체를 직접 지우거나 `force-unlock`으로 우회하지 않고 해당 작업이 끝나기를 기다립니다.
+
+이미 운영 중인 환경에서는 `terraform init`만 실행합니다.
+버킷을 다시 만들거나 `-migrate-state`/`-force-copy`로 오래된 로컬 state를 덮어쓰지 않습니다.
+이전 전후 백업은 Git에서 제외된 `.state-migration-backups/20261123/`에 보관합니다.
+
+완전한 재해 복구로 버킷부터 다시 만드는 경우에는 먼저 `backend.tf`를 제외한 임시 루트에서
+버킷을 준비한 뒤 올바른 최신 state를 복원하고 backend를 연결해야 합니다.
+일반적인 clone과 운영 작업에서는 이 부트스트랩 절차가 필요하지 않습니다.
 
 ## 구성과 배포
 
@@ -68,6 +90,6 @@ terraform -chdir=infra/terraform-pm output uploads_base_url
 잠금 파일 `.terraform.lock.hcl`과 공개 키 `deploy-key.pub`는 버전 관리합니다.
 
 완전히 새 환경을 생성할 때만 `terraform.tfvars.example`을 복사해 값을 채우고,
-새 SSH 개인 키와 공개 키를 준비합니다. 기존 운영 환경에서는 키나 state를
+새 SSH 개인 키와 공개 키를 준비합니다. 기존 운영 환경에서는 키나 원격 state를
 덮어쓰지 않습니다. `ssh_ingress_cidr`에는 실제 SSH 배포 주체가 접근할 수 있는
 범위가 필요하며 GitHub Actions의 SSH 배포도 이 규칙의 적용을 받습니다.

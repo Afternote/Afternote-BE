@@ -89,6 +89,13 @@ terraform -chdir=infra/terraform-pm output uploads_base_url
 저장된 plan에는 인증정보가 포함될 수 있습니다. Git에서 제외한 상태로 안전하게 보관합니다.
 잠금 파일 `.terraform.lock.hcl`과 공개 키 `deploy-key.pub`는 버전 관리합니다.
 
+provider 잠금 파일을 갱신할 때는 Linux CI와 macOS의 체크섬을 함께 기록합니다.
+CI는 `-lockfile=readonly`로 실행하므로 누락된 플랫폼 해시를 자동으로 보완하지 않습니다.
+
+```bash
+terraform -chdir=infra/terraform-pm providers lock -platform=linux_amd64 -platform=darwin_arm64
+```
+
 완전히 새 환경을 생성할 때만 `terraform.tfvars.example`을 복사해 값을 채우고,
 새 SSH 개인 키와 공개 키를 준비합니다. 기존 운영 환경에서는 키나 원격 state를
 덮어쓰지 않습니다. `ssh_ingress_cidr`에는 실제 SSH 배포 주체가 접근할 수 있는

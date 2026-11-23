@@ -1,5 +1,19 @@
 # AfterNote 그린필드 인프라 (Terraform)
 
+> 이전 계정(`312871631529`)의 레거시 구성입니다. 현재 운영 환경은
+> [`../terraform-pm/README.md`](../terraform-pm/README.md)를 사용합니다.
+> 이 디렉터리는 기존 state 확인과 구 리소스 정리에만 사용하며, 운영 배포용으로 apply하지 않습니다.
+
+2026-11-22 기존 AfterNote 정리를 완료했습니다. 이 루트의 관리 리소스 40개를
+destroy했고, Terraform 밖의 이전 EC2/VPC, EIP, RDS 수동 스냅샷 2개,
+S3, CloudFront 무료 요금제·배포·OAC·WAF도 정리했습니다.
+`clog` 리소스와 개인 IAM 사용자는 유지했고 구 앱의 액세스 키는 비활성화했습니다.
+로컬 state의 관리 리소스는 0개입니다. 아래 구축 절차는 과거 구성에 대한 참고용입니다.
+
+삭제 전 두 계정의 state·변수 백업은 Git에서 제외된
+`.retirement-backups/20261122/`에 보관합니다. 백업에는 인증정보가 포함될 수 있으므로
+외부로 공유하거나 Git에 추가하지 않습니다.
+
 VPC / EC2 / RDS / EIP / EventBridge Scheduler(Stop·Start) / SNS 알람을 코드로 생성합니다.
 
 - **Stop** 03:00 KST · **Start** 12:00 KST

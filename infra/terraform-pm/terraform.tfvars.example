@@ -1,0 +1,8 @@
+# PM account only. Create deploy-key / deploy-key.pub with ssh-keygen first.
+# Set your deployment SSH source range and operations email.
+ec2_key_name = "afternote-pm-deploy"
+ssh_ingress_cidr = "YOUR_IP/32"
+alert_email = "ops@example.com"
+environment = "prod"
+db_password = "REPLACE_WITH_A_RANDOM_PASSWORD"
+existing_eip_allocation_id = ""

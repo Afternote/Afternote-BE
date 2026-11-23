@@ -3,8 +3,6 @@ name: CI
 on:
   pull_request:
     branches: ["main"]
-  push:
-    branches: ["main"]
 
 #github actions가 레포 내용을 읽을 수 있는 권한 설정
 permissions:
